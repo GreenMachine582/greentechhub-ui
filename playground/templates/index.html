@@ -1,0 +1,107 @@
+{% extends "app.html" %}
+{% from "card.html" import gth_card %}
+{% from "stat_card.html" import gth_stat_card %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
+{% from "toast.html" import gth_toast_flashes %}
+
+{% block title %}Playground{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">greentechhub-ui playground</h1>
+<p class="text-secondary mb-5">
+  Living documentation — every shipped <code>gth-*</code> component, rendered with fixture data.
+  No real database; see <code>playground/app.py</code>.
+</p>
+
+<section class="mb-5">
+  <h2>gth-stat-card</h2>
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      {{ gth_stat_card("Open tasks", "5", icon="list-check") }}
+    </div>
+    <div class="col-6 col-md-3">
+      {{ gth_stat_card("Avg priority", "56", delta="+12", delta_tone="bad") }}
+    </div>
+    <div class="col-6 col-md-3">
+      {{ gth_stat_card("Completed", "2", delta="-1", delta_tone="good") }}
+    </div>
+    <div class="col-6 col-md-3">
+      {{ gth_stat_card("Blocked", "2", value_tone="bad") }}
+    </div>
+  </div>
+</section>
+
+<section class="mb-5">
+  <h2>gth-card</h2>
+  {% call gth_card(title="About this playground", footer="See docs/testing.md") %}
+  <p class="mb-0">
+    This app exists so a contributor can check "what does <code>gth-table</code> actually
+    look like" without reading macro source, and as the future target for Playwright
+    smoke tests.
+  </p>
+  {% endcall %}
+</section>
+
+<section class="mb-5">
+  <h2>gth-table + gth-table_body + gth-empty-state (row-level)</h2>
+  <form id="task-filter-form"
+    hx-get="/table-demo/filter"
+    hx-trigger="keyup changed delay:400ms from:#task-q-input"
+    hx-target="#tasks-tbody"
+    hx-swap="innerHTML"
+    class="row g-2 mb-3">
+    <div class="col-12 col-md-4">
+      <input type="search" id="task-q-input" name="q" class="form-control form-control-sm"
+        placeholder="Search tasks… (try &quot;zzz&quot; for the empty state)" autocomplete="off">
+    </div>
+  </form>
+  {% call gth_table(headers=["Priority", "Title", "Status"], tbody_id="tasks-tbody") %}
+  {% include "_tasks_tbody.html" %}
+  {% endcall %}
+</section>
+
+<section class="mb-5">
+  <h2>gth-pagination</h2>
+  <div id="widgets-list">
+    {% include "_pagination_list.html" with context %}
+  </div>
+</section>
+
+<section class="mb-5">
+  <h2>gth-empty-state (standalone)</h2>
+  <div class="row g-3">
+    <div class="col-md-6">
+      {{ gth_empty_state("Nothing here yet.", icon="📭") }}
+    </div>
+    <div class="col-md-6">
+      {% call gth_empty_state(message="No scrapers configured.") %}
+      <button class="btn btn-sm btn-outline-secondary">Add one</button>
+      {% endcall %}
+    </div>
+  </div>
+</section>
+
+<section class="mb-5">
+  <h2>gth-form + gth-form_field</h2>
+  {% include "_form_demo.html" %}
+</section>
+
+<section class="mb-5">
+  <h2>gth-toast (HX-Trigger event)</h2>
+  <button type="button" class="btn btn-outline-secondary"
+    hx-post="/toast-demo" hx-swap="none">
+    Trigger a toast
+  </button>
+</section>
+
+<section class="mb-5">
+  <h2>gth-toast (static flashes)</h2>
+  <p class="text-secondary">
+    The other delivery mode — a static <code>flashes</code> list, rendered inline here
+    rather than popping up (they'd normally live in the toast container, see
+    <code>docs/contract.md</code>).
+  </p>
+  {{ gth_toast_flashes(flashes_demo) }}
+</section>
+{% endblock %}

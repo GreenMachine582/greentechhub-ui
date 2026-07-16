@@ -1,0 +1,8 @@
+{% from "table.html" import gth_table_body %}
+{% call(task) gth_table_body(rows=tasks, empty_message="No tasks match your search.", colspan=3) %}
+<tr class="{% if task.priority >= 80 %}table-danger{% elif task.priority >= 60 %}table-warning{% endif %}">
+  <td>{{ task.priority }}</td>
+  <td>{{ task.title }}</td>
+  <td><span class="badge text-bg-secondary">{{ task.status }}</span></td>
+</tr>
+{% endcall %}

@@ -1,0 +1,12 @@
+{% from "pagination.html" import gth_pagination %}
+{% from "empty_state.html" import gth_empty_state %}
+{% if items %}
+<ul class="list-group mb-2">
+  {% for item in items %}
+  <li class="list-group-item">{{ item }}</li>
+  {% endfor %}
+</ul>
+{{ gth_pagination(next_url=next_url) }}
+{% else %}
+{{ gth_empty_state("No widgets to show.") }}
+{% endif %}

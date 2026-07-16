@@ -35,8 +35,8 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 
 ### v0.4 — Dark mode, playground, extension points
 - [x] Dark mode — colors and mechanism extracted from the real green-tech-hub.com implementation (`GreenMachine582/GreenTechHub`, `addons/base/static/base/js/widgets/theme.js`), which is vanilla JS, not Alpine (corrected `docs/theming.md`/`docs/architecture.md`, which both claimed Alpine). `gth_theme_toggle` + `localStorage["gth-theme-mode"]` + a `data-bs-theme` anti-FOUC script in `app.html`. Opt-in (`gth_navbar(..., show_theme_toggle=False)`) so no existing consumer's rendered output changes by default — first real consumer: BottleBot, now with the toggle enabled live
-- [ ] `/playground` app
-- [ ] Playwright smoke tests wired into CI
+- [x] `/playground` app — a minimal FastAPI app (`playground/app.py`) exercising every shipped component with generic fixture data (not BottleBot's domain). No `gth-modal`/`gth-confirm-delete` demo — they don't exist yet. Route-level regression coverage is via `tests/test_playground_smoke.py` at the Jinja-render level (not `fastapi.testclient`/httpx — that dependency chain hit a blocked package install this session, see below); live-verified by running the app and curling every route
+- [ ] Playwright smoke tests wired into CI — still separate/deferred; also revisit the `httpx`/`httpx2` situation encountered while building the playground (starlette's `TestClient` in this environment requires `httpx2`, not `httpx` — installing it was blocked by a sandbox permission check this session; `tests/test_playground_smoke.py` currently tests at the Jinja-render level instead of via `TestClient`)
 - [ ] `extra_css` / `extra_js` slots
 - [ ] `nav_items` custom entries
 

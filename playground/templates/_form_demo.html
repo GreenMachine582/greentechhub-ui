@@ -1,0 +1,10 @@
+{% from "form.html" import gth_form, gth_form_field %}
+<div id="form-demo-container">
+{% call gth_form(action="/form-demo",
+    form_attrs={"hx-post": "/form-demo", "hx-target": "#form-demo-container", "hx-swap": "outerHTML"}) %}
+  {{ gth_form_field("budget", "Budget (AUD)", value=budget_value, type="number", step="0.01", min="0", max="1000",
+      errors=field_errors.get("budget"),
+      help_text="Try a negative number or something over 1000 to see validation errors.") }}
+  <button type="submit" class="btn btn-primary">Save</button>
+{% endcall %}
+</div>
