@@ -59,9 +59,18 @@ templates.env.loader = ChoiceLoader(
     ]
 )
 templates.env.globals["brand"] = greentechhub_ui.theme.brand_context(service_name="Playground")
-templates.env.globals["nav_items"] = [
-    {"label": "Playground", "url": "/", "icon": "grid"},
-]
+templates.env.globals["nav_items"] = greentechhub_ui.navigation.build_nav_items(
+    custom_items=[
+        {"label": "Playground", "url": "/", "icon": "grid"},
+    ],
+    # Demonstrates the built-in + consumer-registered merge docs/components.md
+    # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
+    # is empty in the real package today (no built-in exists yet) — this
+    # override proves built_in_items render first, ahead of custom_items.
+    built_in_items=[
+        {"label": "Home", "url": "/", "icon": "house"},
+    ],
+)
 templates.env.globals["theme_css_url"] = "/gth-static/theme.css"
 templates.env.globals["icons_css_url"] = "/gth-assets/icons/bootstrap-icons.min.css"
 templates.env.globals["toast_js_url"] = "/gth-assets/js/toast.js"

@@ -73,3 +73,19 @@ greentechhub_ui.toast(message: str, kind: str = "success") -> str
 gth_toast_flashes(flashes)
 {# flashes: list of {message, kind} dicts — the same shape toast() produces #}
 ```
+
+## Shipped signatures (v0.4)
+
+```jinja
+{# navigation.py (Python, not a template) #}
+greentechhub_ui.navigation.build_nav_items(custom_items, current_user=None, built_in_items=None) -> list[NavItem]
+{# The "built-in + consumer-registered, scope-filtered" merge the gth-sidebar/
+   gth-navbar row above promises. built_in_items defaults to DEFAULT_NAV_ITEMS
+   (empty today — no cross-service nav concept exists yet, e.g. no
+   greentechhub-core auth for an "Account" link). Built-ins are placed before
+   custom_items, then the combined list is scope-filtered via filter_by_scope
+   against current_user. A future addition to DEFAULT_NAV_ITEMS becomes
+   visible to every consumer through this helper without any of them changing
+   their own code. See docs/extensibility.md for the current_user scoping
+   contract. #}
+```
