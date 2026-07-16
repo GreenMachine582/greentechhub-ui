@@ -1,15 +1,17 @@
 """Brand tokens — source of truth for theme.css's CSS custom properties.
 
-No canonical green-tech-hub.com brand asset source exists yet (tracked as an
-open decision in ../../TODO.md), so these are a placeholder green palette.
+Colors sourced from the real green-tech-hub.com brand palette
+(GreenMachine582/GreenTechHub, addons/base/static/base/scss/abstracts/_variables.scss)
+— resolves the color half of the "Logo/brand asset source of truth" open
+decision in ../../TODO.md. Logo image assets aren't vendored yet.
 """
 
 BRAND_NAME = "GreenTechHub"
-LOGO_URL = None  # placeholder until a canonical brand asset source is picked
+LOGO_URL = None  # logo image assets not vendored yet — see TODO.md
 
-COLOR_PRIMARY = "#2e7d32"
-COLOR_PRIMARY_DARK = "#1b5e20"
-COLOR_PRIMARY_LIGHT = "#66bb6a"
+COLOR_PRIMARY = "#1FBE1E"
+COLOR_PRIMARY_DARK = "#169617"
+COLOR_PRIMARY_LIGHT = "#A6EBA6"
 
 
 def brand_context(service_name: str | None = None) -> dict:

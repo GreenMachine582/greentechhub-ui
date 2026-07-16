@@ -49,6 +49,19 @@ def test_app_shell_has_toast_container():
     assert 'id="gth-toast-container"' in html
 
 
+def test_app_shell_has_anti_fouc_script_and_no_toggle_by_default():
+    html = _env().get_template("app.html").render(**_context())
+    assert "gth-theme-mode" in html
+    # show_theme_toggle defaults to False — no toggle button unless opted in
+    assert "gth-theme-toggle" not in html
+
+
+def test_app_shell_renders_theme_toggle_when_enabled():
+    context = _context(show_theme_toggle=True)
+    html = _env().get_template("app.html").render(**context)
+    assert "gth-theme-toggle" in html
+
+
 def test_app_shell_accepts_populated_flashes():
     # Contract test (docs/testing.md): a consumer supplying a non-empty
     # `flashes` list must not break rendering, even though app.html doesn't

@@ -3,9 +3,9 @@
    Values here must stay in sync with tokens.py. */
 
 :root {
-  --gth-color-primary: #2e7d32;
-  --gth-color-primary-dark: #1b5e20;
-  --gth-color-primary-light: #66bb6a;
+  --gth-color-primary: #1FBE1E;
+  --gth-color-primary-dark: #169617;
+  --gth-color-primary-light: #A6EBA6;
 
   --gth-space-xs: 0.25rem;
   --gth-space-sm: 0.5rem;
@@ -58,4 +58,19 @@
 .gth-form-error pre {
   font-size: 0.8rem;
   white-space: pre-wrap;
+}
+
+/* gth-theme-toggle — icon shown reflects which mode clicking switches TO
+   (sun visible in dark mode invites switching to light, and vice versa).
+   Pure CSS, driven entirely by the data-bs-theme attribute the toggle's JS
+   sets — no JS-side icon-state management needed. */
+.gth-theme-toggle-icon-light,
+.gth-theme-toggle-icon-dark {
+  display: none;
+}
+[data-bs-theme="dark"] .gth-theme-toggle-icon-light {
+  display: inline-block;
+}
+[data-bs-theme="light"] .gth-theme-toggle-icon-dark {
+  display: inline-block;
 }

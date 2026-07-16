@@ -103,5 +103,5 @@ Note what's absent from both samples: no reference to Bootstrap, HTMX, or Alpine
 *(Implementation detail, documented for contributors to `greentechhub-ui` itself — not something a consumer calling `gth-modal` needs to know.)*
 
 - **HTMX owns server round-trips**: table filter/sort/pagination, form submits, toast-triggering via an `HX-Trigger` response header wired to `greentechhub-core`'s flash module.
-- **Alpine.js owns pure client state**: dropdown/tab/accordion open state, dark-mode toggle, modal open/close where no server data is needed.
+- **Alpine.js owns pure client state**: dropdown/tab/accordion open state, modal open/close where no server data is needed. Dark-mode toggle turned out not to need it — see [docs/theming.md](theming.md), it's plain vanilla JS, matching green-tech-hub.com's own real implementation.
 - These conventions live inside the package's components — a contributor extending `greentechhub-ui` needs to know them; a consumer calling `gth-modal` does not.

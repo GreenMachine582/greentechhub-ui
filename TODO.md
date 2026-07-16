@@ -34,7 +34,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] ARIA pass across all components so far ([docs/accessibility.md](docs/accessibility.md)) — applied to `gth-navbar`/`gth-stat-card`/`gth-table`/`gth-empty-state` (decorative icons, `<th scope="col">`); `gth-card`/`gth-pagination` needed no changes. `gth-modal`'s ARIA needs its own pass once it ships (see above)
 
 ### v0.4 — Dark mode, playground, extension points
-- [ ] Dark mode
+- [x] Dark mode — colors and mechanism extracted from the real green-tech-hub.com implementation (`GreenMachine582/GreenTechHub`, `addons/base/static/base/js/widgets/theme.js`), which is vanilla JS, not Alpine (corrected `docs/theming.md`/`docs/architecture.md`, which both claimed Alpine). `gth_theme_toggle` + `localStorage["gth-theme-mode"]` + a `data-bs-theme` anti-FOUC script in `app.html`. Opt-in (`gth_navbar(..., show_theme_toggle=False)`) so no existing consumer's rendered output changes by default — first real consumer: BottleBot, now with the toggle enabled live
 - [ ] `/playground` app
 - [ ] Playwright smoke tests wired into CI
 - [ ] `extra_css` / `extra_js` slots
@@ -49,7 +49,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 
 ## 🧭 Open Decisions
 
-- [ ] **Logo/brand asset source of truth** — identify wherever green-tech-hub.com's current brand assets live as the canonical source `greentechhub-ui` packages.
+- [ ] **Logo/brand asset source of truth** — partially resolved: brand *color* now sourced from `GreenMachine582/GreenTechHub`'s real SCSS variables (`#1FBE1E` primary, see `theme/tokens.py`). Still open: logo/favicon image assets exist there (`logo-light.png`/`logo-dark.png` pairs, `icon.png`) but aren't vendored into `greentechhub-ui` yet — `LOGO_URL` stays `None` until that's done.
 - [ ] **Static hosting** — bundled-per-service now; revisit shared subdomain (`static.green-tech-hub.com`) later. See [docs/theming.md](docs/theming.md).
 - [ ] **Theme/components split** — `theme/` is already structurally independent. Splitting it into a standalone `greentechhub-theme` package is deferred, not rejected — revisit once a real consumer wants branding without the component library (GreenTechHub's Django app is the most likely candidate to force this decision).
 - [ ] **How far GreenTechHub's own migration goes** — theme-only vs. full component adoption. Not a blocking decision for v1.0.

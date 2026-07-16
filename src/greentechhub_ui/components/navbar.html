@@ -1,4 +1,6 @@
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None) %}
+{% from "theme_toggle.html" import gth_theme_toggle %}
+
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False) %}
 <nav class="navbar navbar-expand-md navbar-dark bg-dark border-bottom">
   <div class="container">
     <a class="navbar-brand fw-bold gth-navbar-brand" href="/">
@@ -20,6 +22,11 @@
           </a>
         </li>
         {% endfor %}
+        {% if show_theme_toggle %}
+        <li class="nav-item d-flex align-items-center ms-md-2">
+          {{ gth_theme_toggle() }}
+        </li>
+        {% endif %}
       </ul>
     </div>
   </div>

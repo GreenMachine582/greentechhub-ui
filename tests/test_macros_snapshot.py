@@ -86,6 +86,24 @@ def test_navbar_with_icons():
     assert_snapshot(rendered, "navbar_with_icons")
 
 
+def test_theme_toggle():
+    rendered = _render(
+        """{% from "theme_toggle.html" import gth_theme_toggle %}
+        {{ gth_theme_toggle() }}"""
+    )
+    assert_snapshot(rendered, "theme_toggle")
+
+
+def test_navbar_with_theme_toggle():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(nav_items, brand, show_theme_toggle=True) }}""",
+        nav_items=[{"label": "Deals", "url": "/"}],
+        brand=brand_context(service_name="Playground"),
+    )
+    assert_snapshot(rendered, "navbar_with_theme_toggle")
+
+
 def test_table_with_rows():
     rendered = _render(
         """
