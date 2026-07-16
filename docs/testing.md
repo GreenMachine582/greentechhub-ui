@@ -4,11 +4,12 @@
 
 ## `/playground`
 
-A minimal demo app (`playground/`, likely a small FastAPI app) ships in the same repo, rendering every component with representative data — sortable table with filters, a modal, toasts, a form with validation errors, dark mode toggled. This is:
+A minimal FastAPI demo app (`playground/`) ships in the same repo, rendering every shipped component with representative fixture data (no real database) — a filterable table, pagination, both toast delivery modes, a form with validation errors, dark mode toggled. No `gth-modal`/`gth-confirm-delete` demo yet — they haven't shipped. This is:
 
 - **Living documentation** — the first place a contributor checks "what does `gth-table` actually look like" instead of reading macro source.
-- **The Playwright smoke-test target** (below) — tests run against `playground/`, not against a mocked-up FastAPI app rebuilt per test.
-- Runs via `uv run playground/app.py` with no external dependencies (no real database — fixture data only).
+- **The Playwright smoke-test target** (below, not yet built) — tests will run against `playground/`, not against a mocked-up FastAPI app rebuilt per test.
+
+See [playground/README.md](../playground/README.md) for concrete setup/run instructions and what to click through.
 
 ## Testing strategy
 
