@@ -16,7 +16,9 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
   "flashes": [...],          # from greentechhub-core's flash module (or Django messages, adapted)
   "url_for": callable,       # injected per-framework: FastAPI's request.url_for, or a thin Django shim
   "brand": {"name": "GreenTechHub", "logo_url": "...", "service_name": "PyFinBot"},
-  "extra_head": [...],       # optional per-page <head> additions — see docs/extensibility.md
+  "extra_head": [...],       # optional per-page <head> additions (trusted HTML strings) — see docs/extensibility.md
+  "extra_css": [...],        # optional stylesheet URLs, e.g. a page needing a charting library
+  "extra_js": [...],         # optional script URLs, same idea as extra_css
 }
 ```
 

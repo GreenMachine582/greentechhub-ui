@@ -6,7 +6,7 @@ data — no real database. See docs/testing.md. Run directly:
 """
 
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
@@ -38,6 +38,15 @@ FLASHES_DEMO = [
     {"message": "This is a success flash message.", "kind": "success"},
     {"message": "This is a warning flash message.", "kind": "warning"},
 ]
+
+# extra_css/extra_js/extra_head demo — data: URIs so this needs no external
+# network resource and no extra static file, just to prove the data-driven
+# slots (docs/contract.md) actually render and execute in a real browser.
+EXTRA_CSS_DATA_URL = "data:text/css," + quote(".gth-extra-css-demo { color: hotpink; }")
+EXTRA_JS_DATA_URL = "data:text/javascript," + quote(
+    "document.getElementById('gth-extra-js-demo').textContent = 'extra_js worked!';"
+)
+EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
 # ── Jinja/FastAPI wiring — mirrors BottleBot's real templating.py/app.py ───
 
@@ -89,6 +98,9 @@ async def index(request: Request):
         "field_errors": {},
         "budget_value": 250,
         "flashes_demo": FLASHES_DEMO,
+        "extra_css": [EXTRA_CSS_DATA_URL],
+        "extra_js": [EXTRA_JS_DATA_URL],
+        "extra_head": [EXTRA_HEAD_DEMO],
         **_paginate_widgets(0),
     })
 

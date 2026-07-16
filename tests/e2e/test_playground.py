@@ -53,3 +53,19 @@ def test_table_filter_and_keyboard_focus(page, playground_url):
     tbody = page.locator("#tasks-tbody")
     expect(tbody).not_to_contain_text("Design onboarding flow")
     expect(tbody).to_contain_text("Fix flaky CI job")
+
+
+def test_extra_css_and_js_and_head_slots_actually_work(page, playground_url):
+    page.goto(playground_url)
+
+    # extra_css: a real applied stylesheet, not just markup presence — checks
+    # the browser's computed style, proving the data: URI stylesheet loaded.
+    css_demo = page.locator(".gth-extra-css-demo")
+    assert css_demo.evaluate("el => getComputedStyle(el).color") == "rgb(255, 105, 180)"
+
+    # extra_js: proves the injected script actually executed, not just that
+    # a <script> tag with the right src is present in the markup.
+    expect(page.locator("#gth-extra-js-demo")).to_have_text("extra_js worked!")
+
+    # extra_head: a real DOM node, not just a text search on page source.
+    assert page.locator('meta[name="gth-extra-head-demo"]').get_attribute("content") == "works"

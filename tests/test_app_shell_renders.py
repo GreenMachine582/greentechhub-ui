@@ -62,6 +62,24 @@ def test_app_shell_renders_theme_toggle_when_enabled():
     assert "gth-theme-toggle" in html
 
 
+def test_app_shell_renders_extra_head_list():
+    context = _context(extra_head=['<meta name="gth-extra-head-demo" content="works">'])
+    html = _env().get_template("app.html").render(**context)
+    assert '<meta name="gth-extra-head-demo" content="works">' in html
+
+
+def test_app_shell_renders_extra_css_urls():
+    context = _context(extra_css=["https://example.com/custom.css"])
+    html = _env().get_template("app.html").render(**context)
+    assert '<link rel="stylesheet" href="https://example.com/custom.css">' in html
+
+
+def test_app_shell_renders_extra_js_urls():
+    context = _context(extra_js=["https://example.com/custom.js"])
+    html = _env().get_template("app.html").render(**context)
+    assert '<script src="https://example.com/custom.js"></script>' in html
+
+
 def test_app_shell_accepts_populated_flashes():
     # Contract test (docs/testing.md): a consumer supplying a non-empty
     # `flashes` list must not break rendering, even though app.html doesn't

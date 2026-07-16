@@ -104,4 +104,16 @@
   </p>
   {{ gth_toast_flashes(flashes_demo) }}
 </section>
+
+<section class="mb-5">
+  <h2>extra_head / extra_css / extra_js slots</h2>
+  <p class="text-secondary">
+    Data-driven extension points — a consumer passes URLs/HTML via context, no template
+    override needed (distinct from the block-based extension points used elsewhere on this
+    page, e.g. how BottleBot overrides the banner/footer blocks). This page injected a demo
+    stylesheet, script, and &lt;meta&gt; tag purely via context — see <code>playground/app.py</code>.
+  </p>
+  <p class="gth-extra-css-demo mb-1">This text is pink if <code>extra_css</code> worked.</p>
+  <p id="gth-extra-js-demo">extra_js hasn't run yet.</p>
+</section>
 {% endblock %}

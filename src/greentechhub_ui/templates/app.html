@@ -30,6 +30,8 @@
   </script>
   {% if theme_css_url|default(none) %}<link rel="stylesheet" href="{{ theme_css_url }}">{% endif %}
   {% if icons_css_url|default(none) %}<link rel="stylesheet" href="{{ icons_css_url }}">{% endif %}
+  {% for url in extra_css|default([]) %}<link rel="stylesheet" href="{{ url }}">{% endfor %}
+  {% for item in extra_head|default([]) %}{{ item | safe }}{% endfor %}
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -52,6 +54,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% if toast_js_url|default(none) %}<script src="{{ toast_js_url }}"></script>{% endif %}
   {% if theme_toggle_js_url|default(none) %}<script src="{{ theme_toggle_js_url }}"></script>{% endif %}
+  {% for url in extra_js|default([]) %}<script src="{{ url }}"></script>{% endfor %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>
