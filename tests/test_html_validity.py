@@ -14,6 +14,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "card",
         "stat_card",
         "stat_card_value_tone",
+        "stat_card_with_icon",
+        "navbar_with_icons",
         "table_with_rows",
         "table_empty",
         "empty_state",

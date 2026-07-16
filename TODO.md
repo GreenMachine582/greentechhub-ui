@@ -24,7 +24,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `gth-empty-state`
 - [x] Macro snapshot tests in CI ([docs/testing.md](docs/testing.md))
 - [x] HTML validation in CI
-- [ ] Vendor Bootstrap Icons (individual SVGs/sprite, not the full icon-font) — backs the `icon` param already on `gth-navbar`/`gth-stat-card`
+- [x] Vendor Bootstrap Icons as the icon-font (`static/icons/`) — corrected from the original "SVG sprite, not icon-font" wording: measured on the wire (v1.13.1), the icon-font (CSS+woff2) is ~147.6 KB vs. the SVG sprite's ~211.7 KB, and upstream hasn't deprecated the icon-font method (both remain co-equal documented options). Also matches the icon-font markup (`bi bi-*`) `gth-navbar`/`gth-stat-card` already shipped with v0.2, so no macro changes were needed. First real consumer: BottleBot's navbar nav items.
 
 ### v0.3 — Forms, modals, feedback
 - [ ] `gth-form`

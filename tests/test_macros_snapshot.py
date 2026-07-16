@@ -4,6 +4,7 @@ from pathlib import Path
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader
 
 import greentechhub_ui
+from greentechhub_ui.theme import brand_context
 
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 
@@ -62,6 +63,27 @@ def test_stat_card_with_value_tone_and_safe_html():
             delta_tone="neutral", value_tone="good") }}"""
     )
     assert_snapshot(rendered, "stat_card_value_tone")
+
+
+def test_stat_card_with_icon():
+    rendered = _render(
+        """{% from "stat_card.html" import gth_stat_card %}
+        {{ gth_stat_card("Current", "$45.00", icon="cart") }}"""
+    )
+    assert_snapshot(rendered, "stat_card_with_icon")
+
+
+def test_navbar_with_icons():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(nav_items, brand) }}""",
+        nav_items=[
+            {"label": "Deals", "url": "/", "icon": "cart"},
+            {"label": "Watchlist", "url": "/watchlist", "icon": "star"},
+        ],
+        brand=brand_context(service_name="Playground"),
+    )
+    assert_snapshot(rendered, "navbar_with_icons")
 
 
 def test_table_with_rows():
