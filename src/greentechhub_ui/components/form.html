@@ -1,0 +1,33 @@
+{% macro gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="") %}
+<form method="{{ method }}" action="{{ action }}" class="gth-form {{ form_class }}">
+  {% if error %}
+  <div class="alert alert-danger gth-form-error" role="alert">
+    <h6 class="alert-heading mb-1">{{ error_heading }}</h6>
+    <pre class="mb-0">{{ error }}</pre>
+  </div>
+  {% endif %}
+  {{ caller() }}
+</form>
+{% endmacro %}
+
+{% macro gth_form_field(name, label, value=None, type="text", step=None, min=None, max=None,
+                         errors=None, help_text=None, field_class="mb-3", input_attrs=None) %}
+<div class="{{ field_class }} gth-form-field">
+  <label class="form-label" for="gth-field-{{ name }}">{{ label }}</label>
+  <input type="{{ type }}" id="gth-field-{{ name }}" name="{{ name }}"
+    class="form-control{% if errors %} is-invalid{% endif %}"
+    value="{{ value if value is not none else '' }}"
+    {% if step is not none %}step="{{ step }}"{% endif %}
+    {% if min is not none %}min="{{ min }}"{% endif %}
+    {% if max is not none %}max="{{ max }}"{% endif %}
+    {% if errors %}aria-invalid="true"{% endif %}
+    {% if help_text or errors %}aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}
+    {% if input_attrs %}{% for k, v in input_attrs.items() %}{{ k }}="{{ v }}" {% endfor %}{% endif %}>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {% if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}

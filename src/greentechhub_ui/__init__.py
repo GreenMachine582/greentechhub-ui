@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from . import theme
+from .toast import toast
 
 _package_dir = Path(__file__).parent
 
@@ -9,4 +10,4 @@ components_path = _package_dir / "components"
 static_path = _package_dir / "static"
 theme_path = _package_dir / "theme"
 
-__all__ = ["templates_path", "components_path", "static_path", "theme_path", "theme"]
+__all__ = ["templates_path", "components_path", "static_path", "theme_path", "theme", "toast"]

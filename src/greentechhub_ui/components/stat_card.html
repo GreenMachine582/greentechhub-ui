@@ -2,7 +2,7 @@
 {# label/value/delta are trusted HTML, same trust model as gth-card's title/footer —
    callers may pass pre-built markup (e.g. a colored inner <span> within delta). #}
 <div class="metric-card gth-stat-card {{ card_class }}">
-  {% if icon %}<div class="gth-stat-card-icon"><i class="bi bi-{{ icon }}"></i></div>{% endif %}
+  {% if icon %}<div class="gth-stat-card-icon"><i class="bi bi-{{ icon }}" aria-hidden="true"></i></div>{% endif %}
   <div class="metric-label gth-stat-card-label">{{ label | safe }}</div>
   <div class="metric-value gth-stat-card-value{% if value_tone == 'good' %} text-success{% elif value_tone == 'bad' %} text-danger{% endif %}">{{ value | safe }}</div>
   {% if delta is not none %}

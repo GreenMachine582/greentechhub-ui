@@ -49,3 +49,13 @@
 .gth-stat-card-delta {
   font-size: 0.8rem;
 }
+
+/* gth-form — equivalent to BottleBot's .error-banner, ported here for the
+   same reason as .gth-stat-card above. */
+.gth-form-error {
+  border-left: 4px solid #e05555;
+}
+.gth-form-error pre {
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

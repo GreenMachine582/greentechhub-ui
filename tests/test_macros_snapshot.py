@@ -152,3 +152,67 @@ def test_pagination_no_next():
         {{ gth_pagination(next_url=None) }}"""
     )
     assert_snapshot(rendered, "pagination_no_next")
+
+
+def test_form_no_error():
+    rendered = _render(
+        """
+        {% from "form.html" import gth_form, gth_form_field %}
+        {% call gth_form(action="/criteria") %}
+        {{ gth_form_field("min_deal_score", "Min deal score (0-100)", value=65.0, type="number") }}
+        <button type="submit" class="btn btn-primary">Save</button>
+        {% endcall %}
+        """
+    )
+    assert_snapshot(rendered, "form_no_error")
+
+
+def test_form_with_banner_error():
+    rendered = _render(
+        """
+        {% from "form.html" import gth_form, gth_form_field %}
+        {% call gth_form(action="/criteria", error="Some values couldn't be saved.",
+            error_heading="Invalid values") %}
+        {{ gth_form_field("min_deal_score", "Min deal score (0-100)", value=65.0, type="number") }}
+        {% endcall %}
+        """
+    )
+    assert_snapshot(rendered, "form_with_banner_error")
+
+
+def test_form_field_with_help():
+    rendered = _render(
+        """{% from "form.html" import gth_form_field %}
+        {{ gth_form_field("min_saving_aud", "Min saving (AUD)", value=2.0, type="number",
+            help_text="Absolute dollar saving per unit.") }}"""
+    )
+    assert_snapshot(rendered, "form_field_with_help")
+
+
+def test_form_field_with_errors():
+    rendered = _render(
+        """{% from "form.html" import gth_form_field %}
+        {{ gth_form_field("min_saving_aud", "Min saving (AUD)", value=-2.0, type="number",
+            errors=["Input should be greater than or equal to 0"]) }}"""
+    )
+    assert_snapshot(rendered, "form_field_with_errors")
+
+
+def test_toast_flashes_empty():
+    rendered = _render(
+        """{% from "toast.html" import gth_toast_flashes %}
+        {{ gth_toast_flashes([]) }}"""
+    )
+    assert_snapshot(rendered, "toast_flashes_empty")
+
+
+def test_toast_flashes_with_items():
+    rendered = _render(
+        """{% from "toast.html" import gth_toast_flashes %}
+        {{ gth_toast_flashes(flashes) }}""",
+        flashes=[
+            {"message": "Saved successfully", "kind": "success"},
+            {"message": "Heads up, something needs attention", "kind": "warning"},
+        ],
+    )
+    assert_snapshot(rendered, "toast_flashes_with_items")

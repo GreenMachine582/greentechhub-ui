@@ -27,11 +27,11 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] Vendor Bootstrap Icons as the icon-font (`static/icons/`) — corrected from the original "SVG sprite, not icon-font" wording: measured on the wire (v1.13.1), the icon-font (CSS+woff2) is ~147.6 KB vs. the SVG sprite's ~211.7 KB, and upstream hasn't deprecated the icon-font method (both remain co-equal documented options). Also matches the icon-font markup (`bi bi-*`) `gth-navbar`/`gth-stat-card` already shipped with v0.2, so no macro changes were needed. First real consumer: BottleBot's navbar nav items.
 
 ### v0.3 — Forms, modals, feedback
-- [ ] `gth-form`
-- [ ] `gth-modal` (with focus management)
-- [ ] `gth-confirm-delete` / `gth-danger-modal`
-- [ ] `gth-toast` (paired with `greentechhub-core`'s `flash` module)
-- [ ] ARIA pass across all components so far ([docs/accessibility.md](docs/accessibility.md))
+- [x] `gth-form` — first real consumer: BottleBot's `/criteria` form, which also gained real per-field validation errors (mapped from Pydantic's `exc.errors()`) it didn't have before, not just a markup swap
+- [ ] `gth-modal` (with focus management) — deferred: zero real consumer exists yet (confirmed no modal/delete flow anywhere in BottleBot), and its hardest requirement (focus trap, verified via Bootstrap 5's native Modal component) is runtime browser behavior pytest/html5lib can't verify. Needs the `/playground` app (v0.4) as the only reasonable way to click through and confirm it, rather than bolting a fake delete flow onto BottleBot just to have a consumer
+- [ ] `gth-confirm-delete` / `gth-danger-modal` — same deferral as `gth-modal` (built on top of it)
+- [x] `gth-toast` — built around BottleBot's real, working `HX-Trigger`/`showToast` event mechanism (the only one with a real consumer), not the documented-but-nonexistent `greentechhub-core` flash module. Ships a `greentechhub_ui.toast()` helper (de-duplicating what was two copies of the same function in BottleBot) and a `gth_toast_flashes` render-only macro for the static `flashes` list the context contract already accepts — flash *production/storage* (session wiring, a Django-messages adapter, etc.) remains an open dependency on `greentechhub-core`, not built here
+- [x] ARIA pass across all components so far ([docs/accessibility.md](docs/accessibility.md)) — applied to `gth-navbar`/`gth-stat-card`/`gth-table`/`gth-empty-state` (decorative icons, `<th scope="col">`); `gth-card`/`gth-pagination` needed no changes. `gth-modal`'s ARIA needs its own pass once it ships (see above)
 
 ### v0.4 — Dark mode, playground, extension points
 - [ ] Dark mode

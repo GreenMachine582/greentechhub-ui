@@ -3,7 +3,7 @@
 {% macro gth_table(headers, table_class="", tbody_id=None) %}
 <div class="table-responsive gth-table-wrapper">
 <table class="table table-hover align-middle gth-table {{ table_class }}">
-  <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <thead><tr>{% for h in headers %}<th scope="col">{{ h }}</th>{% endfor %}</tr></thead>
   <tbody{% if tbody_id %} id="{{ tbody_id }}"{% endif %}>
     {{ caller() }}
   </tbody>

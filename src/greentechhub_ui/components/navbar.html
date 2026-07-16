@@ -15,7 +15,7 @@
         <li class="nav-item">
           <a class="nav-link{% if current_path and item.url == current_path %} active{% endif %}"
              href="{{ item.url }}"{% if current_path and item.url == current_path %} aria-current="page"{% endif %}>
-            {% if item.icon %}<i class="bi bi-{{ item.icon }} me-1"></i>{% endif -%}
+            {% if item.icon %}<i class="bi bi-{{ item.icon }} me-1" aria-hidden="true"></i>{% endif -%}
             {{ item.label }}
           </a>
         </li>

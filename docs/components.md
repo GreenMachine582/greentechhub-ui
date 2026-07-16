@@ -28,10 +28,10 @@ The table above describes intent; these are the actual macro signatures as imple
 gth_card(title=None, footer=None, card_class="", body_class="")
 
 {# stat_card.html #}
-gth_stat_card(label, value, delta=None, delta_tone="neutral", icon=None, card_class="")
-{# delta is a pre-formatted string (caller formats it, e.g. "%+.2f"|format(x));
-   delta_tone is "good"|"bad"|"neutral" — deliberately not sign-inferred, since
-   "lower is better" is a per-consumer judgment call, not a universal one. #}
+gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="")
+{# label/value/delta are trusted HTML (| safe) — same trust model as gth-card's
+   title/footer. delta_tone/value_tone are "good"|"bad"|"neutral" — deliberately
+   not sign-inferred, since "lower is better" is a per-consumer judgment call. #}
 
 {# table.html — two composable macros, not one, so a table can be split across
    a full-page render and an HTMX partial that only swaps the <tbody> #}
@@ -44,4 +44,32 @@ gth_empty_state(message, icon=None, empty_class="")
 {# pagination.html — matches an HTMX "load more" pattern: hx-target="this",
    hx-swap="outerHTML" are fixed, not parameterized #}
 gth_pagination(next_url, label="Load more", wrapper_class="text-center py-2")
+```
+
+## Shipped signatures (v0.3a)
+
+`gth-modal`/`gth-confirm-delete` are deferred (see [TODO.md](../TODO.md)) — not shipped yet.
+
+```jinja
+{# form.html — two macros, mirroring table.html's shell+piece pattern #}
+gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="")
+gth_form_field(name, label, value=None, type="text", step=None, min=None, max=None,
+                errors=None, help_text=None, field_class="mb-3", input_attrs=None)
+{# id/for/aria-describedby get a gth-field- prefix; name stays unprefixed so
+   FastAPI's Form(...) (or equivalent) still binds by name. input_attrs is a
+   plain-dict escape hatch for anything not modeled as a named param. #}
+
+{# toast.py (Python, not a template) #}
+greentechhub_ui.toast(message: str, kind: str = "success") -> str
+{# Builds an HX-Trigger header value that fires the client showToast event —
+   see static/js/toast.js (loaded via the toast_js_url global, same pattern
+   as theme_css_url/icons_css_url) and the #gth-toast-container div app.html
+   already provides. #}
+
+{# toast.html — renders the OTHER delivery mechanism: a static `flashes` list
+   (from the template context contract) as dismissible Bootstrap toasts.
+   Rendering only — flash production/storage (session wiring, a Django
+   messages adapter, etc.) is still an open dependency on greentechhub-core. #}
+gth_toast_flashes(flashes)
+{# flashes: list of {message, kind} dicts — the same shape toast() produces #}
 ```

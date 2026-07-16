@@ -42,3 +42,18 @@ def test_app_shell_renders_nav_items():
     html = _env().get_template("app.html").render(**_context())
     assert "Watchlist" in html
     assert 'href="/watchlist"' in html
+
+
+def test_app_shell_has_toast_container():
+    html = _env().get_template("app.html").render(**_context())
+    assert 'id="gth-toast-container"' in html
+
+
+def test_app_shell_accepts_populated_flashes():
+    # Contract test (docs/testing.md): a consumer supplying a non-empty
+    # `flashes` list must not break rendering, even though app.html doesn't
+    # render it itself (that's gth_toast_flashes's job) — catches an
+    # accidental new required key, which would be a breaking contract change.
+    context = _context(flashes=[{"message": "Saved", "kind": "success"}])
+    html = _env().get_template("app.html").render(**context)
+    assert "<nav" in html

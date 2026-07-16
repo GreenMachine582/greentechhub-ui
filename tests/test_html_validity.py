@@ -22,6 +22,12 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "empty_state_with_action",
         "pagination_with_next",
         "pagination_no_next",
+        "form_no_error",
+        "form_with_banner_error",
+        "form_field_with_help",
+        "form_field_with_errors",
+        "toast_flashes_empty",
+        "toast_flashes_with_items",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):
