@@ -6,6 +6,9 @@ description = "Shared UI framework for the GreenTechHub ecosystem"
 requires-python = ">=3.12"
 dependencies = ["jinja2>=3.1"]
 
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "html5lib>=1.1"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

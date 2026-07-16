@@ -1,0 +1,7 @@
+{% macro gth_empty_state(message, icon=None, empty_class="") %}
+<div class="text-center text-secondary py-4 gth-empty-state {{ empty_class }}">
+  {% if icon %}<div class="gth-empty-state-icon mb-2" style="font-size:2rem">{{ icon }}</div>{% endif %}
+  <p class="mb-0 gth-empty-state-message">{{ message }}</p>
+  {% if caller %}<div class="gth-empty-state-action mt-2">{{ caller() }}</div>{% endif %}
+</div>
+{% endmacro %}

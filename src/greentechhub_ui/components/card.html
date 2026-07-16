@@ -1,0 +1,9 @@
+{% macro gth_card(title=None, footer=None, card_class="", body_class="") %}
+<div class="card gth-card {{ card_class }}">
+  {% if title %}<div class="card-header gth-card-header">{{ title }}</div>{% endif %}
+  <div class="card-body gth-card-body {{ body_class }}">
+    {{ caller() }}
+  </div>
+  {% if footer %}<div class="card-footer gth-card-footer">{{ footer }}</div>{% endif %}
+</div>
+{% endmacro %}

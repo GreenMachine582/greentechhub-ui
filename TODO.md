@@ -17,13 +17,13 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
 
 ### v0.2 — Core content components
-- [ ] `gth-card`
-- [ ] `gth-stat-card`
-- [ ] `gth-table`
-- [ ] `gth-pagination`
-- [ ] `gth-empty-state`
-- [ ] Macro snapshot tests in CI ([docs/testing.md](docs/testing.md))
-- [ ] HTML validation in CI
+- [x] `gth-card`
+- [x] `gth-stat-card`
+- [x] `gth-table`
+- [x] `gth-pagination`
+- [x] `gth-empty-state`
+- [x] Macro snapshot tests in CI ([docs/testing.md](docs/testing.md))
+- [x] HTML validation in CI
 
 ### v0.3 — Forms, modals, feedback
 - [ ] `gth-form`
@@ -59,9 +59,9 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 Per-service retrofit progress — see [docs/migration.md](docs/migration.md) for rationale.
 
 ### BottleBot
-- [ ] Drop custom `static/style.css` overrides in favor of the shared theme (audited: current overrides are all domain-specific — deal highlighting, watchlist pills, metric cards, timeline — none duplicate shared theme tokens yet, so nothing to drop until more components migrate)
+- [x] Drop custom `static/style.css` overrides in favor of the shared theme (`.metric-card`/`.metric-label`/`.metric-value`/`.metric-delta` removed now that `gth-stat-card` covers them via `theme.css`; remaining rules — deal highlighting, watchlist pills, timeline — are genuinely BottleBot-specific business styling, not theme duplication, and are expected to stay)
 - [x] Replace hand-rolled navbar with `gth-navbar`
-- [ ] Migrate remaining components one at a time
+- [ ] Migrate remaining components one at a time (done so far: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`. Remaining: watchlist pagination, other cards, health/criteria tables)
 
 ### PyFinBot
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)

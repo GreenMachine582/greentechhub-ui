@@ -24,3 +24,28 @@
 .gth-navbar-brand:hover {
   color: var(--gth-color-primary) !important;
 }
+
+/* gth-stat-card — equivalent to BottleBot's .metric-card, ported here so the
+   pattern is portable to consumers without BottleBot's own style.css.
+   Kept alongside (not replacing) .metric-card selectors during migration —
+   see greentechhub-ui/TODO.md's BottleBot migration tracking. */
+.gth-stat-card {
+  background: var(--bs-tertiary-bg);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+.gth-stat-card-label {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.gth-stat-card-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.1rem 0;
+}
+.gth-stat-card-delta {
+  font-size: 0.8rem;
+}

@@ -1,0 +1,10 @@
+{% macro gth_pagination(next_url, label="Load more", wrapper_class="text-center py-2") %}
+{% if next_url %}
+<div class="{{ wrapper_class }} gth-pagination">
+  <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+    hx-get="{{ next_url }}" hx-target="this" hx-swap="outerHTML">
+    {{ label }}
+  </button>
+</div>
+{% endif %}
+{% endmacro %}
