@@ -24,6 +24,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `gth-empty-state`
 - [x] Macro snapshot tests in CI ([docs/testing.md](docs/testing.md))
 - [x] HTML validation in CI
+- [ ] Vendor Bootstrap Icons (individual SVGs/sprite, not the full icon-font) — backs the `icon` param already on `gth-navbar`/`gth-stat-card`
 
 ### v0.3 — Forms, modals, feedback
 - [ ] `gth-form`
@@ -48,7 +49,6 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 
 ## 🧭 Open Decisions
 
-- [ ] **Icon set** — pick one (Bootstrap Icons is the path of least resistance given the vendored CSS framework) rather than mixing icon libraries per service.
 - [ ] **Logo/brand asset source of truth** — identify wherever green-tech-hub.com's current brand assets live as the canonical source `greentechhub-ui` packages.
 - [ ] **Static hosting** — bundled-per-service now; revisit shared subdomain (`static.green-tech-hub.com`) later. See [docs/theming.md](docs/theming.md).
 - [ ] **Theme/components split** — `theme/` is already structurally independent. Splitting it into a standalone `greentechhub-theme` package is deferred, not rejected — revisit once a real consumer wants branding without the component library (GreenTechHub's Django app is the most likely candidate to force this decision).
