@@ -1,5 +1,5 @@
 {% macro gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="", form_attrs=None) %}
-<form method="{{ method }}" action="{{ action }}" class="gth-form {{ form_class }}"
+<form method="{{ method }}" action="{{ action }}" class="gth-form {{ form_class }}" novalidate
   {% if form_attrs %}{% for k, v in form_attrs.items() %}{{ k }}="{{ v }}" {% endfor %}{% endif %}>
   {% if error %}
   <div class="alert alert-danger gth-form-error" role="alert">

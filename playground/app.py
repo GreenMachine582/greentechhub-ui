@@ -132,6 +132,8 @@ async def toast_demo():
 
 
 if __name__ == "__main__":
+    import os
+
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8500)
+    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("PORT", 8500)))
