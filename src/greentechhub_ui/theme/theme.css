@@ -1,0 +1,26 @@
+/* greentechhub-ui theme tokens — CSS custom properties layered on top of the
+   consuming service's own CSS framework (e.g. Bootstrap's dark theme).
+   Values here must stay in sync with tokens.py. */
+
+:root {
+  --gth-color-primary: #2e7d32;
+  --gth-color-primary-dark: #1b5e20;
+  --gth-color-primary-light: #66bb6a;
+
+  --gth-space-xs: 0.25rem;
+  --gth-space-sm: 0.5rem;
+  --gth-space-md: 1rem;
+  --gth-space-lg: 1.5rem;
+  --gth-space-xl: 2.5rem;
+
+  --gth-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.gth-navbar-brand {
+  color: var(--gth-color-primary-light) !important;
+  font-weight: 700;
+}
+
+.gth-navbar-brand:hover {
+  color: var(--gth-color-primary) !important;
+}

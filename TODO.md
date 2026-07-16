@@ -9,12 +9,12 @@
 ### v0.1 — Theme + navigation shell
 Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-only path.
 
-- [ ] `theme/` — tokens, CSS vars, brand ([docs/theming.md](docs/theming.md))
-- [ ] `gth-navbar`
+- [x] `theme/` — tokens, CSS vars, brand ([docs/theming.md](docs/theming.md))
+- [x] `gth-navbar`
 - [ ] `gth-sidebar`
 - [ ] `gth-page-header`
-- [ ] Base `app.html` shell
-- [ ] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
+- [x] Base `app.html` shell
+- [x] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
 
 ### v0.2 — Core content components
 - [ ] `gth-card`
@@ -59,8 +59,8 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 Per-service retrofit progress — see [docs/migration.md](docs/migration.md) for rationale.
 
 ### BottleBot
-- [ ] Drop custom `static/style.css` overrides in favor of the shared theme
-- [ ] Replace hand-rolled navbar with `gth-navbar`
+- [ ] Drop custom `static/style.css` overrides in favor of the shared theme (audited: current overrides are all domain-specific — deal highlighting, watchlist pills, metric cards, timeline — none duplicate shared theme tokens yet, so nothing to drop until more components migrate)
+- [x] Replace hand-rolled navbar with `gth-navbar`
 - [ ] Migrate remaining components one at a time
 
 ### PyFinBot
