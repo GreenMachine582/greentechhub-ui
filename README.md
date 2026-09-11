@@ -1,7 +1,7 @@
 # 🌱 greentechhub-ui
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?logo=opensourceinitiative&logoColor=white)](LICENSE)
-[![Status: Planning](https://img.shields.io/badge/Status-Planning-yellow.svg)](TODO.md)
+[![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-blue.svg)](TODO.md)
 [![Jinja2](https://img.shields.io/badge/Jinja2-B41717.svg?logo=jinja&logoColor=white)](https://jinja.palletsprojects.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Django](https://img.shields.io/badge/Django-092E20.svg?logo=django&logoColor=white)](https://www.djangoproject.com/)
@@ -9,19 +9,9 @@
 [![HTMX](https://img.shields.io/badge/HTMX-3D72D7.svg?logo=htmx&logoColor=white)](https://htmx.org/)
 [![Alpine.js](https://img.shields.io/badge/Alpine.js-8BC0D0.svg?logo=alpinedotjs&logoColor=white)](https://alpinejs.dev/)
 
-> Shared UI framework for the GreenTechHub ecosystem. Provides reusable Jinja2 templates, components, theming, navigation, and static assets for FastAPI and Django applications, delivering a consistent, branded user experience while reducing duplicated frontend code across services.
-
 ## 🎯 Objective
 
-A shared, installable package (`greentechhub-ui`) providing the frontend every GreenTechHub-ecosystem service currently reinvents: base layout, Jinja2 component macros, static assets, and a shared theme — so every service looks and behaves like part of one product instead of a pile of unrelated internal tools. Consumers depend on `greentechhub-ui`'s components and contract, not on the specific frontend libraries behind them.
-
-## 💡 Why this now
-
-- **BottleBot** already ships its own `templates/` + `static/style.css` + Bootstrap 5 + HTMX dashboard — its own navbar, its own card styling, its own overrides.
-- **PyFinBot**'s web brief was about to build a second, independent copy of the same navbar/card/modal/toast pattern.
-- **GreenTechHub** itself — the actual brand/hub site at green-tech-hub.com — runs **Django**, with its own templates, and is the one place a visitor would expect the "house style" to be authoritative.
-
-Without a shared package, every new service (Market Watch, an eventual IAM/App Store) restarts this from zero, and nothing enforces that they end up looking related.
+A shared, installable package (`greentechhub-ui`) providing the frontend every GreenTechHub-ecosystem service currently reinvents: base layout, Jinja2 component macros, static assets, and a shared theme — so every service looks and behaves like part of one product instead of a pile of unrelated internal tools. Consumers depend on `greentechhub-ui`'s components and contract, not on the specific frontend libraries behind them. It ships templates, macros, and assets only — no database, no server, nothing to deploy on its own; it's installed into a consuming service's app.
 
 ## 🧩 Scope
 
@@ -49,11 +39,10 @@ Bootstrap 5, HTMX, and Alpine.js power the components internally but are **not p
 | [docs/testing.md](docs/testing.md) | 🧪 `/playground` demo app + testing strategy |
 | [docs/versioning.md](docs/versioning.md) | 🏷️ Semver policy & distribution |
 | [docs/extensibility.md](docs/extensibility.md) | 🧩 Extension points/hooks for consumers |
-| [docs/migration.md](docs/migration.md) | 🔄 Migration path for BottleBot, PyFinBot, GreenTechHub |
 
 ## 🗺️ Status & Roadmap
 
-This package is in the **planning phase** — no code has shipped yet. The phased rollout (v0.1 → v1.0) and open decisions are tracked as a living checklist in [TODO.md](TODO.md).
+v0.1–v0.4 are largely shipped — theme, navigation, core content/form/toast components, dark mode, a `/playground` demo app, and Playwright tests running in CI, with BottleBot's retrofit underway. The phased rollout (v0.1 → v1.0) is tracked as a living checklist in [TODO.md](TODO.md).
 
 ## 📄 License
 

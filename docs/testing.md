@@ -7,7 +7,9 @@
 A minimal FastAPI demo app (`playground/`) ships in the same repo, rendering every shipped component with representative fixture data (no real database) — a filterable table, pagination, both toast delivery modes, a form with validation errors, dark mode toggled. No `gth-modal`/`gth-confirm-delete` demo yet — they haven't shipped. This is:
 
 - **Living documentation** — the first place a contributor checks "what does `gth-table` actually look like" instead of reading macro source.
-- **The Playwright smoke-test target** (below, not yet built) — tests will run against `playground/`, not against a mocked-up FastAPI app rebuilt per test.
+- **The Playwright smoke-test target** (below) — tests run against `playground/`, not against a mocked-up FastAPI app rebuilt per test.
+
+Route-level regression coverage (`tests/test_playground_smoke.py`) runs at the Jinja-render level rather than via `starlette.testclient` — installing `httpx2`, which `starlette.testclient` requires in this environment, was blocked by a sandbox permission check. Accepted as sufficient rather than an open gap; revisit only if a real coverage hole shows up that Jinja-render-level tests can't catch. Unrelated to the Playwright suite below, which installs and runs cleanly.
 
 See [playground/README.md](../playground/README.md) for concrete setup/run instructions and what to click through.
 

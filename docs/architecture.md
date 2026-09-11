@@ -11,11 +11,11 @@ This matters because it means the underlying libraries can change without breaki
 - **Macro signatures stay stable** (a `gth-table` macro's parameters don't change shape).
 - **Rendered semantics stay stable** (a `gth-table` still produces a filterable/sortable table with the same HTML structure consumers can rely on, e.g. for JS that targets `.gth-table` class hooks).
 
-Concretely: if Bootstrap 5 were ever replaced with Tailwind, or HTMX with a successor, that's an internal `greentechhub-ui` change — consuming services' templates (which only call `gth-*` macros) shouldn't need to change at all. This is the same discipline as `greentechhub-core`'s `AuthAdapter` interface — consumers depend on the contract, not the implementation. See [docs/contract.md](contract.md) for the template-side contract that makes this concrete.
+Concretely: if Bootstrap 5 were ever replaced with Tailwind, or HTMX with a successor, that's an internal `greentechhub-ui` change — consuming services' templates (which only call `gth-*` macros) shouldn't need to change at all. Consumers depend on the contract, not the implementation. See [docs/contract.md](contract.md) for the template-side contract that makes this concrete.
 
 ## Package layout
 
-Internally structured so `theme/` has **no dependency on `components/`** — this is deliberate groundwork for a possible future split into `greentechhub-theme` (branding/tokens only) and `greentechhub-ui` (full component library), per the open decisions in [TODO.md](../TODO.md). Not split today; kept as one repo until there's a real consumer that wants branding without components.
+Internally structured so `theme/` has **no dependency on `components/`** — this is deliberate groundwork for a possible future split into `greentechhub-theme` (branding/tokens only) and `greentechhub-ui` (full component library). Kept as one repo, structurally ready to split later — not split today, and not currently planned, until a real consumer wants branding without components.
 
 ```
 greentechhub-ui/
@@ -102,6 +102,6 @@ Note what's absent from both samples: no reference to Bootstrap, HTMX, or Alpine
 
 *(Implementation detail, documented for contributors to `greentechhub-ui` itself — not something a consumer calling `gth-modal` needs to know.)*
 
-- **HTMX owns server round-trips**: table filter/sort/pagination, form submits, toast-triggering via an `HX-Trigger` response header wired to `greentechhub-core`'s flash module.
+- **HTMX owns server round-trips**: table filter/sort/pagination, form submits, toast-triggering via `greentechhub_ui.toast()` — an `HX-Trigger` response header that fires the client `showToast` event (see [docs/components.md](components.md#shipped-signatures-v03a)).
 - **Alpine.js owns pure client state**: dropdown/tab/accordion open state, modal open/close where no server data is needed. Dark-mode toggle turned out not to need it — see [docs/theming.md](theming.md), it's plain vanilla JS, matching green-tech-hub.com's own real implementation.
 - These conventions live inside the package's components — a contributor extending `greentechhub-ui` needs to know them; a consumer calling `gth-modal` does not.

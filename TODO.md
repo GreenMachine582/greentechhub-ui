@@ -15,6 +15,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] `gth-page-header`
 - [x] Base `app.html` shell
 - [x] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
+- [ ] Vendor GreenTechHub's real logo/favicon assets (`logo-light.png`/`logo-dark.png`, `icon.png`) into `static/logo/`; wire `LOGO_URL`
 
 ### v0.2 — Core content components
 - [x] `gth-card`
@@ -35,8 +36,8 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 
 ### v0.4 — Dark mode, playground, extension points
 - [x] Dark mode — colors and mechanism extracted from the real green-tech-hub.com implementation (`GreenMachine582/GreenTechHub`, `addons/base/static/base/js/widgets/theme.js`), which is vanilla JS, not Alpine (corrected `docs/theming.md`/`docs/architecture.md`, which both claimed Alpine). `gth_theme_toggle` + `localStorage["gth-theme-mode"]` + a `data-bs-theme` anti-FOUC script in `app.html`. Opt-in (`gth_navbar(..., show_theme_toggle=False)`) so no existing consumer's rendered output changes by default — first real consumer: BottleBot, now with the toggle enabled live
-- [x] `/playground` app — a minimal FastAPI app (`playground/app.py`) exercising every shipped component with generic fixture data (not BottleBot's domain). No `gth-modal`/`gth-confirm-delete` demo — they don't exist yet. Route-level regression coverage is via `tests/test_playground_smoke.py` at the Jinja-render level (not `fastapi.testclient`/httpx — see the `httpx`/`httpx2` open decision below); live-verified by running the app and curling every route
-- [x] Playwright smoke tests wired into CI — `tests/e2e/test_playground.py` (`pytest-playwright`, installed cleanly — unrelated to the `httpx2` situation below, which is specific to `starlette.testclient`, a different HTTP-client dependency chain) covers dark-mode toggle + persistence, form validation + success toast, the standalone toast trigger, and table filtering via real keyboard input. No `gth-modal` test — doesn't exist yet. Skips cleanly (`pytest.importorskip`) when `playwright` isn't installed, so the main CI job is unaffected; a separate `e2e` job installs it + Chromium and runs these for real. **Found two real bugs no snapshot test could have caught**: (1) `gth_form` needed `novalidate` — without it, native HTML5 `min`/`max` constraint validation silently blocked the browser from ever submitting an out-of-range value, so the server-side validation path (and `gth-form`'s whole custom error UI) was unreachable; (2) HTMX only swaps 2xx responses by default, so `gth-form`'s 422 validation-error responses were computed correctly server-side but never appeared in the DOM — fixed with the standard `htmx:beforeSwap` override, now in `app.html` for every consumer, not just the playground
+- [x] `/playground` app — a minimal FastAPI app (`playground/app.py`) exercising every shipped component with generic fixture data (not BottleBot's domain). No `gth-modal`/`gth-confirm-delete` demo — they don't exist yet. Route-level regression coverage is via `tests/test_playground_smoke.py` at the Jinja-render level (not `fastapi.testclient`/httpx — see [docs/testing.md](docs/testing.md) for why); live-verified by running the app and curling every route
+- [x] Playwright smoke tests wired into CI — `tests/e2e/test_playground.py` (`pytest-playwright`, installed cleanly — unrelated to the `httpx2` situation (see [docs/testing.md](docs/testing.md)), which is specific to `starlette.testclient`, a different HTTP-client dependency chain) covers dark-mode toggle + persistence, form validation + success toast, the standalone toast trigger, and table filtering via real keyboard input. No `gth-modal` test — doesn't exist yet. Skips cleanly (`pytest.importorskip`) when `playwright` isn't installed, so the main CI job is unaffected; a separate `e2e` job installs it + Chromium and runs these for real. **Found two real bugs no snapshot test could have caught**: (1) `gth_form` needed `novalidate` — without it, native HTML5 `min`/`max` constraint validation silently blocked the browser from ever submitting an out-of-range value, so the server-side validation path (and `gth-form`'s whole custom error UI) was unreachable; (2) HTMX only swaps 2xx responses by default, so `gth-form`'s 422 validation-error responses were computed correctly server-side but never appeared in the DOM — fixed with the standard `htmx:beforeSwap` override, now in `app.html` for every consumer, not just the playground
 - [x] `extra_css` / `extra_js` slots — data-driven context-list slots in `app.html` (`extra_css`/`extra_js`: URL lists; `extra_head`: trusted-HTML strings), distinct from the pre-existing block-based `extra_head`/`extra_js` Jinja blocks. Also finally wired `extra_head`'s context-list form — `docs/contract.md` documented it and the test fixture already accepted it, but nothing rendered it (the same "accepted but unused" gap `flashes` had before dark mode). No real BottleBot consumer yet; verified instead with a `/playground` demo using `data:` URIs (no external dependency) plus a Playwright test asserting the CSS's *computed style* actually applied and the JS actually mutated the DOM — not just markup presence
 - [x] `nav_items` custom entries — `navigation.build_nav_items(custom_items, current_user=None, built_in_items=None)` is the real "built-in + consumer-registered, scope-filtered" merge `docs/components.md`'s catalogue already promised (previously only `NavItem`/`filter_by_scope` existed, and `filter_by_scope` itself was dead code — never called anywhere). `built_in_items` defaults to a new `DEFAULT_NAV_ITEMS` constant, empty today (no cross-service nav concept exists yet). First real consumer: BottleBot's `templating.py`, retrofitted to call it instead of assembling `nav_items` by hand — confirmed identical rendered output (same 4 items/icons/order). **v0.4 is now complete.**
 
@@ -47,17 +48,9 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] Semver policy held across at least one real minor release
 - [ ] Semver policy held across at least one real breaking (major) release
 
-## 🧭 Open Decisions
-
-- [ ] **Logo/brand asset source of truth** — partially resolved: brand *color* now sourced from `GreenMachine582/GreenTechHub`'s real SCSS variables (`#1FBE1E` primary, see `theme/tokens.py`). Still open: logo/favicon image assets exist there (`logo-light.png`/`logo-dark.png` pairs, `icon.png`) but aren't vendored into `greentechhub-ui` yet — `LOGO_URL` stays `None` until that's done.
-- [ ] **Static hosting** — bundled-per-service now; revisit shared subdomain (`static.green-tech-hub.com`) later. See [docs/theming.md](docs/theming.md).
-- [ ] **Theme/components split** — `theme/` is already structurally independent. Splitting it into a standalone `greentechhub-theme` package is deferred, not rejected — revisit once a real consumer wants branding without the component library (GreenTechHub's Django app is the most likely candidate to force this decision).
-- [ ] **`httpx`/`httpx2`** — `starlette.testclient` in this environment requires `httpx2`, not `httpx`; installing it was blocked by a sandbox permission check (twice, even after approval) while building the playground, so `tests/test_playground_smoke.py` tests at the Jinja-render level instead of via `TestClient`. Unrelated to Playwright/`pytest-playwright`, which installed and ran cleanly.
-- [ ] **How far GreenTechHub's own migration goes** — theme-only vs. full component adoption. Not a blocking decision for v1.0.
-
 ## 🔄 Migration Tracking
 
-Per-service retrofit progress — see [docs/migration.md](docs/migration.md) for rationale.
+Per-service retrofit progress.
 
 ### BottleBot
 - [x] Drop custom `static/style.css` overrides in favor of the shared theme (`.metric-card`/`.metric-label`/`.metric-value`/`.metric-delta` removed now that `gth-stat-card` covers them via `theme.css`; remaining rules — deal highlighting, watchlist pills, timeline — are genuinely BottleBot-specific business styling, not theme duplication, and are expected to stay)
@@ -70,4 +63,4 @@ Per-service retrofit progress — see [docs/migration.md](docs/migration.md) for
 ### GreenTechHub
 - [ ] Wire Django's Jinja2 backend to validate the [template context contract](docs/contract.md) (before porting real pages)
 - [ ] Adopt `theme/` for brand consistency
-- [ ] Decide on further component adoption (see Open Decisions above)
+- [ ] Full component adoption beyond `theme/` — not blocking v1.0, decided based on real appetite once the theme-only step is live
