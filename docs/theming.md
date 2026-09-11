@@ -14,4 +14,4 @@
 - **Bundled per service (recommended to start)**: each FastAPI service mounts `greentechhub_ui.static` at `/static`; Django does the equivalent via `STATICFILES_DIRS`. Simple, no extra infra.
 - **Shared static host** (`static.green-tech-hub.com`, fronted by a reverse proxy): one copy, browser-cacheable across services. Worth it once there are enough services that duplication/versioning drift becomes a real annoyance — not needed for the first two consumers.
 
-Either way, consumers never reference individual vendored files (`htmx.min.js`, `bootstrap.min.css`) by name — `app.html` resolves them internally, which is what keeps the "swap without breaking consumers" property true regardless of hosting choice.
+Either way, consumers never reference individual vendored files (`htmx.min.js`, `bootstrap.min.css`) by name — `app.html` resolves them internally, which is what keeps the "swap without breaking consumers" property true regardless of hosting choice. Concretely, `app.html` resolves every asset URL via a `*_url` global (see [docs/contract.md](contract.md#static-asset-globals)), so moving to a shared static host is a globals change, not a template change.

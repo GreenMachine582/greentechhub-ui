@@ -4,6 +4,8 @@ Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
 `pytest.importorskip`. No gth-modal test: it doesn't exist yet.
 """
 
+from urllib.parse import urlparse
+
 from playwright.sync_api import expect
 
 # Dynamically-triggered toasts land in #gth-toast-container. The static
@@ -69,3 +71,23 @@ def test_extra_css_and_js_and_head_slots_actually_work(page, playground_url):
 
     # extra_head: a real DOM node, not just a text search on page source.
     assert page.locator('meta[name="gth-extra-head-demo"]').get_attribute("content") == "works"
+
+
+def test_page_makes_no_off_origin_requests(page, playground_url):
+    """The concrete test that keeps app.html local-first: Bootstrap/HTMX/icons
+    are vendored and served from the playground's own origin (see
+    static/VENDORED.md), so a real page load should never reach a public CDN.
+    """
+    origin = urlparse(playground_url).netloc
+    off_origin_urls = []
+
+    def _record_off_origin(request):
+        netloc = urlparse(request.url).netloc
+        if netloc and netloc != origin:
+            off_origin_urls.append(request.url)
+
+    page.on("request", _record_off_origin)
+    page.goto(playground_url)
+    page.wait_for_load_state("networkidle")
+
+    assert off_origin_urls == []

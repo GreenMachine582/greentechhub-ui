@@ -7,7 +7,6 @@
 [![Django](https://img.shields.io/badge/Django-092E20.svg?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-7952B3.svg?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
 [![HTMX](https://img.shields.io/badge/HTMX-3D72D7.svg?logo=htmx&logoColor=white)](https://htmx.org/)
-[![Alpine.js](https://img.shields.io/badge/Alpine.js-8BC0D0.svg?logo=alpinedotjs&logoColor=white)](https://alpinejs.dev/)
 
 ## 🎯 Objective
 
@@ -25,7 +24,7 @@ A shared, installable package (`greentechhub-ui`) providing the frontend every G
 | Template context contract | The interface every consuming app must supply — see [docs/contract.md](docs/contract.md), the centrepiece design decision of this package |
 | Extension points | Documented hooks for consumers to add without forking — see [docs/extensibility.md](docs/extensibility.md) |
 
-Bootstrap 5, HTMX, and Alpine.js power the components internally but are **not public API** — consumers only ever call `gth-*` macros. See [docs/architecture.md](docs/architecture.md) for why that boundary matters.
+Bootstrap 5 and HTMX power the components internally but are **not public API** — consumers only ever call `gth-*` macros. See [docs/architecture.md](docs/architecture.md) for why that boundary matters.
 
 ## 📚 Docs
 

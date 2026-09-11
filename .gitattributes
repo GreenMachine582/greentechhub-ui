@@ -1,0 +1,8 @@
+# Vendored third-party assets (see src/greentechhub_ui/static/VENDORED.md) are
+# pinned by SHA256. core.autocrlf normalizing their line endings on checkout
+# would silently change their bytes and invalidate that pin, so they're
+# marked binary — never touched by line-ending or diff conversion.
+src/greentechhub_ui/static/css/*.min.css binary
+src/greentechhub_ui/static/js/*.min.js binary
+src/greentechhub_ui/static/icons/*.min.css binary
+src/greentechhub_ui/static/icons/fonts/*.woff2 binary

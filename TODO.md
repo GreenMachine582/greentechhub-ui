@@ -41,6 +41,13 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `extra_css` / `extra_js` slots — data-driven context-list slots in `app.html` (`extra_css`/`extra_js`: URL lists; `extra_head`: trusted-HTML strings), distinct from the pre-existing block-based `extra_head`/`extra_js` Jinja blocks. Also finally wired `extra_head`'s context-list form — `docs/contract.md` documented it and the test fixture already accepted it, but nothing rendered it (the same "accepted but unused" gap `flashes` had before dark mode). No real BottleBot consumer yet; verified instead with a `/playground` demo using `data:` URIs (no external dependency) plus a Playwright test asserting the CSS's *computed style* actually applied and the JS actually mutated the DOM — not just markup presence
 - [x] `nav_items` custom entries — `navigation.build_nav_items(custom_items, current_user=None, built_in_items=None)` is the real "built-in + consumer-registered, scope-filtered" merge `docs/components.md`'s catalogue already promised (previously only `NavItem`/`filter_by_scope` existed, and `filter_by_scope` itself was dead code — never called anywhere). `built_in_items` defaults to a new `DEFAULT_NAV_ITEMS` constant, empty today (no cross-service nav concept exists yet). First real consumer: BottleBot's `templating.py`, retrofitted to call it instead of assembling `nav_items` by hand — confirmed identical rendered output (same 4 items/icons/order). **v0.4 is now complete.**
 
+### v0.5 — Local-first static assets
+`app.html` hardcoded Bootstrap/HTMX CDN URLs directly, contradicting the "vendored"/"bundled per service" posture the rest of this package's own docs already claimed.
+
+- [x] Vendor Bootstrap CSS/JS + HTMX (`static/css/`, `static/js/`, source URLs/versions/SHA256 in [static/VENDORED.md](src/greentechhub_ui/static/VENDORED.md)) — `app.html` resolves them via new `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` globals ([docs/contract.md](docs/contract.md#static-asset-globals)), defaulting to the previous CDN URLs for this release so no existing consumer's output changes
+- [x] Remove Alpine.js from the README badge row and Scope prose — nothing shipped uses it (dark mode is vanilla JS; `gth-modal` doesn't exist yet); revisit vendoring once a real component needs it
+- [ ] v0.6: drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` once consumers have had a release to pick up the vendored globals — services will need to mount `greentechhub_ui.static` (already required for icons/theme) for `app.html` to keep working
+
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
 - [ ] PyFinBot greenfield build shipped

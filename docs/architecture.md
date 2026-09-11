@@ -4,7 +4,7 @@
 
 ## Public API vs. implementation details
 
-Bootstrap 5, HTMX, and Alpine.js are **implementation details, not public API**. A consuming service imports `greentechhub_ui` and uses `gth-*` macros — it never writes `<link href=".../bootstrap.min.css">` or `<script src=".../htmx.min.js">` itself. The base `app.html` shell owns those includes internally.
+Bootstrap 5 and HTMX are **implementation details, not public API**. A consuming service imports `greentechhub_ui` and uses `gth-*` macros — it never writes `<link href=".../bootstrap.min.css">` or `<script src=".../htmx.min.js">` itself. The base `app.html` shell owns those includes internally.
 
 This matters because it means the underlying libraries can change without breaking consumers, as long as two things hold:
 
@@ -24,7 +24,7 @@ greentechhub-ui/
 │   │   ├── tokens.py           # brand colors, spacing, typography as CSS custom properties
 │   │   └── theme.css
 │   ├── templates/
-│   │   ├── app.html            # owns Bootstrap/HTMX/Alpine <link>/<script> includes
+│   │   ├── app.html            # owns Bootstrap/HTMX <link>/<script> includes
 │   │   ├── dashboard.html
 │   │   └── auth/
 │   │       └── login.html
@@ -41,7 +41,8 @@ greentechhub-ui/
 │   │   ├── page_header.html
 │   │   ├── sidebar.html
 │   │   └── navbar.html
-│   ├── static/                 # vendored Bootstrap/HTMX/Alpine + icons/logo — internal, not linked to directly by consumers
+│   ├── static/                 # vendored Bootstrap/HTMX/icons/logo — internal, not linked to directly by consumers
+│   │   ├── VENDORED.md         # source URL/version/SHA256 for every vendored file below
 │   │   ├── css/
 │   │   ├── js/
 │   │   ├── icons/
@@ -96,7 +97,7 @@ def environment(**options):
     return env
 ```
 
-Note what's absent from both samples: no reference to Bootstrap, HTMX, or Alpine by name. That's intentional — see the public API section above.
+Note what's absent from both samples: no reference to Bootstrap or HTMX by name. That's intentional — see the public API section above.
 
 ## Internal interaction conventions
 

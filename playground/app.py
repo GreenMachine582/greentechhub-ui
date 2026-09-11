@@ -75,6 +75,9 @@ templates.env.globals["theme_css_url"] = "/gth-static/theme.css"
 templates.env.globals["icons_css_url"] = "/gth-assets/icons/bootstrap-icons.min.css"
 templates.env.globals["toast_js_url"] = "/gth-assets/js/toast.js"
 templates.env.globals["theme_toggle_js_url"] = "/gth-assets/js/theme-toggle.js"
+templates.env.globals["bootstrap_css_url"] = "/gth-assets/css/bootstrap.min.css"
+templates.env.globals["bootstrap_js_url"] = "/gth-assets/js/bootstrap.bundle.min.js"
+templates.env.globals["htmx_js_url"] = "/gth-assets/js/htmx.min.js"
 templates.env.globals["show_theme_toggle"] = True
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
