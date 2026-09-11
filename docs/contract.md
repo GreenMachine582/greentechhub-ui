@@ -13,8 +13,9 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
 {
   "nav_items": [...],        # from navigation.py
   "current_user": {...} | None,
-  "flashes": [...],          # static list rendered by gth_toast_flashes; production/storage (session wiring,
-                              # a Django messages adapter, etc.) is still an open dependency on greentechhub-core
+  "flashes": [...],          # shape is greentechhub_core.types.FlashMessage; production/storage (session
+                              # wiring, a Django messages adapter, etc.) is owned by the framework adapter
+                              # (greentechhub_fastapi.flash / a Django messages bridge), not greentechhub-core
   "url_for": callable,       # injected per-framework: FastAPI's request.url_for, or a thin Django shim
   "brand": {"name": "GreenTechHub", "logo_url": "...", "service_name": "PyFinBot"},
   "extra_head": [...],       # optional per-page <head> additions (trusted HTML strings) — see docs/extensibility.md

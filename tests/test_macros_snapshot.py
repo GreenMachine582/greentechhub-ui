@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from greentechhub_core.types import FlashMessage
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader
 
 import greentechhub_ui
@@ -231,6 +232,24 @@ def test_toast_flashes_with_items():
         flashes=[
             {"message": "Saved successfully", "kind": "success"},
             {"message": "Heads up, something needs attention", "kind": "warning"},
+        ],
+    )
+    assert_snapshot(rendered, "toast_flashes_with_items")
+
+
+def test_toast_flashes_with_flash_message_objects_matches_dict_rendering():
+    """gth_toast_flashes uses f.kind/f.message (Jinja attribute lookup), so a
+    real greentechhub_core.types.FlashMessage renders identically to the
+    equivalent {message, kind} dict, with no conversion. Asserts against the
+    *same* recorded snapshot as test_toast_flashes_with_items (not a new
+    one) to prove that equivalence directly.
+    """
+    rendered = _render(
+        """{% from "toast.html" import gth_toast_flashes %}
+        {{ gth_toast_flashes(flashes) }}""",
+        flashes=[
+            FlashMessage(message="Saved successfully", kind="success"),
+            FlashMessage(message="Heads up, something needs attention", kind="warning"),
         ],
     )
     assert_snapshot(rendered, "toast_flashes_with_items")

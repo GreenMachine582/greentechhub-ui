@@ -7,13 +7,22 @@ requires-python = ">=3.12"
 dependencies = ["jinja2>=3.1"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "html5lib>=1.1"]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "html5lib>=1.1",
+    # test-only: greentechhub_ui never imports this at runtime
+    "greentechhub-core @ git+https://github.com/GreenMachine582/greentechhub-core.git@v0.4.1",
+]
 playground = ["fastapi>=0.100", "uvicorn[standard]>=0.23", "python-multipart>=0.0.9"]
 e2e = ["pytest-playwright>=0.4"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/greentechhub_ui"]

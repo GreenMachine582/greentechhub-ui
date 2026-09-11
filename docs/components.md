@@ -69,9 +69,13 @@ greentechhub_ui.toast(message: str, kind: str = "success") -> str
 {# toast.html — renders the OTHER delivery mechanism: a static `flashes` list
    (from the template context contract) as dismissible Bootstrap toasts.
    Rendering only — flash production/storage (session wiring, a Django
-   messages adapter, etc.) is still an open dependency on greentechhub-core. #}
+   messages adapter, etc.) is owned by the framework adapter
+   (greentechhub_fastapi.flash / a Django messages bridge), not
+   greentechhub-core, which only owns the FlashMessage value type. #}
 gth_toast_flashes(flashes)
-{# flashes: list of {message, kind} dicts — the same shape toast() produces #}
+{# flashes: list of {message, kind} dicts or greentechhub_core.types.FlashMessage
+   instances — the same shape toast() produces; f.kind/f.message use Jinja
+   attribute lookup, so both render identically with no conversion #}
 ```
 
 ## Shipped signatures (v0.4)
