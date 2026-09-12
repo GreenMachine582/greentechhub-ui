@@ -31,7 +31,10 @@ Open **http://127.0.0.1:8500/**.
 ## Running the automated checks
 
 ```
-pytest tests/test_playground_smoke.py
+pytest tests/test_playground_smoke.py tests/test_playground_routes.py
 ```
 
-These test at the Jinja-render level (template compiles, expected markup present), not via a real HTTP client — `starlette.testclient` in this environment requires `httpx2`, and installing it hit a blocked sandbox permission check when the playground was built (see `TODO.md`). Live route behavior (status codes, `HX-Trigger` headers, HTMX partial swaps) is verified by running the app and testing it directly, same as above.
+`test_playground_smoke.py` tests at the Jinja-render level (template compiles, expected markup present) —
+fast, and catches macro drift. `test_playground_routes.py` runs the same app through a real ASGI HTTP
+client (`httpx` + `ASGITransport`), covering status codes, `HX-Trigger` headers, and HTMX partial-swap
+response bodies (see [docs/testing.md](../docs/testing.md)).

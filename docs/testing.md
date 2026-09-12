@@ -9,7 +9,7 @@ A minimal FastAPI demo app (`playground/`) ships in the same repo, rendering eve
 - **Living documentation** — the first place a contributor checks "what does `gth-table` actually look like" instead of reading macro source.
 - **The Playwright smoke-test target** (below) — tests run against `playground/`, not against a mocked-up FastAPI app rebuilt per test.
 
-Route-level regression coverage (`tests/test_playground_smoke.py`) runs at the Jinja-render level rather than via `starlette.testclient` — installing `httpx2`, which `starlette.testclient` requires in this environment, was blocked by a sandbox permission check. Accepted as sufficient rather than an open gap; revisit only if a real coverage hole shows up that Jinja-render-level tests can't catch. Unrelated to the Playwright suite below, which installs and runs cleanly.
+Route-level regression coverage is split across two layers: `tests/test_playground_smoke.py` runs at the Jinja-render level (fast, catches macro drift and template syntax errors) and `tests/test_playground_routes.py` runs the same app through a real ASGI HTTP client (`httpx.AsyncClient` + `httpx.ASGITransport`, `asyncio.run()` per call — the same idiom `greentechhub-fastapi`'s own test suite uses), asserting status codes, `HX-Trigger` headers, and HTMX partial-swap response bodies. (A prior pass here believed `starlette.testclient` required a package called `httpx2` that was blocked by a sandbox permission check — untrue: `starlette.testclient` only requires `httpx2` when *neither* it nor plain `httpx` is installed, so `httpx` alone was always enough.)
 
 See [playground/README.md](../playground/README.md) for concrete setup/run instructions and what to click through.
 
