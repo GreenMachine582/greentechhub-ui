@@ -1,12 +1,11 @@
 """Import/compile-level smoke tests for playground/app.py.
 
-No fastapi.testclient here — starlette's TestClient in this environment
-requires a package (httpx2) that couldn't be installed this session (see
-session notes). This still catches real regressions — import errors,
-Jinja syntax errors, macro signature mismatches — just not full
-request/response behavior. Live verification (running the app and curling
-each route) covers the rest; the deferred Playwright layer (docs/testing.md)
-covers real browser behavior.
+Deliberately stays at the Jinja-render level rather than going through a real
+HTTP client — fast, and catches import errors, Jinja syntax errors, and macro
+signature mismatches. Real request/response behavior (status codes,
+`HX-Trigger` headers, 422 bodies) is covered by tests/test_playground_routes.py
+via `httpx`/`ASGITransport`; real browser behavior by the Playwright layer
+(docs/testing.md).
 """
 
 from playground.app import _paginate_widgets, _validate_budget, app, templates
