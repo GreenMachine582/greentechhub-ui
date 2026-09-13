@@ -12,7 +12,7 @@ dev = [
     "ruff>=0.6",
     "html5lib>=1.1",
     # test-only: greentechhub_ui never imports this at runtime
-    "greentechhub-core @ git+https://github.com/GreenMachine582/greentechhub-core.git@v0.4.1",
+    "greentechhub-core @ git+https://github.com/GreenMachine582/greentechhub-core.git@v0.6.0",
     # test-only, for tests/test_playground_routes.py's ASGITransport client
     "httpx>=0.27",
 ]
