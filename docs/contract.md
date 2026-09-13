@@ -17,12 +17,16 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
                               # wiring, a Django messages adapter, etc.) is owned by the framework adapter
                               # (greentechhub_fastapi.flash / a Django messages bridge), not greentechhub-core
   "url_for": callable,       # injected per-framework: FastAPI's request.url_for, or a thin Django shim
-  "brand": {"name": "GreenTechHub", "logo_url": "...", "service_name": "PyFinBot"},
+  "brand": {"name": "GreenTechHub", "logo_url": "...", "favicon_url": "...", "service_name": "PyFinBot"},
   "extra_head": [...],       # optional per-page <head> additions (trusted HTML strings) — see docs/extensibility.md
   "extra_css": [...],        # optional stylesheet URLs, e.g. a page needing a charting library
   "extra_js": [...],         # optional script URLs, same idea as extra_css
 }
 ```
+
+`brand.logo_url`/`brand.favicon_url` are populated by `theme.brand_context(show_logo=True, static_url_prefix=...)`
+— a Python-side opt-in (both `None` by default), distinct from the `*_url` Jinja globals below, which a consumer
+sets directly as template defaults rather than through a Python function argument.
 
 **Practical effect**: GreenTechHub doesn't have to migrate off Django to get the same navbar, cards, and modals as the FastAPI services — it wires Django's Jinja2 backend to the same template/macro directories and supplies the same context shape.
 

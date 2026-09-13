@@ -15,7 +15,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] `gth-page-header`
 - [x] Base `app.html` shell
 - [x] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
-- [ ] Vendor GreenTechHub's real logo/favicon assets (`logo-light.png`/`logo-dark.png`, `icon.png`) into `static/logo/`; wire `LOGO_URL`
+- [x] Vendor GreenTechHub's real logo (`static/logo/logo.png`, source commit + SHA256 in `static/VENDORED.md`) — GreenTechHub reuses this same file as its favicon too, so no separate `logo-light`/`logo-dark`/`icon` variants exist upstream to vendor. Wired via `theme.brand_context(show_logo=True, static_url_prefix=...)`, opt-in so no existing consumer's output changes by default
 
 ### v0.2 — Core content components
 - [x] `gth-card`
