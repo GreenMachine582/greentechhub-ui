@@ -5,6 +5,7 @@
 {% from "table.html" import gth_table %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "toast.html" import gth_toast_flashes %}
+{% from "modal.html" import gth_modal %}
 
 {% block title %}Playground{% endblock %}
 
@@ -105,6 +106,33 @@
     <code>docs/contract.md</code>).
   </p>
   {{ gth_toast_flashes(flashes_demo) }}
+</section>
+
+<section class="mb-5">
+  <h2>gth-modal + gth-confirm-delete</h2>
+  <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#demo-modal">
+    Open modal
+  </button>
+  {% call gth_modal("demo-modal", title="Static demo modal") %}
+  <p>This content is baked into the page — no HTMX involved.</p>
+  {% endcall %}
+
+  <button type="button" class="btn btn-outline-secondary ms-2"
+    hx-get="/modal-demo/content" hx-target="#htmx-modal-body" hx-swap="innerHTML"
+    data-bs-toggle="modal" data-bs-target="#htmx-modal">
+    Open HTMX-loaded modal
+  </button>
+  {% call gth_modal("htmx-modal", title="HTMX-loaded modal") %}
+  <div id="htmx-modal-body">Loading…</div>
+  {% endcall %}
+
+  <p class="text-secondary mt-3 mb-2">
+    <code>gth-confirm-delete</code> — removing a watched item is a destructive action
+    (BottleBot's real motivating case, per the open-items brief):
+  </p>
+  <div id="watchlist-demo-list">
+    {% include "_watchlist_list.html" %}
+  </div>
 </section>
 
 <section class="mb-5">

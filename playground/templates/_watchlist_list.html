@@ -1,0 +1,17 @@
+{% from "confirm_delete.html" import gth_confirm_delete %}
+{% from "empty_state.html" import gth_empty_state %}
+{% if watchlist %}
+<ul class="list-group mb-2">
+  {% for item in watchlist %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    {{ item.name }}
+    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirm-delete-{{ item.id }}">
+      Remove
+    </button>
+  </li>
+  {{ gth_confirm_delete("confirm-delete-" ~ item.id, target_url="/watchlist-demo/" ~ item.id, item_label=item.name, hx_target="#watchlist-demo-list") }}
+  {% endfor %}
+</ul>
+{% else %}
+{{ gth_empty_state("Watchlist is empty.") }}
+{% endif %}

@@ -65,6 +65,39 @@ def test_page_header_with_action():
     assert_snapshot(rendered, "page_header_with_action")
 
 
+def test_modal_bare():
+    rendered = _render(
+        """
+        {% from "modal.html" import gth_modal %}
+        {% call gth_modal("demo-modal", title="Demo Modal") %}
+        <p>Body content.</p>
+        {% endcall %}
+        """
+    )
+    assert_snapshot(rendered, "modal_bare")
+
+
+def test_modal_with_size_and_static_backdrop():
+    rendered = _render(
+        """
+        {% from "modal.html" import gth_modal %}
+        {% call gth_modal("big-modal", title="Big Modal", size="lg", static_backdrop=True) %}
+        <p>Body content.</p>
+        {% endcall %}
+        """
+    )
+    assert_snapshot(rendered, "modal_with_size_and_static_backdrop")
+
+
+def test_confirm_delete():
+    rendered = _render(
+        """{% from "confirm_delete.html" import gth_confirm_delete %}
+        {{ gth_confirm_delete("confirm-1", target_url="/items/1", item_label="Widget #1",
+            hx_target="#list") }}"""
+    )
+    assert_snapshot(rendered, "confirm_delete")
+
+
 def test_card():
     rendered = _render(
         """

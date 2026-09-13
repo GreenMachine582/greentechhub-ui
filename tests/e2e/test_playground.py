@@ -1,7 +1,7 @@
 """Playwright smoke tests against the real /playground app (docs/testing.md).
 
 Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
-`pytest.importorskip`. No gth-modal test: it doesn't exist yet.
+`pytest.importorskip`.
 """
 
 from urllib.parse import urlparse
@@ -71,6 +71,39 @@ def test_extra_css_and_js_and_head_slots_actually_work(page, playground_url):
 
     # extra_head: a real DOM node, not just a text search on page source.
     assert page.locator('meta[name="gth-extra-head-demo"]').get_attribute("content") == "works"
+
+
+def test_modal_traps_focus_and_escape_returns_it_to_trigger(page, playground_url):
+    page.goto(playground_url)
+    trigger = page.get_by_role("button", name="Open modal", exact=True)
+    trigger.click()
+
+    modal = page.locator("#demo-modal")
+    expect(modal).to_be_visible()
+    # Bootstrap's own Modal JS focuses the modal container itself on show —
+    # the focus trap and aria-modal/aria-hidden toggling come from that same
+    # native JS, not any gth-* code (see components/modal.html).
+    expect(modal).to_be_focused()
+
+    page.keyboard.press("Tab")
+    expect(modal.locator(".btn-close")).to_be_focused()
+
+    page.keyboard.press("Escape")
+    expect(modal).to_be_hidden()
+    expect(trigger).to_be_focused()
+
+
+def test_confirm_delete_removes_watchlist_item(page, playground_url):
+    page.goto(playground_url)
+    watchlist = page.locator("#watchlist-demo-list")
+    expect(watchlist).to_contain_text("Widget A")
+
+    watchlist.get_by_role("button", name="Remove").first.click()
+    confirm_modal = page.locator(".gth-modal.show")
+    expect(confirm_modal).to_contain_text("Delete Widget A?")
+
+    confirm_modal.get_by_role("button", name="Delete").click()
+    expect(watchlist).not_to_contain_text("Widget A")
 
 
 def test_page_makes_no_off_origin_requests(page, playground_url):

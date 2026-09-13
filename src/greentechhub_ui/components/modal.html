@@ -1,0 +1,19 @@
+{% macro gth_modal(id, title, size=None, static_backdrop=False) %}
+{# Bootstrap's own Modal JS (static/js/bootstrap.bundle.min.js) owns focus-trapping
+   and toggles aria-hidden/aria-modal at runtime when shown/hidden — this macro only
+   wires the static markup + aria-labelledby, no gth-* JS is involved. #}
+<div class="modal fade gth-modal" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}-label" aria-hidden="true"
+  {% if static_backdrop %}data-bs-backdrop="static"{% endif %}>
+  <div class="modal-dialog{% if size %} modal-{{ size }}{% endif %}">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5 gth-modal-title" id="{{ id }}-label">{{ title }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body gth-modal-body">
+        {{ caller() }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

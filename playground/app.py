@@ -39,6 +39,12 @@ FLASHES_DEMO = [
     {"message": "This is a warning flash message.", "kind": "warning"},
 ]
 
+WATCHLIST_DEMO = [
+    {"id": 1, "name": "Widget A"},
+    {"id": 2, "name": "Widget B"},
+    {"id": 3, "name": "Widget C"},
+]
+
 # extra_css/extra_js/extra_head demo — data: URIs so this needs no external
 # network resource and no extra static file, just to prove the data-driven
 # slots (docs/contract.md) actually render and execute in a real browser.
@@ -115,6 +121,7 @@ async def index(request: Request):
         "extra_css": [EXTRA_CSS_DATA_URL],
         "extra_js": [EXTRA_JS_DATA_URL],
         "extra_head": [EXTRA_HEAD_DEMO],
+        "watchlist": WATCHLIST_DEMO,
         **_paginate_widgets(0),
     })
 
@@ -155,6 +162,19 @@ async def toast_demo():
     resp = HTMLResponse("", status_code=204)
     resp.headers["HX-Trigger"] = greentechhub_ui.toast("Demo toast triggered!", "success")
     return resp
+
+
+@app.get("/modal-demo/content", response_class=HTMLResponse)
+async def modal_demo_content():
+    return HTMLResponse("<p>Loaded via HTMX, right as the modal opened.</p>")
+
+
+@app.delete("/watchlist-demo/{item_id}", response_class=HTMLResponse)
+async def watchlist_demo_delete(request: Request, item_id: int):
+    WATCHLIST_DEMO[:] = [item for item in WATCHLIST_DEMO if item["id"] != item_id]
+    return templates.TemplateResponse(
+        request, "_watchlist_list.html", {"watchlist": WATCHLIST_DEMO}
+    )
 
 
 if __name__ == "__main__":

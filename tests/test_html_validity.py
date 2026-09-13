@@ -11,6 +11,9 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
 @pytest.mark.parametrize(
     "snapshot_name",
     [
+        "modal_bare",
+        "modal_with_size_and_static_backdrop",
+        "confirm_delete",
         "page_header_bare",
         "page_header_with_breadcrumbs",
         "page_header_with_action",
