@@ -1,4 +1,5 @@
 {% extends "app.html" %}
+{% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
 {% from "stat_card.html" import gth_stat_card %}
 {% from "table.html" import gth_table %}
@@ -8,11 +9,12 @@
 {% block title %}Playground{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">greentechhub-ui playground</h1>
-<p class="text-secondary mb-5">
-  Living documentation — every shipped <code>gth-*</code> component, rendered with fixture data.
-  No real database; see <code>playground/app.py</code>.
-</p>
+{% call gth_page_header("greentechhub-ui playground",
+    subtitle="Living documentation — every shipped gth-* component, rendered with fixture data. No real database; see playground/app.py.",
+    breadcrumbs=[{"label": "Home", "url": "/"}, {"label": "Playground"}],
+    header_class="mb-5") %}
+<button type="button" class="btn btn-sm btn-outline-secondary">New task</button>
+{% endcall %}
 
 <section class="mb-5">
   <h2>gth-stat-card</h2>

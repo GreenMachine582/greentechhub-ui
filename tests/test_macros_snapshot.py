@@ -36,6 +36,35 @@ def assert_snapshot(rendered: str, name: str):
     )
 
 
+def test_page_header_bare():
+    rendered = _render(
+        """{% from "page_header.html" import gth_page_header %}
+        {{ gth_page_header("Deals") }}"""
+    )
+    assert_snapshot(rendered, "page_header_bare")
+
+
+def test_page_header_with_breadcrumbs():
+    rendered = _render(
+        """{% from "page_header.html" import gth_page_header %}
+        {{ gth_page_header("Deal Breakdown", subtitle="Reviewing terms before you commit",
+            breadcrumbs=[{"label": "Deals", "url": "/"}, {"label": "Deal Breakdown"}]) }}"""
+    )
+    assert_snapshot(rendered, "page_header_with_breadcrumbs")
+
+
+def test_page_header_with_action():
+    rendered = _render(
+        """
+        {% from "page_header.html" import gth_page_header %}
+        {% call gth_page_header("Deals", breadcrumbs=[{"label": "Deals"}]) %}
+        <button class="btn btn-sm btn-primary">New deal</button>
+        {% endcall %}
+        """
+    )
+    assert_snapshot(rendered, "page_header_with_action")
+
+
 def test_card():
     rendered = _render(
         """

@@ -11,6 +11,9 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
 @pytest.mark.parametrize(
     "snapshot_name",
     [
+        "page_header_bare",
+        "page_header_with_breadcrumbs",
+        "page_header_with_action",
         "card",
         "stat_card",
         "stat_card_value_tone",
