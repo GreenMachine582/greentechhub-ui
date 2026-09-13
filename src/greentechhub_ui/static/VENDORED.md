@@ -17,15 +17,18 @@ update its row below.
 | `icons/bootstrap-icons.min.css` | https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css | 1.13.1 | `a5d6387a32ca3baec4d02336b5b3edab50c9dd518355576a011ea3dd9c1d884e` | 87,008 bytes |
 | `icons/fonts/bootstrap-icons.woff2` | https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/fonts/bootstrap-icons.woff2 | 1.13.1 | `6c75710364a1ca5604267716f6d28997b26319fdb078cf11e0b42ab66ff2ea61` | 134,044 bytes |
 | `logo/logo.png` | Original artwork (green circuit/leaf mark), generated with an external image model for `greentechhub-ui`'s own brand identity — not copied from an upstream file | 2026-09-13 | `4665bbc5ab4f8edace0cc73373d32483f6b53d8e083ff0f5a2caf38843221f0a` | 157,095 bytes |
+| `logo/logo-light.png` | Same mark, same model/session, re-generated with a stronger near-black outline for legibility on light backgrounds | 2026-09-13 | `ee1922525cc45dd66cee42fb5073028f3fb1bb860d13b36b9d0f87e5d733741b` | 151,461 bytes |
 
-Not a third-party package or an upstream copy like the rows above — `logo/logo.png` is original artwork
-commissioned for `greentechhub-ui` specifically, so "Version" is the date it was added rather than a semver or
-commit SHA (resized/optimized from a 1254×1254 source to 512×512 on add — regenerate the SHA256 if you
+Not a third-party package or an upstream copy like the rows above — both `logo/` files are original artwork
+commissioned for `greentechhub-ui` specifically, so "Version" is the date each was added rather than a semver
+or commit SHA (each resized/optimized from a 1254×1254 source to 512×512 on add — regenerate the SHA256 if you
 re-export at a different size). This **intentionally diverges** from what `GreenTechHub` (the production
 Django app) currently ships at `addons/base/static/img/logo.png` — production hasn't adopted this design, so
-don't assume the two stay in sync. `brand_context()`'s `logo_url` and `favicon_url` both resolve to this one
-file for now; a dedicated light-background variant is planned (today's version is tuned for the navbar's dark
-background) — see `docs/theming.md`.
+don't assume the two stay in sync. `brand_context()` uses the two files for two different contexts, not as
+interchangeable light/dark variants of the same spot: `logo_url` (the navbar) stays on `logo.png` since
+`gth-navbar`'s background is hardcoded dark (`navbar-dark bg-dark`) and never actually changes; `favicon_url`
+(a browser's tab/chrome, whose background is unpredictable) uses `logo-light.png`'s stronger outline as the
+safer universal choice. See `docs/theming.md`.
 
 Not vendored: Alpine.js — nothing shipped uses it (dark mode is plain vanilla JS; `gth-modal` doesn't exist yet).
 Revisit once a real component needs it — see `docs/architecture.md`'s internal interaction conventions.
