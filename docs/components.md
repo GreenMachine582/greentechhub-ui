@@ -15,9 +15,18 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Renders `flashes` from the [template context contract](contract.md) as accessible toast notifications |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
-| `gth-breadcrumbs` | From `nav_items` + current route |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
+
+## Shipped signatures (v0.1)
+
+```jinja
+{# page_header.html — breadcrumbs param folds in what would've been a separate
+   gth-breadcrumbs macro (last entry is always the current/non-link page,
+   aria-current="page"); action slot via {% call %} is optional — unlike
+   gth-card/gth-table's mandatory body slot, most pages have no action button #}
+gth_page_header(title, subtitle=None, breadcrumbs=None, header_class="")
+```
 
 ## Shipped signatures (v0.2)
 

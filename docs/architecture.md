@@ -24,17 +24,13 @@ greentechhub-ui/
 │   │   ├── tokens.py           # brand colors, spacing, typography as CSS custom properties
 │   │   └── theme.css
 │   ├── templates/
-│   │   ├── app.html            # owns Bootstrap/HTMX <link>/<script> includes
-│   │   ├── dashboard.html
-│   │   └── auth/
-│   │       └── login.html
+│   │   └── app.html            # owns Bootstrap/HTMX <link>/<script> includes
 │   ├── components/
 │   │   ├── card.html
 │   │   ├── table.html
 │   │   ├── modal.html
 │   │   ├── form.html
 │   │   ├── pagination.html
-│   │   ├── breadcrumbs.html
 │   │   ├── stat_card.html
 │   │   ├── empty_state.html
 │   │   ├── confirm_delete.html

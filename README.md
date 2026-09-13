@@ -16,8 +16,8 @@ A shared, installable package (`greentechhub-ui`) providing the frontend every G
 
 | Area | Contents |
 |---|---|
-| Templates | Base app shell (`app.html`), auth pages (`auth/login.html`), dashboard shell (`dashboard.html`) — extendable, not prescriptive about page content |
-| Components (macros) | `gth-page-header`, `gth-card`, `gth-stat-card`, `gth-table`, `gth-form`, `gth-modal`, `gth-confirm-delete`, `gth-danger-modal`, `gth-toast`, `gth-pagination`, `gth-breadcrumbs`, `gth-empty-state`, `gth-sidebar`, `gth-navbar` |
+| Templates | Base app shell (`app.html`) — extendable, not prescriptive about page content |
+| Components (macros) | `gth-page-header`, `gth-card`, `gth-stat-card`, `gth-table`, `gth-form`, `gth-modal`, `gth-confirm-delete`, `gth-danger-modal`, `gth-toast`, `gth-pagination`, `gth-empty-state`, `gth-sidebar`, `gth-navbar` |
 | Static assets | Bundled internally — see [docs/theming.md](docs/theming.md) |
 | Theme | CSS custom properties for color/spacing/typography, light + dark mode, brand tokens from green-tech-hub.com's visual identity |
 | Navigation | A small Python helper (`navigation.py`) that renders a consistent nav/sidebar from a per-service list of `{label, url, icon, required_scope}` entries |

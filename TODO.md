@@ -11,8 +11,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 
 - [x] `theme/` — tokens, CSS vars, brand ([docs/theming.md](docs/theming.md))
 - [x] `gth-navbar`
-- [ ] `gth-sidebar`
-- [ ] `gth-page-header`
+- [x] `gth-page-header` — `gth_page_header(title, subtitle=None, breadcrumbs=None, header_class="")`; `gth-breadcrumbs` folded in as the `breadcrumbs` param (`<nav aria-label="breadcrumb">`, last entry current/`aria-current="page"`) rather than shipped as its own macro. Snapshot-tested (bare/breadcrumbs/action variants) and demoed live in `playground/templates/index.html`, replacing its own hand-rolled `<h1>` + intro paragraph
 - [x] Base `app.html` shell
 - [x] `extra_head` / custom Jinja block extension points ([docs/extensibility.md](docs/extensibility.md))
 - [x] Custom abstract logo (`static/logo/logo.png` + `logo-light.png`, green circuit/leaf mark) designed for `greentechhub-ui`'s own brand identity — intentionally decoupled from GreenTechHub production's current logo file (see `static/VENDORED.md`). Wired via `theme.brand_context(show_logo=True, static_url_prefix=...)`, opt-in so no existing consumer's output changes by default. `logo_url` (navbar, hardcoded dark background) uses the original; `favicon_url` (browser chrome, unpredictable background) uses the stronger-outlined `logo-light.png`
@@ -54,6 +53,9 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] Django contract validated against GreenTechHub
 - [ ] Semver policy held across at least one real minor release
 - [ ] Semver policy held across at least one real breaking (major) release
+
+### Post-v1.0 — Deferred
+- [ ] `gth-sidebar` — deferred: every current consumer fits a navbar; revisit when a consumer has >6 nav items (forces an `app.html` grid layout decision no one has asked for)
 
 ## 🔄 Migration Tracking
 
