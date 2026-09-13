@@ -3,9 +3,11 @@
 Colors sourced from the real green-tech-hub.com brand palette
 (GreenMachine582/GreenTechHub, addons/base/static/base/scss/abstracts/_variables.scss)
 — resolves the color half of the "Logo/brand asset source of truth" open
-decision in ../../TODO.md. The logo image itself is vendored at
-static/logo/logo.png (see static/VENDORED.md); GreenTechHub reuses that same
-file as its favicon too, so there's no separate light/dark/icon variant here.
+decision in ../../TODO.md. The logo image itself is original artwork at
+static/logo/logo.png (see static/VENDORED.md) designed for greentechhub-ui's
+own brand identity — it intentionally diverges from GreenTechHub production's
+current logo file, not a copy of it. Tuned for the navbar's dark background;
+a light-background variant is planned but doesn't exist yet.
 """
 
 BRAND_NAME = "GreenTechHub"
