@@ -58,7 +58,9 @@ templates.env.loader = ChoiceLoader(
         FileSystemLoader(greentechhub_ui.components_path),
     ]
 )
-templates.env.globals["brand"] = greentechhub_ui.theme.brand_context(service_name="Playground")
+templates.env.globals["brand"] = greentechhub_ui.theme.brand_context(
+    service_name="Playground", show_logo=True, static_url_prefix="/gth-assets"
+)
 templates.env.globals["nav_items"] = greentechhub_ui.navigation.build_nav_items(
     custom_items=[
         {"label": "Playground", "url": "/", "icon": "grid"},

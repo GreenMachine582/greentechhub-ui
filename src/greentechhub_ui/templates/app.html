@@ -28,6 +28,7 @@
       }
     });
   </script>
+  {% if brand.favicon_url %}<link rel="icon" href="{{ brand.favicon_url }}">{% endif %}
   {% if theme_css_url|default(none) %}<link rel="stylesheet" href="{{ theme_css_url }}">{% endif %}
   {% if icons_css_url|default(none) %}<link rel="stylesheet" href="{{ icons_css_url }}">{% endif %}
   {% for url in extra_css|default([]) %}<link rel="stylesheet" href="{{ url }}">{% endfor %}

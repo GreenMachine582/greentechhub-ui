@@ -87,6 +87,16 @@ def test_navbar_with_icons():
     assert_snapshot(rendered, "navbar_with_icons")
 
 
+def test_navbar_with_logo():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(nav_items, brand) }}""",
+        nav_items=[{"label": "Deals", "url": "/"}],
+        brand=brand_context(service_name="Playground", show_logo=True),
+    )
+    assert_snapshot(rendered, "navbar_with_logo")
+
+
 def test_theme_toggle():
     rendered = _render(
         """{% from "theme_toggle.html" import gth_theme_toggle %}
