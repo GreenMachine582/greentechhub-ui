@@ -64,7 +64,7 @@ Per-service retrofit progress.
 ### BottleBot
 - [x] Drop custom `static/style.css` overrides in favor of the shared theme (`.metric-card`/`.metric-label`/`.metric-value`/`.metric-delta` removed now that `gth-stat-card` covers them via `theme.css`; remaining rules — deal highlighting, watchlist pills, timeline — are genuinely BottleBot-specific business styling, not theme duplication, and are expected to stay)
 - [x] Replace hand-rolled navbar with `gth-navbar`
-- [ ] Migrate remaining components one at a time (done so far: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`. Remaining: watchlist pagination, other cards, health/criteria tables)
+- [ ] Migrate remaining components one at a time (done so far: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`; watchlist pagination → `gth-pagination`; health tables (`_scrape_runs_table.html`, `_notification_log_table.html`) and criteria tables → `gth-table`/`gth-table_body`. Remaining: other cards)
 
 ### PyFinBot
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)
