@@ -57,8 +57,6 @@ gth_pagination(next_url, label="Load more", wrapper_class="text-center py-2")
 
 ## Shipped signatures (v0.3a)
 
-`gth-modal`/`gth-confirm-delete` are deferred (see [TODO.md](../TODO.md)) — not shipped yet.
-
 ```jinja
 {# form.html — two macros, mirroring table.html's shell+piece pattern #}
 gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="")
@@ -101,4 +99,20 @@ greentechhub_ui.navigation.build_nav_items(custom_items, current_user=None, buil
    visible to every consumer through this helper without any of them changing
    their own code. See docs/extensibility.md for the current_user scoping
    contract. #}
+```
+
+## Shipped signatures (v0.6)
+
+```jinja
+{# modal.html — built against Bootstrap's own native Modal JS (already vendored);
+   focus-trap and runtime aria-modal/aria-hidden toggling come free from that JS,
+   this macro only wires the static markup + aria-labelledby. Body via {% call %} #}
+gth_modal(id, title, size=None, static_backdrop=False)
+{# size: None|"sm"|"lg"|"xl" -> modal-{{ size }}. static_backdrop only blocks
+   backdrop-click-to-close (data-bs-backdrop="static") - Esc still closes,
+   that's a separate Bootstrap option (data-bs-keyboard), deliberately untouched #}
+
+{# confirm_delete.html — gth_modal + a danger button wired with hx-delete/hx-target.
+   Deliberately no hx-confirm: the modal itself is the confirmation step #}
+gth_confirm_delete(id, target_url, item_label, hx_target=None)
 ```
