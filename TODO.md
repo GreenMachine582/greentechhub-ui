@@ -68,6 +68,6 @@ Per-service retrofit progress.
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)
 
 ### GreenTechHub
-- [ ] Wire Django's Jinja2 backend to validate the [template context contract](docs/contract.md) (before porting real pages)
+- [x] Wire Django's Jinja2 backend to validate the [template context contract](docs/contract.md) — `tests/test_contract_django.py` (optional `django` extra, `pytest.importorskip`) renders `app.html` through `django.template.backends.jinja2.Jinja2` pointed at `greentechhub_ui.templates_path`/`components_path` with the same minimal contract context `test_app_shell_renders.py` uses for FastAPI, proving the macros are genuinely framework-agnostic. This validates the contract itself, not a real GreenTechHub page — porting real pages is still separate work, below
 - [ ] Adopt `theme/` for brand consistency
 - [ ] Full component adoption beyond `theme/` — not blocking v1.0, decided based on real appetite once the theme-only step is live
