@@ -18,6 +18,8 @@ dev = [
 ]
 playground = ["fastapi>=0.100", "uvicorn[standard]>=0.23", "python-multipart>=0.0.9"]
 e2e = ["pytest-playwright>=0.4"]
+# test-only, for tests/test_contract_django.py; pinned to match GreenTechHub's real Django version
+django = ["django>=6.0"]
 
 [build-system]
 requires = ["hatchling"]
