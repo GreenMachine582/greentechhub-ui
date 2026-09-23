@@ -1,0 +1,36 @@
+{% from "skeleton.html" import gth_skeleton %}
+
+{% macro gth_tabs(id, tabs, active=None, tabs_class="mb-3") %}
+{# Bootstrap tabs (data-bs-toggle="tab": its own JS supplies role/aria-
+   selected switching and arrow-key navigation — no gth JS).
+   tabs: [{"key", "label", "icon"?, "url"?}]. active: key of the open tab
+   (default: the first).
+   A tab with a `url` is loaded by htmx into its pane — the open one on page
+   load, the others the first time they're shown — with a skeleton until
+   then. A tab without one renders caller(tab.key) from the {% call(key) %}
+   body, so static and lazy panes can mix. #}
+{% set active = active if active is not none else (tabs[0].key if tabs else none) %}
+<ul class="nav nav-tabs {{ tabs_class }} gth-tabs" id="{{ id }}" role="tablist">
+  {% for tab in tabs %}
+  {% set is_active = tab.key == active %}
+  <li class="nav-item" role="presentation">
+    <button type="button" class="nav-link{% if is_active %} active{% endif %}" id="{{ id }}-tab-{{ tab.key }}"
+      data-bs-toggle="tab" data-bs-target="#{{ id }}-pane-{{ tab.key }}" role="tab"
+      aria-controls="{{ id }}-pane-{{ tab.key }}" aria-selected="{{ 'true' if is_active else 'false' }}"
+      {%- if not is_active %} tabindex="-1"{% endif %}>
+      {%- if tab.icon %}<i class="bi bi-{{ tab.icon }} me-1" aria-hidden="true"></i>{% endif %}{{ tab.label -}}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+<div class="tab-content gth-tab-content">
+  {% for tab in tabs %}
+  {% set is_active = tab.key == active %}
+  <div class="tab-pane fade{% if is_active %} show active{% endif %}" id="{{ id }}-pane-{{ tab.key }}" role="tabpanel"
+    aria-labelledby="{{ id }}-tab-{{ tab.key }}" tabindex="0"
+    {%- if tab.url %} hx-get="{{ tab.url|e }}" hx-trigger="{{ 'load' if is_active else 'shown.bs.tab from:#' ~ id ~ '-tab-' ~ tab.key ~ ' once' }}"{% endif %}>
+    {%- if tab.url %}{{ gth_skeleton(3) }}{% elif caller is defined %}{{ caller(tab.key) }}{% endif -%}
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}

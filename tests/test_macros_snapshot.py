@@ -520,3 +520,52 @@ def test_skeleton():
         {{ gth_skeleton(2) }}<table><tbody>{{ gth_skeleton_rows(2, colspan=3) }}</tbody></table>"""
     )
     assert_snapshot(rendered, "skeleton")
+
+
+def test_badges():
+    rendered = _render(
+        """{% from "badge.html" import gth_badge %}
+        {{ gth_badge("OK", "good", icon="check-circle") }}{{ gth_badge("Brand", "brand") }}
+        {{ gth_badge("Sq", "unknown-tone", pill=False) }}"""
+    )
+    assert_snapshot(rendered, "badges")
+
+
+def test_tabs_static_and_lazy():
+    rendered = _render(
+        """{% from "tabs.html" import gth_tabs %}
+        {% call(key) gth_tabs("t", [{"key": "a", "label": "A", "icon": "info-circle"},
+            {"key": "b", "label": "B", "url": "/tab/b?x=1&y=2"}]) %}Pane {{ key }}{% endcall %}"""
+    )
+    assert_snapshot(rendered, "tabs")
+
+
+def test_tabs_active_lazy_tab_loads_on_page_load():
+    rendered = _render(
+        """{% from "tabs.html" import gth_tabs %}
+        {{ gth_tabs("t", [{"key": "a", "label": "A"}, {"key": "b", "label": "B", "url": "/b"}],
+            active="b") }}"""
+    )
+    assert 'hx-trigger="load"' in rendered
+    assert 'aria-selected="true"' in rendered.split('id="t-tab-b"')[1].split(">")[0]
+
+
+def test_chips():
+    rendered = _render(
+        """{% from "chips.html" import gth_chips %}
+        {{ gth_chips("tags", [{"value": 1, "label": "One"},
+                              {"value": 2, "label": "Two", "icon": "x"}],
+            values=["2"], label="Tags") }}"""
+    )
+    assert_snapshot(rendered, "chips")
+    inputs = rendered.split("<input")[1:]
+    assert " checked" not in inputs[0] and " checked" in inputs[1]
+
+
+def test_switch():
+    rendered = _render(
+        """{% from "chips.html" import gth_switch %}
+        {{ gth_switch("alerts", "Alerts", checked=True, help_text="Emails.",
+            input_attrs={"hx-post": "/prefs?a=1&b=2"}) }}"""
+    )
+    assert_snapshot(rendered, "switch")

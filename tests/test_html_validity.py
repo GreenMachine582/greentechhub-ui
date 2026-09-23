@@ -47,6 +47,10 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "data_table_infinite",
         "table_filter",
         "skeleton",
+        "badges",
+        "tabs",
+        "chips",
+        "switch",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

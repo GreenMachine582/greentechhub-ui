@@ -283,12 +283,22 @@ def test_secondary_buttons_follow_color_mode(page, playground_url):
 RECORD_ROWS = "#records tbody tr[data-record-id]"
 
 
+def _htmx_idle(page):
+    """Wait out htmx's swap/settle (20ms by default): a control swapped in
+    moments ago isn't wired up yet, and Playwright acts faster than that."""
+    page.wait_for_function(
+        "() => !document.querySelector('.htmx-request, .htmx-swapping, .htmx-settling')"
+    )
+    page.wait_for_timeout(50)
+
+
 def test_data_table_pages_navigation_pushes_url(page, playground_url):
     page.goto(f"{playground_url}/tables?mode=pages")
     expect(page.locator(RECORD_ROWS)).to_have_count(10)
     page.click("#records .gth-table-pager >> text=3")
     expect(page.locator("#records .gth-table-summary")).to_contain_text("21–30 of 120")
     assert "page=3" in page.url
+    _htmx_idle(page)
     page.select_option("#records-size", "25")
     expect(page.locator(RECORD_ROWS)).to_have_count(25)
     expect(page.locator("#records .gth-table-summary")).to_contain_text("1–25 of 120")
@@ -300,6 +310,7 @@ def test_data_table_sort_toggles(page, playground_url):
     price_header.locator("button").click()
     expect(price_header).to_have_attribute("aria-sort", "ascending")
     first_asc = page.locator(RECORD_ROWS).first.inner_text()
+    _htmx_idle(page)
     page.locator("#records th:has-text('Price') button").click()
     price_header = page.locator("#records th:has-text('Price')")
     expect(price_header).to_have_attribute("aria-sort", "descending")
@@ -319,6 +330,7 @@ def test_data_table_filter_debounced_and_resets_page(page, playground_url):
 def test_data_table_load_more(page, playground_url):
     page.goto(f"{playground_url}/tables?mode=load_more")
     expect(page.locator(RECORD_ROWS)).to_have_count(10)
+    _htmx_idle(page)
     page.click("#records .gth-table-load-more button")
     expect(page.locator(RECORD_ROWS)).to_have_count(20)
 
@@ -346,3 +358,41 @@ def test_data_table_infinite_inside_scroll_box(page, playground_url):
     # The header sticks to the top of the scroll box.
     th = page.locator("#records thead th").first
     assert th.evaluate("el => getComputedStyle(el).position") == "sticky"
+
+
+# ── gth-badge / gth-tabs / gth-chips / gth-switch ─────────────────────────
+
+
+def test_tabs_lazy_load_once_and_keyboard(page, playground_url):
+    page.goto(playground_url)
+    requests = []
+    page.on("request", lambda r: requests.append(r.url) if "/v07-demo/tab/" in r.url else None)
+    activity = page.locator("#demo-tabs-pane-activity")
+    expect(activity.locator(".gth-skeleton")).to_have_count(1)
+
+    page.click("#demo-tabs-tab-activity")
+    expect(page.locator("#demo-tabs-tab-activity")).to_have_attribute("aria-selected", "true")
+    expect(activity.locator("[data-tab-loaded=activity]")).to_be_visible()
+
+    # Arrow keys move between tabs (Bootstrap's own tab JS).
+    page.keyboard.press("ArrowRight")
+    expect(page.locator("#demo-tabs-tab-settings")).to_be_focused()
+    expect(page.locator("#demo-tabs-pane-settings [data-tab-loaded=settings]")).to_be_visible()
+
+    page.click("#demo-tabs-tab-activity")
+    page.wait_for_timeout(500)
+    assert sum("/tab/activity" in u for u in requests) == 1  # loaded once, not per show
+
+
+def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
+    page.goto(playground_url)
+    result = page.locator("#chips-demo-result")
+    page.click("#chips-demo label:has-text('Sensors')")
+    expect(result).to_have_text("tags=sensor, tags=motor, alerts=on")
+    page.click("#chips-demo label:has-text('Motors')")
+    page.click("#gth-field-alerts")
+    expect(result).to_have_text("tags=sensor")
+    checked = page.locator("#chips-demo label:has-text('Sensors') .gth-chip-check")
+    expect(checked).to_be_visible()
+    unchecked = page.locator("#chips-demo label:has-text('Motors') .gth-chip-check")
+    expect(unchecked).to_be_hidden()

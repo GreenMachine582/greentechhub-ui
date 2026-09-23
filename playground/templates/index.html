@@ -7,6 +7,9 @@
 {% from "toast.html" import gth_toast_flashes %}
 {% from "modal.html" import gth_modal %}
 {% from "busy_button.html" import gth_busy_button %}
+{% from "badge.html" import gth_badge %}
+{% from "tabs.html" import gth_tabs %}
+{% from "chips.html" import gth_chips, gth_switch %}
 
 {% block title %}Playground{% endblock %}
 
@@ -154,6 +157,39 @@
   {% call gth_table(headers=["Widget"], tbody_id="widgets-tbody") %}
     {% include "_widget_rows.html" %}
   {% endcall %}
+
+  <h2 class="mt-4">gth-badge</h2>
+  <p id="badge-demo" class="d-flex flex-wrap gap-2">
+    {{ gth_badge("Healthy", "good", icon="check-circle") }}
+    {{ gth_badge("Failed", "bad", icon="x-circle") }}
+    {{ gth_badge("Stale", "warn", icon="exclamation-triangle") }}
+    {{ gth_badge("Syncing", "info", icon="arrow-repeat") }}
+    {{ gth_badge("Draft", "neutral") }}
+    {{ gth_badge("GreenTechHub", "brand", icon="leaf") }}
+    {{ gth_badge("Square", "neutral", pill=False) }}
+  </p>
+
+  <h2 class="mt-4">gth-tabs</h2>
+  {% call(key) gth_tabs("demo-tabs", [
+      {"key": "overview", "label": "Overview", "icon": "info-circle"},
+      {"key": "activity", "label": "Activity (lazy)", "icon": "clock-history", "url": "/v07-demo/tab/activity"},
+      {"key": "settings", "label": "Settings (lazy)", "icon": "gear", "url": "/v07-demo/tab/settings"},
+    ]) %}
+    {% if key == "overview" %}<p class="mb-0">A static pane rendered from the <code>{% raw %}{% call(key) %}{% endraw %}</code> body.</p>{% endif %}
+  {% endcall %}
+
+  <h2 class="mt-4">gth-chips + gth-switch</h2>
+  <form id="chips-demo" hx-post="/v07-demo/chips" hx-target="#chips-demo-result" hx-trigger="change">
+    {{ gth_chips("tags", [
+        {"value": "sensor", "label": "Sensors"},
+        {"value": "motor", "label": "Motors", "icon": "gear-wide"},
+        {"value": "cable", "label": "Cables"},
+        {"value": "board", "label": "Boards"},
+      ], values=["motor"], label="Categories") }}
+    {{ gth_switch("alerts", "Email me when stock is low", checked=True,
+        help_text="Unchecked switches submit nothing.") }}
+    <p class="text-secondary small mb-0">Submitted: <code id="chips-demo-result">tags=motor, alerts=on</code></p>
+  </form>
 
   <h2 class="mt-4">gth-data-table</h2>
   <p class="text-secondary">

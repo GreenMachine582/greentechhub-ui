@@ -1,0 +1,35 @@
+{% macro gth_chips(name, options, values=(), label=None, field_class="mb-3") %}
+{# Multi-select filter pills: btn-check checkboxes styled as chips (a
+   check icon appears on selected ones, so state isn't color-only).
+   options: [{"value", "label", "icon"?}]. values: the checked values.
+   Submits name=<value> once per checked chip (FastAPI: list[str] =
+   Query/Form; Django: getlist). The gth_segmented of multi-choice. #}
+{% set checked = values|map("string")|list %}
+<div class="{{ field_class }} gth-form-field gth-chips">
+  {% if label %}<span class="form-label d-block" id="gth-field-{{ name }}-label">{{ label }}</span>{% endif %}
+  <div class="d-flex flex-wrap gap-2" role="group"{% if label %} aria-labelledby="gth-field-{{ name }}-label"{% endif %}>
+    {% for opt in options %}
+    <input type="checkbox" class="btn-check" name="{{ name }}" value="{{ opt.value }}"
+      id="gth-field-{{ name }}-{{ loop.index }}" autocomplete="off"{% if opt.value|string in checked %} checked{% endif %}>
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-field-{{ name }}-{{ loop.index }}">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>
+      {%- if opt.icon %}<i class="bi bi-{{ opt.icon }} me-1" aria-hidden="true"></i>{% endif %}{{ opt.label -}}
+    </label>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3", input_attrs=None) %}
+{# An on/off toggle (Bootstrap form-switch, role="switch") in the brand
+   color. Unchecked submits nothing — treat a missing field as off.
+   input_attrs: dict of extra attributes (e.g. hx-post to save on change). #}
+<div class="{{ field_class }} form-check form-switch gth-form-field gth-switch">
+  <input class="form-check-input" type="checkbox" role="switch" id="gth-field-{{ name }}" name="{{ name }}" value="{{ value }}"
+    {%- if checked %} checked{% endif %}
+    {%- if help_text %} aria-describedby="gth-field-{{ name }}-help"{% endif %}
+    {%- for k, v in (input_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
+  <label class="form-check-label" for="gth-field-{{ name }}">{{ label }}</label>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+</div>
+{% endmacro %}

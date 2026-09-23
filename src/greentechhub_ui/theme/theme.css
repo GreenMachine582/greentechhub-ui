@@ -225,6 +225,53 @@ th[aria-sort] .gth-table-sort .bi {
   min-height: 1.25rem;
 }
 
+/* gth-badge tone="brand" — the other tones are Bootstrap's own
+   *-subtle/*-emphasis pairs. */
+[data-bs-theme="dark"] {
+  --gth-brand-subtle-bg: #0d2b0d;
+  --gth-brand-subtle-border: #1f5f1f;
+}
+[data-bs-theme="light"] {
+  --gth-brand-subtle-bg: #e6f7e6;
+  --gth-brand-subtle-border: #a6eba6;
+}
+.gth-badge-brand {
+  color: var(--gth-brand-fg);
+  background-color: var(--gth-brand-subtle-bg);
+  border: 1px solid var(--gth-brand-subtle-border);
+}
+
+/* gth-chips — outline pills that fill with the brand color when checked;
+   the check icon shows only when checked, so state isn't color-only. */
+.gth-chip {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-body-color);
+  --bs-btn-hover-bg: var(--bs-tertiary-bg);
+  --bs-btn-hover-border-color: var(--gth-brand-fg);
+  --bs-btn-active-color: var(--gth-brand-fg);
+  --bs-btn-active-bg: var(--gth-brand-subtle-bg);
+  --bs-btn-active-border-color: var(--gth-brand-fg);
+  --bs-btn-focus-shadow-rgb: 31, 190, 30;
+}
+.gth-chip .gth-chip-check {
+  display: none;
+  margin-right: 0.25rem;
+}
+.btn-check:checked + .gth-chip .gth-chip-check {
+  display: inline-block;
+}
+
+/* gth-switch — brand color instead of Bootstrap's blue. */
+.gth-switch .form-check-input:checked {
+  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-color-primary-dark);
+}
+.gth-switch .form-check-input:focus {
+  border-color: var(--gth-color-primary);
+  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
+}
+
 /* gth-combobox: results panel floats over the content below the input,
    above a modal body (Bootstrap modals sit at z-index 1055). */
 .gth-combobox-results {

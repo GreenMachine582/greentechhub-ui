@@ -301,6 +301,24 @@ async def v07_modal_submit(request: Request, widget: str = Form(""), size: str =
     return resp
 
 
+@app.get("/v07-demo/tab/{key}", response_class=HTMLResponse)
+async def v07_tab(key: str):
+    if key not in ("activity", "settings"):
+        return HTMLResponse("Unknown tab", status_code=404)
+    await asyncio.sleep(0.3)  # long enough to see the skeleton
+    return HTMLResponse(f'<p class="mb-0" data-tab-loaded="{key}">Loaded the '
+                        f"<strong>{key}</strong> pane from the server.</p>")
+
+
+@app.post("/v07-demo/chips", response_class=HTMLResponse)
+async def v07_chips(request: Request):
+    form = await request.form()
+    parts = [f"tags={t}" for t in form.getlist("tags")]
+    if form.get("alerts"):
+        parts.append(f"alerts={form.get('alerts')}")
+    return HTMLResponse(", ".join(parts) or "(nothing)")
+
+
 @app.post("/v07-demo/slow-job")
 async def v07_slow_job():
     await asyncio.sleep(2)

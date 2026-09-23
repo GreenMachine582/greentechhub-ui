@@ -22,6 +22,9 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
+| `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
+| `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
+| `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
 
@@ -241,4 +244,32 @@ gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinit
 {# skeleton.html #}
 gth_skeleton(lines=3, skeleton_class="")     {# placeholder-glow lines, aria-hidden #}
 gth_skeleton_rows(rows=3, colspan=1)         {# placeholder <tr>s #}
+```
+
+### Badges, tabs, chips, switch (v0.7)
+
+```jinja
+{# badge.html #}
+gth_badge(label, tone="neutral", icon=None, pill=True, badge_class="")
+{# tone: "good"|"bad"|"warn"|"info"|"neutral"|"brand" (unknown → neutral). Bootstrap's
+   *-subtle/*-emphasis pairs, plus a brand pair from theme.css. The label carries
+   the meaning — color is reinforcement, not the signal. #}
+
+{# tabs.html #}
+gth_tabs(id, tabs, active=None, tabs_class="mb-3")      {# optional {% call(key) %} body #}
+{# tabs: [{"key", "label", "icon"?, "url"?}]; active defaults to the first key.
+   Bootstrap's data-bs-toggle="tab" does the ARIA + arrow keys (no gth JS).
+   With a url the pane is hx-get'd — on page load if active, else on its first
+   shown.bs.tab (once) — showing gth_skeleton until then. Without one the pane
+   renders caller(key). #}
+
+{# chips.html #}
+gth_chips(name, options, values=(), label=None, field_class="mb-3")
+{# options: [{"value", "label", "icon"?}]; btn-check checkboxes as pills, a check
+   icon on checked ones. Submits name=<value> per checked chip (FastAPI
+   list[str]; Django getlist). #}
+gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3",
+           input_attrs=None)
+{# form-switch with role="switch" in the brand color. Unchecked submits nothing.
+   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change. #}
 ```

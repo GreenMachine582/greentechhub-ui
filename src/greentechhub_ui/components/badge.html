@@ -1,0 +1,15 @@
+{% macro gth_badge(label, tone="neutral", icon=None, pill=True, badge_class="") %}
+{# Status pill. tone: "good"|"bad"|"warn"|"info"|"neutral"|"brand" — the
+   same judgment-call vocabulary as gth_stat_card's delta_tone, mapped to
+   Bootstrap's *-subtle/*-emphasis pairs, which already meet contrast in
+   both color modes. Meaning mustn't rest on color alone: the label (and
+   optional icon) carries it. #}
+{% set bs = {"good": "success", "bad": "danger", "warn": "warning", "info": "info", "neutral": "secondary"} %}
+{% if tone == "brand" %}
+<span class="badge{% if pill %} rounded-pill{% endif %} gth-badge gth-badge-brand {{ badge_class }}">
+{%- else %}
+{% set t = bs.get(tone, "secondary") %}
+<span class="badge{% if pill %} rounded-pill{% endif %} bg-{{ t }}-subtle text-{{ t }}-emphasis border border-{{ t }}-subtle gth-badge {{ badge_class }}">
+{%- endif %}
+{%- if icon %}<i class="bi bi-{{ icon }} me-1" aria-hidden="true"></i>{% endif %}{{ label }}</span>
+{% endmacro %}
