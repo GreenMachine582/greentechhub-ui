@@ -603,3 +603,30 @@ def test_form_attrs_and_input_attrs_are_escaped_without_autoescape():
     )
     assert 'hx-post="/x?a=1&amp;b=2"' in rendered
     assert 'data-x="say &#34;hi&#34;"' in rendered
+
+
+def test_record_picker_empty():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/parts/picker?x=1&y=2") }}"""
+    )
+    assert_snapshot(rendered, "record_picker_empty")
+
+
+def test_record_picker_with_value_and_errors():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/parts/picker", value=17, value_label="Kilo <17>",
+            errors=["Pick a part."], help_text="Search 120 parts.", panel_width="50rem") }}"""
+    )
+    assert_snapshot(rendered, "record_picker_with_value_and_errors")
+    assert "Kilo &lt;17&gt;" in rendered
+
+
+def test_record_picker_row():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker_row %}
+        <table><tbody>{% call gth_record_picker_row(17, "Kilo & co") %}<td>Kilo</td>{% endcall %}
+        </tbody></table>"""
+    )
+    assert_snapshot(rendered, "record_picker_row")

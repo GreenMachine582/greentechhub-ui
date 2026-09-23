@@ -1,0 +1,16 @@
+{% from "table.html" import gth_data_table, gth_table_filter %}
+{% from "record_picker.html" import gth_record_picker_row %}
+{% if with_filter %}{{ gth_table_filter(table, placeholder="Search parts…", label="Search parts", filter_class="mb-2") }}{% endif %}
+{% call(r) gth_data_table(table, [
+    {"label": "Name", "sort_key": "name"},
+    {"label": "Category", "sort_key": "category"},
+    {"label": "Stock", "sort_key": "stock", "class": "text-end"},
+    {"label": "Price", "sort_key": "price", "class": "text-end"},
+  ], records, empty_message="No parts match.", table_class="table-sm mb-2") %}
+{% call gth_record_picker_row(r.id, r.name) %}
+  <td>{{ r.name }}</td>
+  <td>{{ r.category }}</td>
+  <td class="text-end">{{ r.stock }}</td>
+  <td class="text-end">${{ "%.2f"|format(r.price) }}</td>
+{% endcall %}
+{% endcall %}

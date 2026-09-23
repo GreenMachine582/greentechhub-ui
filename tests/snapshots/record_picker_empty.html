@@ -1,0 +1,33 @@
+
+        
+
+
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-part-trigger">Part</label>
+  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="/parts/picker?x=1&amp;y=2">
+    <div class="input-group">
+      <button type="button" class="form-select text-start gth-record-picker-trigger"
+        id="gth-field-part-trigger" data-gth-record-picker-trigger
+        aria-haspopup="dialog" aria-expanded="false" aria-controls="gth-field-part-panel">
+        <span data-gth-record-picker-label data-placeholder="Select…" class="text-secondary">Select…</span>
+      </button>
+      
+      <button type="button" class="btn btn-outline-secondary gth-record-picker-clear d-none"
+        data-gth-record-picker-clear aria-label="Clear Part"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      
+    </div>
+    <input type="hidden" name="part" value="" data-gth-record-picker-value>
+    <input type="hidden" name="part_label" value="" data-gth-record-picker-value-label>
+    <div id="gth-field-part-panel" class="card shadow d-none gth-record-picker-panel" role="dialog"
+      aria-label="Part" style="--gth-picker-width: 40rem" data-gth-record-picker-panel>
+      <div class="card-body p-2" data-gth-record-picker-body>
+
+<div class="placeholder-glow gth-skeleton " aria-hidden="true">
+  <span class="placeholder d-block mb-2 col-12"></span><span class="placeholder d-block mb-2 col-12"></span><span class="placeholder d-block mb-2 col-12"></span><span class="placeholder d-block mb-2 col-7"></span>
+</div>
+</div>
+    </div>
+  </div>
+  
+  
+</div>

@@ -48,6 +48,7 @@ def shell_globals(
         "toast_js_url": f"{assets_prefix}/js/toast.js",
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
+        "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
     }

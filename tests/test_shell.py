@@ -15,6 +15,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["bootstrap_css_url"] == "/gth-assets/css/bootstrap.min.css"
     assert g["show_theme_toggle"] is True
     assert g["theme_toggle_js_url"] == "/gth-assets/js/theme-toggle.js"
+    assert g["record_picker_js_url"] == "/gth-assets/js/record-picker.js"
 
 
 def test_every_asset_url_exists_in_the_package():

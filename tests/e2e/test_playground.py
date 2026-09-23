@@ -459,3 +459,81 @@ def test_tags_enter_comma_and_422_round_trip(page, playground_url):
     page.keyboard.press("Escape")  # the panel stays open after a pick
     page.click("#multi-demo button[type=submit]")
     expect(page.locator("#multi-demo-saved")).to_have_text("Saved: widgets=2 tags=urgent,blue,red")
+
+
+# ── gth-record-picker ────────────────────────────────────────────────────
+
+PART_TRIGGER = "#gth-field-part-trigger"
+PART_PANEL = "#gth-field-part-panel"
+
+
+def test_record_picker_search_page_and_keyboard_pick(page, playground_url):
+    page.goto(playground_url)
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    expect(panel).to_be_visible()
+    # Moved out of the form: its filter <form> mustn't nest in #record-demo.
+    assert panel.evaluate("el => el.parentElement === document.body")
+    search = panel.locator("input[type=search]")
+    expect(search).to_be_focused()
+    expect(panel.locator("[data-gth-pick]")).to_have_count(10)
+
+    # Page inside the panel, then search.
+    _htmx_idle(page)
+    panel.get_by_role("link", name="Page 2", exact=True).click()
+    expect(panel.locator(".gth-table-summary")).to_contain_text("11–20 of 120")
+    expect(panel.locator(".gth-table-filter")).to_have_count(1)  # swaps don't duplicate it
+    search.fill("kilo part 010")
+    expect(panel.locator("[data-gth-pick]")).to_have_count(1)
+    _htmx_idle(page)
+
+    search.focus()
+    page.keyboard.press("ArrowDown")
+    expect(panel.locator("[data-gth-pick]").first).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(panel).to_be_hidden()
+    expect(page.locator(PART_TRIGGER)).to_be_focused()
+    expect(page.locator(PART_TRIGGER)).to_have_text("Kilo part 010")
+    expect(page.locator("#record-demo-result")).to_have_text("part=10 (Kilo part 010)")
+
+    # Reopening keeps the panel's state and marks the current pick.
+    page.click(PART_TRIGGER)
+    expect(panel.locator("[data-gth-pick][aria-current=true]")).to_have_count(1)
+    page.mouse.click(5, 5)  # outside
+    expect(panel).to_be_hidden()
+
+    page.click("#record-demo [data-gth-record-picker-clear]")
+    expect(page.locator(PART_TRIGGER)).to_have_text("Choose a part…")
+    expect(page.locator("#record-demo-result")).to_have_text("Nothing picked.")
+
+
+def test_record_picker_in_modal_esc_keeps_modal_and_422_keeps_pick(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click("#gth-field-record-trigger")
+    panel = page.locator("#gth-field-record-panel")
+    expect(panel).to_be_visible()
+    # Inside the .modal, so Bootstrap's focus trap leaves the search box alone.
+    assert panel.evaluate("el => el.parentElement.classList.contains('modal')")
+    expect(panel.locator("input[type=search]")).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(panel).to_be_hidden()
+    expect(page.locator(MODAL)).to_be_visible()
+    expect(page.locator("#gth-field-record-trigger")).to_be_focused()
+
+    page.click("#gth-field-record-trigger")
+    panel.locator("[data-gth-pick]").first.click()  # sorted by name: Alpha part 006
+    expect(page.locator("#gth-field-record-trigger")).to_have_text("Alpha part 006")
+
+    page.click("#gth-modal-host button[type=submit]")  # no widget → 422 re-render
+    expect(page.locator("#gth-modal-host")).to_contain_text("Pick a widget from the list.")
+    expect(page.locator("#gth-field-record-trigger")).to_have_text("Alpha part 006")
+    # The re-rendered picker gets a fresh panel; the old portaled one is gone.
+    page.click("#gth-field-record-trigger")
+    expect(page.locator("#gth-field-record-panel")).to_have_count(1)
+    expect(page.locator("#gth-field-record-panel [data-gth-pick]")).to_have_count(10)
+    page.keyboard.press("Escape")
+
+    page.click(COMBO_INPUT)
+    page.click(f"{COMBO_RESULTS} [data-value='3']")
+    page.click("#gth-modal-host button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved Widget #3 (S) for Alpha part 006")

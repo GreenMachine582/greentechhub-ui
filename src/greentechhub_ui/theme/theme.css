@@ -309,6 +309,31 @@ th[aria-sort] .gth-table-sort .bi {
   font-size: 0.55rem;  /* Bootstrap already inverts it in dark mode */
 }
 
+/* gth-record-picker — the panel is position:fixed and placed by
+   record-picker.js (it's moved to <body>/the enclosing .modal while open). */
+.gth-record-picker-trigger {
+  min-width: 0;
+}
+.gth-record-picker-trigger > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gth-record-picker-panel {
+  position: fixed;
+  z-index: 1060;  /* above a Bootstrap modal (1055), like .gth-combobox-results */
+  width: min(var(--gth-picker-width, 40rem), calc(100vw - 1rem));
+  overflow-y: auto;
+}
+.gth-record-picker-row {
+  cursor: pointer;
+}
+.gth-record-picker-row:focus {
+  outline: 2px solid var(--gth-color-primary);
+  outline-offset: -2px;
+}
+
 /* gth-combobox: results panel floats over the content below the input,
    above a modal body (Bootstrap modals sit at z-index 1055). */
 .gth-combobox-results {

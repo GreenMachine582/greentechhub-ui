@@ -1,0 +1,56 @@
+{% from "skeleton.html" import gth_skeleton %}
+
+{% macro gth_record_picker(name, label, url, value=None, value_label=None, errors=None, placeholder="Select…", help_text=None, field_class="mb-3", panel_width="40rem", clearable=True) %}
+{# A field that opens a floating panel with a searchable, sortable, paged
+   table for picking one record — for records too rich for a combobox row.
+   Behaviour in static/js/record-picker.js (record_picker_js_url).
+   `url` returns the panel body, loaded once on first open: typically
+   gth_table_filter + gth_data_table (any TableState mode — its own sort,
+   filter and pager swaps then work inside the panel), with each row wrapped
+   in gth_record_picker_row. Give that TableState an id unique on the page.
+   Picking fills hidden `name` (and `<name>_label`, so a 422 re-render can
+   echo value_label back). The panel is moved to <body> — or the enclosing
+   .modal, inside Bootstrap's focus trap — while open, so its table's forms
+   never nest in yours. It's a custom panel, not a Bootstrap Popover: the
+   popover sanitizer strips tables and inputs. #}
+{% set has_value = value is not none and value != "" %}
+<div class="{{ field_class }} gth-form-field">
+  <label class="form-label" for="gth-field-{{ name }}-trigger">{{ label }}</label>
+  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="{{ url|e }}">
+    <div class="input-group{% if errors %} has-validation{% endif %}">
+      <button type="button" class="form-select text-start gth-record-picker-trigger{% if errors %} is-invalid{% endif %}"
+        id="gth-field-{{ name }}-trigger" data-gth-record-picker-trigger
+        aria-haspopup="dialog" aria-expanded="false" aria-controls="gth-field-{{ name }}-panel"
+        {%- if errors %} aria-invalid="true"{% endif %}
+        {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}>
+        <span data-gth-record-picker-label data-placeholder="{{ placeholder|e }}"
+          {%- if not has_value %} class="text-secondary"{% endif %}>{{ (value_label if has_value and value_label else (value if has_value else placeholder))|e }}</span>
+      </button>
+      {% if clearable %}
+      <button type="button" class="btn btn-outline-secondary gth-record-picker-clear{% if not has_value %} d-none{% endif %}"
+        data-gth-record-picker-clear aria-label="Clear {{ label|e }}"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      {% endif %}
+    </div>
+    <input type="hidden" name="{{ name }}" value="{{ (value if has_value else '')|e }}" data-gth-record-picker-value>
+    <input type="hidden" name="{{ name }}_label" value="{{ (value_label or '')|e }}" data-gth-record-picker-value-label>
+    <div id="gth-field-{{ name }}-panel" class="card shadow d-none gth-record-picker-panel" role="dialog"
+      aria-label="{{ label|e }}" style="--gth-picker-width: {{ panel_width|e }}" data-gth-record-picker-panel>
+      <div class="card-body p-2" data-gth-record-picker-body>{{ gth_skeleton(4) }}</div>
+    </div>
+  </div>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {% if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro gth_record_picker_row(value, label, row_class="") %}
+{# One pickable <tr> for a gth_record_picker panel — cells via {% call %}.
+   `label` is what the field shows once picked. Click, or ↑/↓ then Enter. #}
+<tr class="gth-record-picker-row {{ row_class }}" tabindex="-1" data-gth-pick data-value="{{ value|e }}" data-label="{{ label|e }}">
+  {{- caller() -}}
+</tr>
+{% endmacro %}

@@ -10,6 +10,7 @@
 {% from "badge.html" import gth_badge %}
 {% from "tabs.html" import gth_tabs %}
 {% from "chips.html" import gth_chips, gth_switch %}
+{% from "record_picker.html" import gth_record_picker %}
 
 {% block title %}Playground{% endblock %}
 
@@ -193,6 +194,14 @@
 
   <h2 class="mt-4">gth-multiselect (+ tags mode)</h2>
   {% include "_multi_form.html" %}
+
+  <h2 class="mt-4">gth-record-picker</h2>
+  <form id="record-demo" class="gth-form" hx-post="/v07-demo/record-pick" hx-target="#record-demo-result"
+    hx-trigger="change">
+    {{ gth_record_picker("part", "Part", "/v07-demo/record-picker?for=page", placeholder="Choose a part…",
+        help_text="Click to search 120 parts; also inside the server-rendered modal above.") }}
+    <p class="text-secondary small mb-0">Submitted: <code id="record-demo-result">nothing yet</code></p>
+  </form>
 
   <h2 class="mt-4">gth-data-table</h2>
   <p class="text-secondary">

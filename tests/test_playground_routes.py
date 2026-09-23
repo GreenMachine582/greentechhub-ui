@@ -169,3 +169,21 @@ def test_tables_infinite_rows_only_append():
 
 def test_tables_unknown_mode_falls_back_to_pages():
     assert 'data-gth-table-mode="pages"' in _run(_get("/tables", params={"mode": "bogus"})).text
+
+
+def test_record_picker_panel_first_load_has_filter_then_swaps_do_not():
+    first = _run(_get("/v07-demo/record-picker", params={"for": "page"}, headers=HX))
+    assert "gth-table-filter" in first.text and 'id="picker-page"' in first.text
+    assert first.text.count("data-gth-pick") == 10
+
+    swap = _run(_get("/v07-demo/record-picker", params={"for": "page", "page": 2},
+                     headers={**HX, "HX-Target": "picker-page"}))
+    assert "gth-table-filter" not in swap.text
+    assert "11–20 of 120" in swap.text
+
+
+def test_record_picker_ids_are_per_picker():
+    modal = _run(_get("/v07-demo/record-picker", params={"for": "modal"}, headers=HX))
+    assert 'id="picker-modal"' in modal.text
+    bogus = _run(_get("/v07-demo/record-picker", params={"for": "<x>"}, headers=HX))
+    assert 'id="picker-page"' in bogus.text

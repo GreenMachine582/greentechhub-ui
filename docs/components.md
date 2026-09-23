@@ -25,6 +25,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
+| `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
@@ -293,4 +294,33 @@ gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js bui
    input removes the last chip; max_items caps the count; adds/removals are
    announced in a polite live region. Chips are built with textContent, so a
    typed tag can't inject HTML. #}
+```
+
+### Record picker (v0.7)
+
+```jinja
+{# record_picker.html — behaviour in static/js/record-picker.js (record_picker_js_url) #}
+gth_record_picker(name, label, url, value=None, value_label=None, errors=None,
+                  placeholder="Select…", help_text=None, field_class="mb-3",
+                  panel_width="40rem", clearable=True)
+gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells via {% call %} #}
+{# For records too rich for a combobox row. Clicking the field (or ↓ on it) opens
+   a floating panel and loads `url` into it once. That endpoint returns
+   gth_table_filter + gth_data_table (any TableState mode; give the state an id
+   unique on the page) with rows wrapped in gth_record_picker_row — the table's
+   own sort/filter/pager swaps then work inside the panel unchanged. Those swaps
+   target the table, so return only the table when HX-Target is the table's id
+   (the first load targets the panel body, which has none):
+
+       with_filter = request.headers.get("HX-Target") != state.id
+
+   Picking fills hidden `name` and `<name>_label` (echo the latter back as
+   value_label on a 422), updates the field, fires `change`, closes the panel
+   and returns focus to the field. While open the panel lives in <body> — or the
+   enclosing .modal, inside Bootstrap's focus trap — positioned under the field
+   (above it if there's no room; full-width under 576px). That keeps the panel's
+   filter <form> out of your form and stops a modal body clipping it. Keyboard:
+   focus starts in the search box; ↓ enters the rows; ↑/↓/Home/End move;
+   Enter/Space pick; Esc closes the panel only (not an enclosing modal).
+   Not a Bootstrap Popover: its sanitizer strips tables and inputs. #}
 ```

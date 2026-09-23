@@ -272,14 +272,22 @@ async def v07_widget_options(request: Request, q: str = ""):
 
 
 def _v07_modal_context(widget: str = "", size: str = "S", errors: dict | None = None,
-                       search: str = "") -> dict:
+                       search: str = "", record: str = "", record_label: str = "") -> dict:
     picked = widget.isdigit() and 0 < int(widget) <= len(WIDGETS)
     return {
         "widget_value": widget,
         "widget_label": WIDGETS[int(widget) - 1] if picked else search,
         "size": size,
+        "record_value": record,
+        "record_label": record_label,
         "errors": errors or {},
     }
+
+
+def _record(record_id: str) -> dict | None:
+    if record_id.isdigit() and 0 < int(record_id) <= len(RECORDS):
+        return RECORDS[int(record_id) - 1]
+    return None
 
 
 @app.get("/v07-demo/modal", response_class=HTMLResponse)
@@ -289,17 +297,46 @@ async def v07_modal(request: Request):
 
 @app.post("/v07-demo/modal", response_class=HTMLResponse)
 async def v07_modal_submit(request: Request, widget: str = Form(""), size: str = Form("S"),
-                           widget_search: str = Form("")):
+                           widget_search: str = Form(""), record: str = Form(""),
+                           record_label: str = Form("")):
     if not widget.isdigit():
         context = _v07_modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
-                                     widget_search)
+                                     widget_search, record, record_label)
         # Re-render just the form (hx-target="this"); the modal stays open.
         return templates.TemplateResponse(request, "_v07_form.html", context, status_code=422)
     resp = HTMLResponse("", status_code=204)
+    part = _record(record)
     resp.headers["HX-Trigger"] = greentechhub_ui.toast(
-        f"Saved {WIDGETS[int(widget) - 1]} ({size})", events=["closeModal"]
+        f"Saved {WIDGETS[int(widget) - 1]} ({size})" + (f" for {part['name']}" if part else ""),
+        events=["closeModal"],
     )
     return resp
+
+
+@app.get("/v07-demo/record-picker", response_class=HTMLResponse)
+async def v07_record_picker(request: Request):
+    """A gth_record_picker panel body: filter + data table of RECORDS. One
+    endpoint serves two pickers, so ?for= keeps their table ids apart."""
+    picker = request.query_params.get("for")
+    picker = picker if picker in ("modal", "page") else "page"
+    state = _records_state(request.query_params, mode="pages", scroll=False,
+                           base_url="/v07-demo/record-picker?" + urlencode({"for": picker}),
+                           table_id=f"picker-{picker}")
+    rows, state = _query_records(state)
+    # The first load fills the panel (filter + table); the table's own
+    # sort/filter/pager swaps target the table (HX-Target: its id) and must
+    # get just the table back.
+    with_filter = request.headers.get("HX-Target") != state.id
+    return templates.TemplateResponse(request, "_record_picker_panel.html",
+                                      {"table": state, "records": rows, "with_filter": with_filter})
+
+
+@app.post("/v07-demo/record-pick", response_class=HTMLResponse)
+async def v07_record_pick(part: str = Form(""), part_label: str = Form("")):
+    record = _record(part)
+    if record is None:
+        return HTMLResponse("Nothing picked.")
+    return HTMLResponse(f"part={record['id']} ({record['name']})")
 
 
 @app.get("/v07-demo/tab/{key}", response_class=HTMLResponse)
