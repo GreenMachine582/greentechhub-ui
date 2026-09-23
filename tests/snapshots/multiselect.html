@@ -1,0 +1,32 @@
+
+        
+
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-stocks-search">Stocks</label>
+  <div class="position-relative gth-combobox gth-multiselect" data-gth-combobox data-gth-combobox-multi
+    data-gth-combobox-name="stocks" data-gth-combobox-url="/stocks/options?x=1&amp;y=2" data-gth-combobox-max="3">
+    <div class="form-control d-flex flex-wrap align-items-center gap-1 gth-multiselect-control is-invalid">
+      <span class="d-flex flex-wrap gap-1" data-gth-combobox-chips>
+<span class="badge rounded-pill gth-chip-token" data-gth-combobox-chip data-value="7">
+  <span>BHP</span><input type="hidden" name="stocks" value="7">
+  <button type="button" class="btn-close ms-1" data-gth-combobox-remove aria-label="Remove BHP"></button>
+</span>
+<span class="badge rounded-pill gth-chip-token" data-gth-combobox-chip data-value="a&amp;b">
+  <span>&lt;A&amp;B&gt;</span><input type="hidden" name="stocks" value="a&amp;b">
+  <button type="button" class="btn-close ms-1" data-gth-combobox-remove aria-label="Remove &lt;A&amp;B&gt;"></button>
+</span></span>
+      <input type="text" class="gth-multiselect-input flex-grow-1"
+        id="gth-field-stocks-search" name="stocks_search" data-gth-combobox-input
+        placeholder="Search…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gth-field-stocks-results" aria-invalid="true" aria-describedby="gth-field-stocks-help gth-field-stocks-error">
+    </div>
+    <div id="gth-field-stocks-results" class="list-group position-absolute w-100 shadow d-none gth-combobox-results"
+      role="listbox" aria-multiselectable="true" aria-label="Stocks options" data-gth-combobox-results></div>
+  </div>
+  <div class="visually-hidden" aria-live="polite" data-gth-combobox-live></div>
+  <div class="form-text" id="gth-field-stocks-help">Up to 3.</div>
+  
+  <div class="invalid-feedback d-block" id="gth-field-stocks-error">
+    Pick one.
+  </div>
+  
+</div>

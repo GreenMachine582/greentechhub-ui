@@ -569,3 +569,26 @@ def test_switch():
             input_attrs={"hx-post": "/prefs?a=1&b=2"}) }}"""
     )
     assert_snapshot(rendered, "switch")
+
+
+def test_multiselect_with_values_and_errors():
+    rendered = _render(
+        """{% from "multiselect.html" import gth_multiselect %}
+        {{ gth_multiselect("stocks", "Stocks", url="/stocks/options?x=1&y=2",
+            values=[{"value": 7, "label": "BHP"}, {"value": "a&b", "label": "<A&B>"}],
+            max_items=3, errors=["Pick one."], help_text="Up to 3.") }}"""
+    )
+    assert_snapshot(rendered, "multiselect")
+    assert rendered.count('type="hidden" name="stocks"') == 2
+    assert "<span>&lt;A&amp;B&gt;</span>" in rendered  # escaped even with autoescape off
+    assert 'value="a&amp;b"' in rendered
+
+
+def test_multiselect_without_url_is_a_tags_input():
+    rendered = _render(
+        """{% from "multiselect.html" import gth_multiselect %}
+        {{ gth_multiselect("tags", "Tags") }}"""
+    )
+    assert_snapshot(rendered, "multiselect_tags")
+    assert "data-gth-combobox-create" in rendered
+    assert "data-gth-combobox-url" not in rendered and 'role="combobox"' not in rendered

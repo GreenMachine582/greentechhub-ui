@@ -396,3 +396,66 @@ def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
     expect(checked).to_be_visible()
     unchecked = page.locator("#chips-demo label:has-text('Motors') .gth-chip-check")
     expect(unchecked).to_be_hidden()
+
+
+# ── gth-multiselect ──────────────────────────────────────────────────────
+
+MS_INPUT = "#gth-field-widgets-search"
+MS_RESULTS = "#gth-field-widgets-results"
+MS_CHIPS = "#multi-demo [data-gth-combobox-name=widgets] [data-gth-combobox-chip]"
+TAG_INPUT = "#gth-field-tags-search"
+TAG_CHIPS = "#multi-demo [data-gth-combobox-name=tags] [data-gth-combobox-chip]"
+
+
+def test_multiselect_pick_hides_chosen_and_backspace_removes(page, playground_url):
+    page.goto(playground_url)
+    page.click(MS_INPUT)
+    expect(page.locator(f"{MS_RESULTS} [data-value]")).to_have_count(10)
+    page.click(f"{MS_RESULTS} [data-value='1']")
+    expect(page.locator(MS_CHIPS)).to_have_count(1)
+    expect(page.locator(MS_INPUT)).to_be_focused()
+    expect(page.locator(MS_RESULTS)).to_be_visible()  # stays open for the next pick
+    expect(page.locator(f"{MS_RESULTS} [data-value='1']")).to_be_hidden()
+
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    expect(page.locator(MS_CHIPS)).to_have_count(2)
+    # The refreshed list starts on #2 (#1 is hidden); ArrowDown moves to #3.
+    assert page.locator(MS_CHIPS).nth(1).get_attribute("data-value") == "3"
+    page.keyboard.press("Backspace")
+    expect(page.locator(MS_CHIPS)).to_have_count(1)
+    expect(page.locator("#multi-demo [data-gth-combobox-live]").first).to_have_text(
+        "Removed Widget #3")
+
+
+def test_multiselect_remove_button_and_max_items(page, playground_url):
+    page.goto(playground_url)
+    page.click(MS_INPUT)
+    for value in ("1", "2", "3", "4", "5", "6"):
+        page.click(f"{MS_RESULTS} [data-value='{value}']")
+    expect(page.locator(MS_CHIPS)).to_have_count(5)  # max_items=5
+    page.click(f"{MS_CHIPS} >> nth=0 >> [data-gth-combobox-remove]")
+    expect(page.locator(MS_CHIPS)).to_have_count(4)
+
+
+def test_tags_enter_comma_and_422_round_trip(page, playground_url):
+    page.goto(playground_url)
+    expect(page.locator(TAG_CHIPS)).to_have_count(1)  # "urgent" pre-filled
+    page.fill(TAG_INPUT, "blue")
+    page.keyboard.press("Enter")
+    page.type(TAG_INPUT, "red,")
+    page.fill(TAG_INPUT, "urgent")  # duplicate: ignored
+    page.keyboard.press("Enter")
+    expect(page.locator(TAG_CHIPS)).to_have_count(3)
+    assert page.input_value(TAG_INPUT) == "urgent"
+
+    page.fill(TAG_INPUT, "")
+    page.click("#multi-demo button[type=submit]")  # no widgets picked → 422
+    expect(page.locator("#multi-demo")).to_contain_text("Pick at least one widget.")
+    expect(page.locator(TAG_CHIPS)).to_have_count(3)  # tags echoed back
+
+    page.click(MS_INPUT)
+    page.click(f"{MS_RESULTS} [data-value='2']")
+    page.keyboard.press("Escape")  # the panel stays open after a pick
+    page.click("#multi-demo button[type=submit]")
+    expect(page.locator("#multi-demo-saved")).to_have_text("Saved: widgets=2 tags=urgent,blue,red")

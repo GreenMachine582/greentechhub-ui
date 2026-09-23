@@ -149,6 +149,7 @@ async def index(request: Request):
         "watchlist": WATCHLIST_DEMO,
         **_paginate_widgets(0),
         **_widget_rows(1),
+        **_multi_context(tags=["urgent"]),
     })
 
 
@@ -317,6 +318,25 @@ async def v07_chips(request: Request):
     if form.get("alerts"):
         parts.append(f"alerts={form.get('alerts')}")
     return HTMLResponse(", ".join(parts) or "(nothing)")
+
+
+def _multi_context(widgets=(), tags=(), errors=None) -> dict:
+    widget_values = [{"value": w, "label": WIDGETS[int(w) - 1]}
+                     for w in widgets if w.isdigit() and 0 < int(w) <= len(WIDGETS)]
+    return {"widget_values": widget_values, "tag_values": [{"value": t, "label": t} for t in tags],
+            "errors": errors or {}, "saved": None}
+
+
+@app.post("/v07-demo/multi", response_class=HTMLResponse)
+async def v07_multi(request: Request):
+    form = await request.form()
+    widgets, tags = form.getlist("widgets"), form.getlist("tags")
+    if not widgets:
+        context = _multi_context(widgets, tags, {"widgets": ["Pick at least one widget."]})
+        return templates.TemplateResponse(request, "_multi_form.html", context, status_code=422)
+    context = _multi_context(widgets, tags)
+    context["saved"] = f"widgets={','.join(widgets)} tags={','.join(tags) or '-'}"
+    return templates.TemplateResponse(request, "_multi_form.html", context)
 
 
 @app.post("/v07-demo/slow-job")

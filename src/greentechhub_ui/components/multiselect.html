@@ -1,0 +1,51 @@
+{% macro gth_multiselect(name, label, url=None, values=(), allow_create=False, max_items=None, errors=None, placeholder="Search…", help_text=None, field_class="mb-3") %}
+{# Searchable multi-select: picks show as removable chips, each carrying a
+   hidden `name` input, so the form submits name=<value> once per pick
+   (FastAPI list[str] = Form([]); Django getlist). Behaviour is
+   combobox.js's multi mode (combobox_js_url); `url` is a gth_combobox
+   endpoint (gth_combobox_option rows) and already-picked options are
+   hidden from its results.
+   values: the current picks, [{"value", "label"}] — echo them back on a
+   422 re-render. allow_create=True (or no url at all) is a tags input:
+   Enter or comma turns the typed text into a chip whose value is the text
+   (an exact label match picks the existing option instead).
+   max_items caps the number of chips. Keyboard: ↑/↓ + Enter pick,
+   Backspace on the empty input removes the last chip, Esc closes. #}
+<div class="{{ field_class }} gth-form-field">
+  <label class="form-label" for="gth-field-{{ name }}-search">{{ label }}</label>
+  <div class="position-relative gth-combobox gth-multiselect" data-gth-combobox data-gth-combobox-multi
+    data-gth-combobox-name="{{ name }}"
+    {%- if url %} data-gth-combobox-url="{{ url|e }}"{% endif %}
+    {%- if allow_create or not url %} data-gth-combobox-create{% endif %}
+    {%- if max_items %} data-gth-combobox-max="{{ max_items }}"{% endif %}>
+    <div class="form-control d-flex flex-wrap align-items-center gap-1 gth-multiselect-control{% if errors %} is-invalid{% endif %}">
+      <span class="d-flex flex-wrap gap-1" data-gth-combobox-chips>
+        {%- for v in values %}{{ gth_multiselect_chip(name, v.value, v.label) }}{% endfor -%}
+      </span>
+      <input type="text" class="gth-multiselect-input flex-grow-1"
+        id="gth-field-{{ name }}-search" name="{{ name }}_search" data-gth-combobox-input
+        placeholder="{{ placeholder }}" autocomplete="off"
+        {%- if url %} role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gth-field-{{ name }}-results"{% endif %}
+        {%- if errors %} aria-invalid="true"{% endif %}
+        {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}>
+    </div>
+    <div id="gth-field-{{ name }}-results" class="list-group position-absolute w-100 shadow d-none gth-combobox-results"
+      role="listbox" aria-multiselectable="true" aria-label="{{ label }} options" data-gth-combobox-results></div>
+  </div>
+  <div class="visually-hidden" aria-live="polite" data-gth-combobox-live></div>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {% if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro gth_multiselect_chip(name, value, label) -%}
+{# One picked value. combobox.js builds the same markup for new picks. #}
+<span class="badge rounded-pill gth-chip-token" data-gth-combobox-chip data-value="{{ value|e }}">
+  <span>{{ label|e }}</span><input type="hidden" name="{{ name }}" value="{{ value|e }}">
+  <button type="button" class="btn-close ms-1" data-gth-combobox-remove aria-label="Remove {{ label|e }}"></button>
+</span>
+{%- endmacro %}

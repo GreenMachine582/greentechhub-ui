@@ -272,6 +272,43 @@ th[aria-sort] .gth-table-sort .bi {
   box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
 }
 
+/* gth-multiselect — a form-control-looking box holding chips + a bare
+   input; the box takes the focus ring its input would have had. */
+.gth-multiselect-control {
+  cursor: text;
+  min-height: calc(1.5em + 0.75rem + 2px);
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+.gth-multiselect-control:focus-within {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+.gth-multiselect-control.is-invalid:focus-within {
+  border-color: var(--bs-form-invalid-border-color);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-danger-rgb), 0.25);
+}
+.gth-multiselect-input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  min-width: 8rem;
+  padding: 0.125rem 0;
+}
+.gth-chip-token {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  color: var(--gth-brand-fg);
+  background-color: var(--gth-brand-subtle-bg);
+  border: 1px solid var(--gth-brand-subtle-border);
+}
+.gth-chip-token .btn-close {
+  font-size: 0.55rem;  /* Bootstrap already inverts it in dark mode */
+}
+
 /* gth-combobox: results panel floats over the content below the input,
    above a modal body (Bootstrap modals sit at z-index 1055). */
 .gth-combobox-results {

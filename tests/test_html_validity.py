@@ -51,6 +51,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "tabs",
         "chips",
         "switch",
+        "multiselect",
+        "multiselect_tags",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

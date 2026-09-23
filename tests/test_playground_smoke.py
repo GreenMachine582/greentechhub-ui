@@ -8,7 +8,14 @@ via `httpx`/`ASGITransport`; real browser behavior by the Playwright layer
 (docs/testing.md).
 """
 
-from playground.app import _paginate_widgets, _validate_budget, app, templates
+from playground.app import (
+    _multi_context,
+    _paginate_widgets,
+    _validate_budget,
+    _widget_rows,
+    app,
+    templates,
+)
 
 
 def test_app_is_a_fastapi_instance():
@@ -18,7 +25,8 @@ def test_app_is_a_fastapi_instance():
 
 
 def test_every_template_compiles():
-    for name in ["index.html", "_tasks_tbody.html", "_pagination_list.html", "_form_demo.html"]:
+    for name in ["index.html", "_tasks_tbody.html", "_pagination_list.html", "_form_demo.html",
+                 "tables.html", "_records_table.html", "_multi_form.html"]:
         templates.env.get_template(name)
 
 
@@ -30,6 +38,8 @@ def test_index_renders_every_component():
         budget_value=250,
         flashes_demo=[{"message": "x", "kind": "success"}],
         **_paginate_widgets(0),
+        **_widget_rows(1),
+        **_multi_context(tags=["urgent"]),
     )
     assert "gth-stat-card" in html
     assert "gth-card" in html
@@ -38,6 +48,7 @@ def test_index_renders_every_component():
     assert "gth-empty-state" in html
     assert "gth-form-field" in html
     assert "gth-toast" in html
+    assert "gth-multiselect" in html and "gth-badge" in html and "gth-tabs" in html
 
 
 def test_tasks_tbody_partial_has_no_table_wrapper():

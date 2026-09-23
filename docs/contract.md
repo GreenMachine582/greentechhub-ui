@@ -49,7 +49,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `bootstrap_js_url` | the upstream Bootstrap 5.3.3 CDN URL |
 | `htmx_js_url` | the upstream HTMX 1.9.10 CDN URL |
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
-| `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` (v0.7) |
+| `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 
 The last three default to a public CDN today (so no existing consumer's rendered output changes) rather than a
 vendored path — see [static/VENDORED.md](../src/greentechhub_ui/static/VENDORED.md) and [TODO.md](../TODO.md)'s

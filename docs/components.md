@@ -24,6 +24,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
+| `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
@@ -272,4 +273,24 @@ gth_switch(name, label, checked=False, value="on", help_text=None, field_class="
            input_attrs=None)
 {# form-switch with role="switch" in the brand color. Unchecked submits nothing.
    input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change. #}
+```
+
+### Multi-select and tags (v0.7)
+
+```jinja
+{# multiselect.html — behaviour is combobox.js's multi mode (combobox_js_url) #}
+gth_multiselect(name, label, url=None, values=(), allow_create=False, max_items=None,
+                errors=None, placeholder="Search…", help_text=None, field_class="mb-3")
+gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js builds the same markup #}
+{# url: a gth_combobox endpoint (gth_combobox_option rows); picked options are
+   hidden from its results and the panel stays open for the next pick. Each
+   chip carries a hidden `name` input, so the form submits name=<value> per
+   pick (FastAPI list[str] = Form([]); Django getlist). values: current picks,
+   [{"value", "label"}] — echo them back on a 422. allow_create=True, or no url,
+   is a tags input: Enter or comma adds the typed text (an exact label match
+   takes the existing option instead); nothing is highlighted until ↑/↓, so
+   Enter never silently takes the first suggestion. Backspace on the empty
+   input removes the last chip; max_items caps the count; adds/removals are
+   announced in a polite live region. Chips are built with textContent, so a
+   typed tag can't inject HTML. #}
 ```
