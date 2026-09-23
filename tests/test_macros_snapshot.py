@@ -451,3 +451,72 @@ def test_navbar_single_logo_without_logo_light_url():
     )
     assert rendered.count("<img") == 1
     assert "gth-logo-on-" not in rendered
+
+
+_DATA_TABLE = """{% from "table.html" import gth_data_table %}
+{% call(r) gth_data_table(state, [{"label": "Name", "sort_key": "name"}, "Qty"], rows) %}
+<tr><td>{{ r.name }}</td><td>{{ r.qty }}</td></tr>
+{% endcall %}"""
+_ROWS = [{"name": "Bolt", "qty": 3}, {"name": "Nut", "qty": 9}]
+
+
+def _table_state(query=None, **kwargs):
+    from greentechhub_ui import TableState
+
+    kwargs.setdefault("sortable", ("name",))
+    state = TableState.from_query(query or {}, id="parts", base_url="/parts", page_size=2, **kwargs)
+    return state.with_result(total=kwargs.pop("total", 9))
+
+
+def test_data_table_pages():
+    state = _table_state({"page": "3", "sort": "name", "dir": "desc", "q": "b&c"},
+                         mode="pages", page_sizes=(2, 10), push_url=True)
+    assert_snapshot(_render(_DATA_TABLE, state=state, rows=_ROWS), "data_table_pages")
+
+
+def test_data_table_load_more():
+    state = _table_state(mode="load_more")
+    assert_snapshot(_render(_DATA_TABLE, state=state, rows=_ROWS), "data_table_load_more")
+
+
+def test_data_table_infinite_in_scroll_box():
+    state = _table_state(mode="infinite", max_height="20rem")
+    assert_snapshot(_render(_DATA_TABLE, state=state, rows=_ROWS), "data_table_infinite")
+
+
+def test_data_table_rows_only_append():
+    state = _table_state({"page": "2", "partial": "rows"}, mode="infinite")
+    rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert 'id="parts"' not in rendered and "<thead>" not in rendered
+    assert rendered.count("<tr") == 3  # two rows + the next trailing row
+    assert 'hx-get="/parts?page=3&amp;partial=rows"' in rendered
+
+
+def test_data_table_none_mode_has_no_navigation():
+    state = _table_state(mode="none")
+    rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert "gth-table-load-more" not in rendered and "pagination" not in rendered
+
+
+def test_data_table_empty():
+    state = _table_state(mode="pages", total=0)
+    rendered = _render(_DATA_TABLE, state=state, rows=[])
+    assert "gth-empty-state" in rendered and "pagination" not in rendered
+
+
+def test_table_filter():
+    rendered = _render(
+        """{% from "table.html" import gth_table_filter %}
+        {% call gth_table_filter(state) %}<select name="category"></select>{% endcall %}""",
+        state=_table_state({"q": 'a"b', "page": "2"}, mode="pages",
+                           filter_params=("q", "category")),
+    )
+    assert_snapshot(rendered, "table_filter")
+
+
+def test_skeleton():
+    rendered = _render(
+        """{% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
+        {{ gth_skeleton(2) }}<table><tbody>{{ gth_skeleton_rows(2, colspan=3) }}</tbody></table>"""
+    )
+    assert_snapshot(rendered, "skeleton")

@@ -1,0 +1,27 @@
+{% extends "app.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "table.html" import gth_table_filter %}
+{% from "segmented.html" import gth_segmented %}
+
+{% block title %}Tables{% endblock %}
+
+{% block content %}
+{{ gth_page_header("gth-data-table", subtitle="One template, navigation chosen by TableState(mode=...): pages, load more, infinite scroll, or none.",
+    breadcrumbs=[{"label": "Playground", "url": "/"}, {"label": "Tables"}]) }}
+
+<nav class="mb-3 d-flex flex-wrap gap-2" aria-label="Table navigation mode">
+  {% for m, label in [("pages", "Pages"), ("load_more", "Load more"), ("infinite", "Infinite"), ("none", "None")] %}
+  <a class="btn btn-sm {{ 'btn-primary' if table.mode == m and not scroll else 'btn-outline-secondary' }}"
+     href="/tables?mode={{ m }}"{% if table.mode == m and not scroll %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+  <a class="btn btn-sm {{ 'btn-primary' if scroll else 'btn-outline-secondary' }}"
+     href="/tables?mode=infinite&amp;scroll=1"{% if scroll %} aria-current="page"{% endif %}>Infinite (scroll box)</a>
+</nav>
+
+{% call gth_table_filter(table, placeholder="Search records…") %}
+  {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),
+      field_class="mb-0") }}
+{% endcall %}
+
+{% include "_records_table.html" %}
+{% endblock %}

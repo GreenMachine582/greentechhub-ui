@@ -2,6 +2,7 @@ from pathlib import Path
 
 from . import navigation, theme
 from .shell import shell_globals
+from .table import TableState
 from .toast import toast
 
 _package_dir = Path(__file__).parent
@@ -17,6 +18,7 @@ __all__ = [
     "static_path",
     "theme_path",
     "shell_globals",
+    "TableState",
     "theme",
     "toast",
     "navigation",

@@ -1,0 +1,14 @@
+{% from "table.html" import gth_data_table %}
+{% call(r) gth_data_table(table, [
+    {"label": "Name", "sort_key": "name"},
+    {"label": "Category", "sort_key": "category"},
+    {"label": "Stock", "sort_key": "stock", "class": "text-end"},
+    {"label": "Price", "sort_key": "price", "class": "text-end"},
+  ], records, empty_message="No records match.") %}
+<tr data-record-id="{{ r.id }}">
+  <td>{{ r.name }}</td>
+  <td>{{ r.category }}</td>
+  <td class="text-end">{{ r.stock }}</td>
+  <td class="text-end">${{ "%.2f"|format(r.price) }}</td>
+</tr>
+{% endcall %}

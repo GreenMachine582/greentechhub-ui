@@ -19,6 +19,9 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
+| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7) |
+| `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
+| `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
 
@@ -173,7 +176,69 @@ greentechhub_ui.toast(message, kind="success", *, events=())
 
 # shell.py
 greentechhub_ui.shell_globals(*, service_name, nav_items, assets_prefix="/gth-assets",
-                              theme_prefix="/gth-static", theme_toggle=True, show_logo=False) -> dict
+                              theme_prefix="/gth-static", theme_toggle=True, show_logo=False,
+                              navbar_theme=None) -> dict
 # Every app.html global in one call (brand, nav_items, all asset URLs pointing at
 # the vendored copies). The consumer still mounts static_path/theme_path at those prefixes.
+```
+
+### Data tables (v0.7)
+
+A table's navigation is a **config choice**, not a different template. Build a `TableState` from the request's query, fetch with its `offset`/`limit`/`sort`/`direction`/`filters`, hand it the result, and render one `gth_data_table` call — for the full page *and* for every htmx partial:
+
+```python
+# table.py
+state = greentechhub_ui.TableState.from_query(
+    request.query_params,            # any Mapping: FastAPI query_params, Django request.GET
+    id="stocks", base_url="/stocks",
+    mode="pages",                    # "pages" | "load_more" | "infinite" | "none"
+    page_size=25, page_sizes=(25, 50, 100),   # page_sizes: allow-list for ?size= (+ a select)
+    sortable=("name", "price"), default_sort="name", default_direction="asc",
+    filter_params=("q", "exchange"), # query params that are filters (kept in every URL)
+    push_url=False,                  # hx-push-url on sort/filter/page changes
+    window=2,                        # pages either side of the current one in the pager
+    max_height=None,                 # e.g. "24rem": scroll box + sticky header;
+)                                    #   infinite mode then observes that box
+rows, total = repo.list(offset=state.offset, limit=state.limit, sort=state.sort,
+                        direction=state.direction, **state.filters)
+state = state.with_result(total=total)   # or has_next=... when the count is unknown
+template = "_stocks_table.html" if is_htmx_swap(request) else "stocks.html"
+```
+
+Query parameters are fixed: `page`, `size`, `sort`, `dir`, `partial=rows`, plus each `filter_params` name. Anything not allow-listed (an unsortable column, an off-list size, a negative page) is ignored, not trusted. Return the table fragment for htmx swaps — `HX-Request: true` *without* `HX-History-Restore-Request: true` (a history restore needs the whole page) — and the full page otherwise.
+
+```jinja
+{# table.html #}
+gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="",
+               load_more_label="Load more")      {# rows via {% call(row) %} #}
+{# headers: "Name" or {"label": "Name", "sort_key": "name", "class": "text-end"} —
+   a sort_key in state.sortable renders a sort button with aria-sort + caret.
+   Renders <div id="{{ state.id }}"> wrapping the table; sort buttons, pager,
+   page-size select and gth_table_filter all hx-get into it (outerHTML).
+   state.rows_only (a load-more/infinite append, ?partial=rows) renders only
+   the rows + the next trailing row. Per mode:
+     pages     — "11–20 of 120" summary, optional page-size select, gth_table_pager
+     load_more — trailing gth_table_load_more row
+     infinite  — trailing row that loads itself on intersect (skeleton + a
+                 focus-visible "Load more" fallback button for keyboard users)
+     none      — nothing; pass every row #}
+
+gth_table_pager(state, label="Table pages")
+{# Bootstrap .pagination in <nav aria-label>: prev, first/last + a window with
+   ellipses, next. Real hrefs, so it works without htmx. Prev/next only when
+   the total is unknown (with_result(has_next=...)). #}
+
+gth_table_filter(state, placeholder="Search…", search_param="q", label="Search", filter_class="mb-3")
+{# A <form role="search"> OUTSIDE the table (so the input keeps focus across
+   swaps): typing (300ms debounce) or changing any control in the optional
+   {% call %} slot — e.g. gth_segmented, gth_chips — re-requests the table from
+   page 1. Slot controls' names must be listed in filter_params. #}
+
+gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None)
+{# Low-level trailing row (gth_data_table uses it). infinite=True: fetches on
+   intersect, observed within the `root` selector's scroll box if given. #}
+
+{# skeleton.html #}
+gth_skeleton(lines=3, skeleton_class="")     {# placeholder-glow lines, aria-hidden #}
+gth_skeleton_rows(rows=3, colspan=1)         {# placeholder <tr>s #}
 ```

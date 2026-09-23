@@ -26,6 +26,7 @@ Open **http://127.0.0.1:8500/**.
 - **Pagination** — click "Load more" on the widget list until it runs out (each click appends a new group, matching the real HTMX `hx-swap="outerHTML"` pattern this mirrors).
 - **Form** — submit the budget field with a value in range (0–1000) to see the success toast fire, then with one out of range (e.g. `-5`) to see the inline validation error.
 - **Toast** — click "Trigger a toast" for the standalone `HX-Trigger` demo.
+- **Tables** (`/tables`) — the same `gth_data_table` in each `TableState` mode (pages, load more, infinite, infinite inside a scroll box, none): sort by a header, search, filter by category, change page size; in pages mode the URL follows along (`push_url`), so reload/back work.
 - **Dark mode** — click the sun/moon toggle in the navbar; refresh the page to confirm the choice persists.
 
 ## Running the automated checks

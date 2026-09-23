@@ -19,13 +19,29 @@
 {% endif %}
 {% endmacro %}
 
-{% macro gth_table_load_more(next_url, label="Load more", colspan=99, total=None) %}
+{% macro gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None) %}
 {# gth_pagination's table-row sibling: gth_pagination's fixed
    hx-target="this" can't append <tr>s, so this renders a trailing row whose
    button replaces the row itself (hx-target="closest tr") with the next
    page's rows — which end with their own gth_table_load_more, if any.
-   Render it as the last thing in a gth_table_body partial. #}
+   Render it as the last thing in a gth_table_body partial.
+   infinite=True: the row fetches itself when scrolled into view
+   (hx-trigger="intersect once", observed within the `root` selector's
+   scroll box if given) and shows a skeleton; the button stays as a
+   keyboard/screen-reader fallback, visible on focus. #}
 {% if next_url %}
+{% if infinite %}
+<tr class="gth-pagination gth-table-load-more gth-table-infinite"
+  hx-get="{{ next_url|e }}" hx-trigger="intersect once{% if root %} root:{{ root|e }}{% endif %}" hx-swap="outerHTML">
+  <td colspan="{{ colspan }}" class="py-2">
+    <span class="placeholder-glow d-block" aria-hidden="true"><span class="placeholder col-12"></span></span>
+    <button type="button" class="btn btn-sm btn-outline-secondary visually-hidden-focusable gth-pagination-more"
+      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML" hx-sync="closest tr:drop">
+      {{ label }}
+    </button>
+  </td>
+</tr>
+{% else %}
 <tr class="gth-pagination gth-table-load-more">
   <td colspan="{{ colspan }}" class="text-center py-2">
     <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
@@ -35,4 +51,145 @@
   </td>
 </tr>
 {% endif %}
+{% endif %}
+{% endmacro %}
+
+{# ── gth_data_table: config-driven navigation (greentechhub_ui.TableState) ── #}
+
+{% macro _swap_attrs(state) -%}
+hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{% if state.push_url %} hx-push-url="true"{% endif %}
+{%- endmacro %}
+
+{% macro _header(state, h) -%}
+{%- set is_map = h is mapping -%}
+{%- set label = h.label if is_map else h -%}
+{%- set key = h.get("sort_key") if is_map else none -%}
+{%- set th_class = h.get("class") if is_map else none -%}
+{%- if key and key in state.sortable -%}
+{%- set aria = state.aria_sort(key) -%}
+<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}{% if aria %} aria-sort="{{ aria }}"{% endif %}>
+  <button type="button" class="gth-table-sort" hx-get="{{ state.sort_url(key)|e }}" {{ _swap_attrs(state) }}>
+    {{- label }} <i class="bi bi-{{ {'ascending': 'caret-up-fill', 'descending': 'caret-down-fill'}.get(aria, 'chevron-expand') }}" aria-hidden="true"></i>
+  </button>
+</th>
+{%- else -%}
+<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}>{{ label }}</th>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="", load_more_label="Load more") %}
+{# One call for the full page AND every htmx partial of a table whose
+   navigation comes from `state` (greentechhub_ui.TableState): "none",
+   "load_more", "infinite" or "pages". Rows via {% call(row) %}.
+   headers: strings, or {"label", "sort_key"?, "class"?} dicts — a
+   sort_key in state.sortable makes the header a sort button.
+   state.rows_only (a load-more/infinite append) renders just the rows and
+   the next trailing row; otherwise the whole #state.id wrapper, which every
+   control (sort, pager, page size, gth_table_filter) re-requests and
+   replaces (hx-swap="outerHTML"). The endpoint returns this fragment for
+   htmx requests (HX-Request header) and the full page otherwise. #}
+{% set colspan = headers|length %}
+{% set root = ("#" ~ state.id ~ "-scroll") if state.max_height else none %}
+{% if state.rows_only %}
+{% for row in rows %}{{ caller(row) }}{% endfor %}
+{{ gth_table_load_more(state.next_url, label=load_more_label, colspan=colspan, total=state.total,
+    infinite=state.mode == "infinite", root=root) }}
+{% else %}
+<div id="{{ state.id }}" class="gth-data-table" data-gth-table-mode="{{ state.mode }}">
+<div class="table-responsive gth-table-wrapper{% if state.max_height %} gth-table-scroll{% endif %}"
+  {%- if state.max_height %} id="{{ state.id }}-scroll" style="--gth-table-max-height: {{ state.max_height|e }}"{% endif %}>
+<table class="table table-hover align-middle gth-table {{ table_class }}">
+  <thead><tr>{% for h in headers %}{{ _header(state, h) }}{% endfor %}</tr></thead>
+  <tbody id="{{ state.id }}-tbody">
+  {% if rows %}
+    {% for row in rows %}{{ caller(row) }}{% endfor %}
+    {% if state.mode in ("load_more", "infinite") %}
+    {{ gth_table_load_more(state.next_url, label=load_more_label, colspan=colspan, total=state.total,
+        infinite=state.mode == "infinite", root=root) }}
+    {% endif %}
+  {% else %}
+    <tr><td colspan="{{ colspan }}">{{ gth_empty_state(empty_message) }}</td></tr>
+  {% endif %}
+  </tbody>
+</table>
+</div>
+{% if state.mode == "pages" and rows %}
+<div class="d-flex flex-wrap align-items-center gap-2 gth-table-footer">
+  <span class="text-secondary small me-auto gth-table-summary">
+    {{ state.offset + 1 }}–{{ state.offset + rows|length }}{% if state.total is not none %} of {{ state.total }}{% endif %}
+  </span>
+  {% if state.page_sizes %}
+  <label class="visually-hidden" for="{{ state.id }}-size">Rows per page</label>
+  <select class="form-select form-select-sm w-auto gth-table-size" id="{{ state.id }}-size" name="size"
+    hx-get="{{ state.size_url|e }}" hx-trigger="change" {{ _swap_attrs(state) }}>
+    {% for s in state.page_sizes %}<option value="{{ s }}"{% if s == state.page_size %} selected{% endif %}>{{ s }} / page</option>{% endfor %}
+  </select>
+  {% endif %}
+  {{ gth_table_pager(state) }}
+</div>
+{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro gth_table_pager(state, label="Table pages") %}
+{# Numbered page links for a "pages"-mode TableState: previous, a window
+   around the current page with ellipses, next. Without a known total
+   (state.has_next only) it's previous/next alone. Real hrefs, so it also
+   works without htmx. Renders nothing when everything fits on one page. #}
+{% if not (state.page == 1 and state.is_last_page) %}
+{% set prev = state.prev_url %}
+{% set next = state.next_url %}
+<nav aria-label="{{ label }}" class="gth-table-pager">
+  <ul class="pagination pagination-sm mb-0">
+    <li class="page-item{% if not prev %} disabled{% endif %}">
+      {%- if prev %}<a class="page-link" href="{{ prev|e }}" hx-get="{{ prev|e }}" {{ _swap_attrs(state) }} aria-label="Previous page">
+      {%- else %}<span class="page-link" aria-hidden="true">{% endif -%}
+      <i class="bi bi-chevron-left" aria-hidden="true"></i>
+      {%- if prev %}</a>{% else %}</span>{% endif -%}
+    </li>
+    {% for p in state.page_links() %}
+    {% if p is none %}
+    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+    {% elif p == state.page %}
+    <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
+    {% else %}
+    {% set u = state.page_url(p) %}
+    <li class="page-item"><a class="page-link" href="{{ u|e }}" hx-get="{{ u|e }}" {{ _swap_attrs(state) }} aria-label="Page {{ p }}">{{ p }}</a></li>
+    {% endif %}
+    {% endfor %}
+    <li class="page-item{% if not next %} disabled{% endif %}">
+      {%- if next %}<a class="page-link" href="{{ next|e }}" hx-get="{{ next|e }}" {{ _swap_attrs(state) }} aria-label="Next page">
+      {%- else %}<span class="page-link" aria-hidden="true">{% endif -%}
+      <i class="bi bi-chevron-right" aria-hidden="true"></i>
+      {%- if next %}</a>{% else %}</span>{% endif -%}
+    </li>
+  </ul>
+</nav>
+{% endif %}
+{% endmacro %}
+
+{% macro gth_table_filter(state, placeholder="Search…", search_param="q", label="Search", filter_class="mb-3") %}
+{# Filter bar for a gth_data_table. Render it OUTSIDE the table (the table
+   is replaced on every change; the search box keeps focus this way).
+   Typing (debounced) or changing any control in the optional {% call %}
+   slot (e.g. gth_segmented / gth_chips) re-requests the table from page 1.
+   Every control's name must be in the TableState's filter_params.
+   (No `changed` modifier: htmx compares the triggering element's .value,
+   which a <form> doesn't have. hx-sync="this:replace" drops the
+   superseded duplicate a blur's `change` can cause.)
+   search_param=None drops the search box (slot controls only). #}
+<form class="gth-table-filter {{ filter_class }}" role="search" hx-get="{{ state.filter_url|e }}"
+  hx-trigger="input delay:300ms, change, submit" hx-sync="this:replace" {{ _swap_attrs(state) }}>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    {% if search_param %}
+    <div class="input-group flex-grow-1 w-auto gth-table-search">
+      <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+      <input type="search" class="form-control" name="{{ search_param }}" value="{{ state.filters.get(search_param, '')|e }}"
+        placeholder="{{ placeholder }}" aria-label="{{ label }}" autocomplete="off">
+    </div>
+    {% endif %}
+    {% if caller is defined %}{{ caller() }}{% endif %}
+  </div>
+</form>
 {% endmacro %}

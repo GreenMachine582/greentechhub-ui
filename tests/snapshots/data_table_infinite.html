@@ -1,0 +1,46 @@
+
+
+
+
+
+
+<div id="parts" class="gth-data-table" data-gth-table-mode="infinite">
+<div class="table-responsive gth-table-wrapper gth-table-scroll" id="parts-scroll" style="--gth-table-max-height: 20rem">
+<table class="table table-hover align-middle gth-table ">
+  <thead><tr><th scope="col">
+  <button type="button" class="gth-table-sort" hx-get="/parts?sort=name&amp;dir=asc" hx-target="#parts" hx-swap="outerHTML" hx-indicator="#parts">Name <i class="bi bi-chevron-expand" aria-hidden="true"></i>
+  </button>
+</th><th scope="col">Qty</th></tr></thead>
+  <tbody id="parts-tbody">
+  
+    
+<tr><td>Bolt</td><td>3</td></tr>
+
+<tr><td>Nut</td><td>9</td></tr>
+
+    
+    
+
+
+
+<tr class="gth-pagination gth-table-load-more gth-table-infinite"
+  hx-get="/parts?page=2&amp;partial=rows" hx-trigger="intersect once root:#parts-scroll" hx-swap="outerHTML">
+  <td colspan="2" class="py-2">
+    <span class="placeholder-glow d-block" aria-hidden="true"><span class="placeholder col-12"></span></span>
+    <button type="button" class="btn btn-sm btn-outline-secondary visually-hidden-focusable gth-pagination-more"
+      hx-get="/parts?page=2&amp;partial=rows" hx-target="closest tr" hx-swap="outerHTML" hx-sync="closest tr:drop">
+      Load more
+    </button>
+  </td>
+</tr>
+
+
+
+    
+  
+  </tbody>
+</table>
+</div>
+
+</div>
+

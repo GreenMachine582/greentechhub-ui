@@ -276,3 +276,73 @@ def test_secondary_buttons_follow_color_mode(page, playground_url):
     expect(button).to_have_css("color", "rgb(206, 212, 218)")  # #ced4da: 10.3:1 on dark
     page.click(".gth-theme-toggle")
     expect(button).to_have_css("color", "rgb(108, 117, 125)")  # Bootstrap's light value
+
+
+# ── gth_data_table / TableState ──────────────────────────────────────────
+
+RECORD_ROWS = "#records tbody tr[data-record-id]"
+
+
+def test_data_table_pages_navigation_pushes_url(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    expect(page.locator(RECORD_ROWS)).to_have_count(10)
+    page.click("#records .gth-table-pager >> text=3")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("21–30 of 120")
+    assert "page=3" in page.url
+    page.select_option("#records-size", "25")
+    expect(page.locator(RECORD_ROWS)).to_have_count(25)
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("1–25 of 120")
+
+
+def test_data_table_sort_toggles(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    price_header = page.locator("#records th:has-text('Price')")
+    price_header.locator("button").click()
+    expect(price_header).to_have_attribute("aria-sort", "ascending")
+    first_asc = page.locator(RECORD_ROWS).first.inner_text()
+    page.locator("#records th:has-text('Price') button").click()
+    price_header = page.locator("#records th:has-text('Price')")
+    expect(price_header).to_have_attribute("aria-sort", "descending")
+    expect(page.locator(RECORD_ROWS).first).not_to_have_text(first_asc)
+
+
+def test_data_table_filter_debounced_and_resets_page(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages&page=4")
+    page.fill(".gth-table-filter input[type=search]", "kilo")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 20")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10")
+    page.click(".gth-table-filter label:has-text('Cable')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 10")
+    assert page.locator(".gth-table-filter input[type=search]").input_value() == "kilo"
+
+
+def test_data_table_load_more(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=load_more")
+    expect(page.locator(RECORD_ROWS)).to_have_count(10)
+    page.click("#records .gth-table-load-more button")
+    expect(page.locator(RECORD_ROWS)).to_have_count(20)
+
+
+def test_data_table_infinite_scroll_until_exhausted(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=infinite")
+    rows = page.locator(RECORD_ROWS)
+    expect(rows).to_have_count(10)
+    for _ in range(20):
+        if rows.count() >= 120:
+            break
+        page.mouse.wheel(0, 20000)
+        page.wait_for_timeout(150)
+    expect(rows).to_have_count(120)
+    expect(page.locator("#records .gth-table-infinite")).to_have_count(0)
+
+
+def test_data_table_infinite_inside_scroll_box(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=infinite&scroll=1")
+    rows = page.locator(RECORD_ROWS)
+    expect(rows).to_have_count(10)
+    box = page.locator("#records-scroll")
+    box.evaluate("el => el.scrollTop = el.scrollHeight")
+    expect(rows).to_have_count(20)
+    # The header sticks to the top of the scroll box.
+    th = page.locator("#records thead th").first
+    assert th.evaluate("el => getComputedStyle(el).position") == "sticky"

@@ -1,0 +1,17 @@
+{% macro gth_skeleton(lines=3, skeleton_class="") %}
+{# Placeholder lines for content that's still loading (e.g. an htmx-loaded
+   tab pane). Hidden from assistive tech: announce loading elsewhere if the
+   wait is long. #}
+<div class="placeholder-glow gth-skeleton {{ skeleton_class }}" aria-hidden="true">
+  {% for i in range(lines) %}<span class="placeholder d-block mb-2 {{ 'col-7' if loop.last and lines > 1 else 'col-12' }}"></span>{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro gth_skeleton_rows(rows=3, colspan=1) %}
+{# Placeholder <tr>s — the loading state for a table body. #}
+{% for i in range(rows) %}
+<tr class="gth-skeleton-row" aria-hidden="true">
+  <td colspan="{{ colspan }}"><span class="placeholder-glow d-block"><span class="placeholder col-12"></span></span></td>
+</tr>
+{% endfor %}
+{% endmacro %}

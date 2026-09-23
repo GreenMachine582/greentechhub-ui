@@ -33,6 +33,23 @@ TASKS = [
 ]
 
 WIDGETS = [f"Widget #{i}" for i in range(1, 17)]
+
+# gth_data_table / TableState demo — enough rows for a multi-page pager with
+# ellipses, deterministic so tests can assert on them.
+RECORD_CATEGORIES = ("Sensor", "Motor", "Cable", "Board")
+RECORDS = [
+    {
+        "id": i,
+        "name": f"{('Alpha', 'Bravo', 'Delta', 'Echo', 'Kilo', 'Nova')[i % 6]} part {i:03d}",
+        "category": RECORD_CATEGORIES[i % 4],
+        "stock": (i * 37) % 250,
+        "price": round(((i * 53) % 900) / 10 + 4.99, 2),
+    }
+    for i in range(1, 121)
+]
+CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
+    {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
+]
 PAGINATION_PAGE_SIZE = 5
 
 FLASHES_DEMO = [
@@ -71,6 +88,7 @@ templates.env.globals.update(greentechhub_ui.shell_globals(
     nav_items=greentechhub_ui.navigation.build_nav_items(
         custom_items=[
             {"label": "Playground", "url": "/", "icon": "grid"},
+            {"label": "Tables", "url": "/tables", "icon": "table"},
         ],
         # Demonstrates the built-in + consumer-registered merge docs/components.md
         # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
@@ -183,6 +201,62 @@ async def watchlist_demo_delete(request: Request, item_id: int):
     return templates.TemplateResponse(
         request, "_watchlist_list.html", {"watchlist": WATCHLIST_DEMO}
     )
+
+
+def _is_htmx_fragment(request: Request) -> bool:
+    """htmx swap requests get just the table; plain navigation (and htmx's
+    history-restore request, which needs a whole page) get the page."""
+    return (request.headers.get("HX-Request") == "true"
+            and request.headers.get("HX-History-Restore-Request") != "true")
+
+
+def _records_state(query, *, mode: str, scroll: bool, base_url: str,
+                   table_id: str = "records") -> greentechhub_ui.TableState:
+    return greentechhub_ui.TableState.from_query(
+        query,
+        id=table_id,
+        base_url=base_url,
+        mode=mode,
+        page_size=10,
+        page_sizes=(10, 25, 50),
+        sortable=("name", "category", "stock", "price"),
+        default_sort="name",
+        filter_params=("q", "category"),
+        push_url=mode == "pages" and table_id == "records",
+        max_height="22rem" if scroll else None,
+    )
+
+
+def _query_records(state: greentechhub_ui.TableState):
+    """What a consumer's repository does with a TableState: filter, sort,
+    then slice (or not, for mode="none")."""
+    rows = RECORDS
+    if q := state.filters.get("q", "").lower():
+        rows = [r for r in rows if q in r["name"].lower()]
+    if category := state.filters.get("category"):
+        rows = [r for r in rows if r["category"] == category]
+    if state.sort:
+        rows = sorted(rows, key=lambda r: (r[state.sort], r["id"]),
+                      reverse=state.direction == "desc")
+    total = len(rows)
+    if state.mode != "none":
+        rows = rows[state.offset: state.offset + state.limit]
+    return rows, state.with_result(total=total)
+
+
+@app.get("/tables", response_class=HTMLResponse)
+async def tables(request: Request, mode: str = "pages", scroll: int = 0):
+    if mode not in greentechhub_ui.table.MODES:
+        mode = "pages"
+    fixed = {"mode": mode, **({"scroll": 1} if scroll else {})}
+    state = _records_state(request.query_params, mode=mode, scroll=bool(scroll),
+                           base_url="/tables?" + urlencode(fixed))
+    rows, state = _query_records(state)
+    context = {"table": state, "records": rows, "scroll": bool(scroll),
+               "category_options": CATEGORY_OPTIONS}
+    if _is_htmx_fragment(request):
+        return templates.TemplateResponse(request, "_records_table.html", context)
+    return templates.TemplateResponse(request, "tables.html", context)
 
 
 @app.get("/v07-demo/widget-rows", response_class=HTMLResponse)

@@ -1,0 +1,16 @@
+
+        
+
+<form class="gth-table-filter mb-3" role="search" hx-get="/parts"
+  hx-trigger="input delay:300ms, change, submit" hx-sync="this:replace" hx-target="#parts" hx-swap="outerHTML" hx-indicator="#parts">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    
+    <div class="input-group flex-grow-1 w-auto gth-table-search">
+      <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+      <input type="search" class="form-control" name="q" value="a&#34;b"
+        placeholder="Search…" aria-label="Search" autocomplete="off">
+    </div>
+    
+    <select name="category"></select>
+  </div>
+</form>

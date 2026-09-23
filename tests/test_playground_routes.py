@@ -130,3 +130,42 @@ def test_modal_submit_closes_modal_via_hx_trigger():
     trigger = json.loads(response.headers["HX-Trigger"])
     assert trigger["closeModal"] is True
     assert trigger["showToast"]["message"] == "Saved Widget #3 (L)"
+
+
+HX = {"HX-Request": "true"}
+
+
+def test_tables_full_page_then_htmx_fragment():
+    page = _run(_get("/tables"))
+    assert page.status_code == 200
+    assert "<html" in page.text and 'id="records"' in page.text and "gth-table-filter" in page.text
+
+    fragment = _run(_get("/tables", params={"mode": "pages", "page": 2}, headers=HX))
+    assert "<html" not in fragment.text and "gth-table-filter" not in fragment.text
+    assert fragment.text.strip().startswith('<div id="records"')
+    assert "11–20 of 120" in fragment.text
+
+
+def test_tables_history_restore_gets_the_whole_page():
+    headers = {**HX, "HX-History-Restore-Request": "true"}
+    response = _run(_get("/tables", params={"page": 3}, headers=headers))
+    assert "<html" in response.text
+
+
+def test_tables_sort_and_filter():
+    response = _run(_get("/tables", params={"sort": "price", "dir": "desc", "category": "Motor",
+                                             "q": "part"}, headers=HX))
+    assert 'aria-sort="descending"' in response.text
+    assert "Sensor" not in response.text.split("<tbody")[1]
+
+
+def test_tables_infinite_rows_only_append():
+    response = _run(_get("/tables", params={"mode": "infinite", "page": 12, "partial": "rows"},
+                         headers=HX))
+    assert "<thead>" not in response.text
+    assert response.text.count("data-record-id=") == 10
+    assert "gth-table-load-more" not in response.text  # last page: no trailing row
+
+
+def test_tables_unknown_mode_falls_back_to_pages():
+    assert 'data-gth-table-mode="pages"' in _run(_get("/tables", params={"mode": "bogus"})).text
