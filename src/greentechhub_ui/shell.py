@@ -27,11 +27,13 @@ def shell_globals(
     theme_prefix: str = "/gth-static",
     theme_toggle: bool = True,
     show_logo: bool = False,
+    navbar_theme: str | None = None,
 ) -> dict:
     """Globals for app.html: brand, nav_items, and every asset URL.
 
     `assets_prefix` is where `greentechhub_ui.static_path` is mounted,
-    `theme_prefix` where `greentechhub_ui.theme_path` is.
+    `theme_prefix` where `greentechhub_ui.theme_path` is. `navbar_theme="dark"`
+    pins gth_navbar dark; by default it follows the color mode.
     """
     globals_ = {
         "brand": brand_context(
@@ -47,6 +49,7 @@ def shell_globals(
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
         "show_theme_toggle": theme_toggle,
+        "navbar_theme": navbar_theme,
     }
     if theme_toggle:
         globals_["theme_toggle_js_url"] = f"{assets_prefix}/js/theme-toggle.js"

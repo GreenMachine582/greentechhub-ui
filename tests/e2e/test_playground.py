@@ -248,3 +248,22 @@ def test_combobox_options_get_panel_scoped_ids(page, playground_url):
     page.keyboard.press("ArrowDown")
     active = page.get_attribute(COMBO_INPUT, "aria-activedescendant")
     assert active == "gth-field-widget-results-opt-1"
+
+
+def test_navbar_follows_color_mode(page, playground_url):
+    page.goto(playground_url)
+    nav = page.locator("nav.gth-navbar")
+
+    def bg():
+        return nav.evaluate("el => getComputedStyle(el).backgroundColor")
+
+    dark_bg = bg()
+    expect(page.locator(".gth-logo-on-dark")).to_be_visible()
+    expect(page.locator(".gth-logo-on-light")).to_be_hidden()
+
+    page.click(".gth-theme-toggle")
+    assert bg() != dark_bg
+    expect(page.locator(".gth-logo-on-light")).to_be_visible()
+    expect(page.locator(".gth-logo-on-dark")).to_be_hidden()
+    brand = page.locator(".gth-navbar-brand").evaluate("el => getComputedStyle(el).color")
+    assert brand == "rgb(18, 122, 19)"  # #127a13, 5.2:1 on the light navbar

@@ -9,7 +9,8 @@ brand identity — they intentionally diverge from GreenTechHub production's
 current logo file, not a copy of it. Two variants: logo.png is tuned for
 gth-navbar's hardcoded dark background; logo-light.png has a much stronger
 outline for the unpredictable (often light) background of a browser's
-favicon chrome, so brand_context() uses it for favicon_url specifically.
+favicon chrome, so brand_context() uses it for favicon_url — and, as
+logo_light_url, for gth_navbar in light mode.
 """
 
 BRAND_NAME = "GreenTechHub"
@@ -30,9 +31,10 @@ def brand_context(
 
     `show_logo` defaults to False so adopting this doesn't change any
     existing consumer's rendered output until they opt in (same pattern as
-    gth_navbar's show_theme_toggle). logo_url (navbar) and favicon_url
+    gth_navbar's show_theme_toggle). logo_url (dark navbar) and favicon_url
     (browser chrome) intentionally point at different assets — see the
-    module docstring.
+    module docstring. logo_light_url is the navbar's light-mode logo, the
+    same asset as favicon_url.
     """
     if show_logo:
         logo_url = f"{static_url_prefix}/{LOGO_ASSET_PATH}"
@@ -43,6 +45,9 @@ def brand_context(
     return {
         "name": BRAND_NAME,
         "logo_url": logo_url,
+        # gth_navbar follows the color mode: on a light navbar it shows this
+        # stronger-outlined variant instead of logo_url.
+        "logo_light_url": favicon_url,
         "favicon_url": favicon_url,
         "service_name": service_name,
     }

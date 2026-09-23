@@ -38,3 +38,9 @@ def test_custom_prefixes_and_no_theme_toggle():
     assert g["show_theme_toggle"] is False
     assert "theme_toggle_js_url" not in g
     assert g["brand"]["logo_url"].startswith("/static/gth/")
+
+
+def test_navbar_theme_follows_color_mode_unless_pinned():
+    assert shell_globals(service_name="Svc", nav_items=NAV)["navbar_theme"] is None
+    g = shell_globals(service_name="Svc", nav_items=NAV, navbar_theme="dark")
+    assert g["navbar_theme"] == "dark"

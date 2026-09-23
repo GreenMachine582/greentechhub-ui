@@ -104,3 +104,12 @@ def test_app_shell_optional_component_scripts():
     ))
     assert '<script src="/a/js/modal-host.js"></script>' in html
     assert '<script src="/a/js/combobox.js"></script>' in html
+
+
+def test_app_shell_navbar_follows_color_mode_unless_pinned():
+    html = _env().get_template("app.html").render(**_context())
+    assert "bg-body-tertiary" in html and "navbar-dark" not in html
+
+    html = _env().get_template("app.html").render(**_context(navbar_theme="dark"))
+    pinned = 'navbar-expand-md bg-dark border-bottom gth-navbar" data-bs-theme="dark">'
+    assert pinned in html

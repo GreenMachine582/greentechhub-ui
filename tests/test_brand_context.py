@@ -18,3 +18,9 @@ def test_brand_context_respects_static_url_prefix():
     brand = brand_context(show_logo=True, static_url_prefix="/gth-assets")
     assert brand["logo_url"] == "/gth-assets/logo/logo.png"
     assert brand["favicon_url"] == "/gth-assets/logo/logo-light.png"
+
+
+def test_brand_context_logo_light_url_is_the_light_variant():
+    assert brand_context()["logo_light_url"] is None
+    brand = brand_context(show_logo=True, static_url_prefix="/gth-assets")
+    assert brand["logo_light_url"] == "/gth-assets/logo/logo-light.png"

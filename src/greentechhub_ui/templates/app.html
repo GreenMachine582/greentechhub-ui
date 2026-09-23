@@ -40,7 +40,7 @@
 
   {% from "navbar.html" import gth_navbar %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
-      show_theme_toggle|default(false)) }}
+      show_theme_toggle|default(false), navbar_theme|default(none)) }}
 
   <main class="container py-4">
     {% block content %}{% endblock %}

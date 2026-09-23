@@ -17,7 +17,8 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
                               # wiring, a Django messages adapter, etc.) is owned by the framework adapter
                               # (greentechhub_fastapi.flash / a Django messages bridge), not greentechhub-core
   "url_for": callable,       # injected per-framework: FastAPI's request.url_for, or a thin Django shim
-  "brand": {"name": "GreenTechHub", "logo_url": "...", "favicon_url": "...", "service_name": "PyFinBot"},
+  "brand": {"name": "GreenTechHub", "logo_url": "...", "logo_light_url": "...", "favicon_url": "...",
+            "service_name": "PyFinBot"},   # logo_light_url optional: the navbar's light-mode logo
   "extra_head": [...],       # optional per-page <head> additions (trusted HTML strings) — see docs/extensibility.md
   "extra_css": [...],        # optional stylesheet URLs, e.g. a page needing a charting library
   "extra_js": [...],         # optional script URLs, same idea as extra_css
@@ -53,5 +54,8 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 The last three default to a public CDN today (so no existing consumer's rendered output changes) rather than a
 vendored path — see [static/VENDORED.md](../src/greentechhub_ui/static/VENDORED.md) and [TODO.md](../TODO.md)'s
 v0.5/v0.6 entries for why, and when those defaults go away.
+
+`navbar_theme` (optional, default none) is passed straight to `gth_navbar`: unset, the navbar follows the color
+mode; `"dark"` pins it dark.
 
 `greentechhub_ui.shell_globals(service_name=..., nav_items=...)` returns every global above (plus `brand`/`nav_items`) pointing at the vendored copies under the `/gth-assets` / `/gth-static` mount prefixes — prefer it over setting them one by one.

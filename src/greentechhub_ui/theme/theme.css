@@ -16,13 +16,41 @@
   --gth-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Color-mode-dependent values are custom properties set on every
+   [data-bs-theme] element and inherited from the NEAREST one — so a
+   component inside a dark-pinned navbar (gth_navbar(navbar_theme="dark"))
+   on a light page gets the dark values. Plain `[data-bs-theme=dark] .x`
+   selectors can't do that: both the <html> and the <nav> ancestor match. */
+[data-bs-theme="dark"] {
+  --gth-brand-fg: var(--gth-color-primary-light);
+  --gth-brand-fg-hover: var(--gth-color-primary);
+  --gth-on-dark-display: inline-block;
+  --gth-on-light-display: none;
+}
+[data-bs-theme="light"] {
+  /* primary-dark is only 3.7:1 on the light navbar; these clear 4.5:1 */
+  --gth-brand-fg: #127a13;
+  --gth-brand-fg-hover: #0f6b10;
+  --gth-on-dark-display: none;
+  --gth-on-light-display: inline-block;
+}
+
 .gth-navbar-brand {
-  color: var(--gth-color-primary-light) !important;
+  color: var(--gth-brand-fg, var(--gth-color-primary-light)) !important;
   font-weight: 700;
 }
 
 .gth-navbar-brand:hover {
-  color: var(--gth-color-primary) !important;
+  color: var(--gth-brand-fg-hover, var(--gth-color-primary)) !important;
+}
+
+/* Both logo variants render when brand.logo_light_url is set; show the one
+   drawn for the navbar's current background. */
+.gth-logo-on-dark {
+  display: var(--gth-on-dark-display, inline-block);
+}
+.gth-logo-on-light {
+  display: var(--gth-on-light-display, none);
 }
 
 /* gth-stat-card — equivalent to BottleBot's .metric-card, ported here so the
@@ -63,16 +91,13 @@
 /* gth-theme-toggle — icon shown reflects which mode clicking switches TO
    (sun visible in dark mode invites switching to light, and vice versa).
    Pure CSS, driven entirely by the data-bs-theme attribute the toggle's JS
-   sets — no JS-side icon-state management needed. */
-.gth-theme-toggle-icon-light,
+   sets (via the inherited --gth-on-*-display properties above) — no
+   JS-side icon-state management needed. */
+.gth-theme-toggle-icon-light {
+  display: var(--gth-on-dark-display, none);
+}
 .gth-theme-toggle-icon-dark {
-  display: none;
-}
-[data-bs-theme="dark"] .gth-theme-toggle-icon-light {
-  display: inline-block;
-}
-[data-bs-theme="light"] .gth-theme-toggle-icon-dark {
-  display: inline-block;
+  display: var(--gth-on-light-display, none);
 }
 
 /* gth-busy-button: swap to the busy label while the request is in flight.

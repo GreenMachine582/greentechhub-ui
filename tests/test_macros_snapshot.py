@@ -432,3 +432,22 @@ def test_combobox_option_has_no_value_derived_id():
         {{ gth_combobox_option("a b", "A B") }}"""
     )
     assert " id=" not in rendered
+
+
+def test_navbar_pinned_dark():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(nav_items, brand, navbar_theme="dark") }}""",
+        nav_items=[{"label": "Deals", "url": "/"}],
+        brand=brand_context(service_name="Playground"),
+    )
+    assert_snapshot(rendered, "navbar_pinned_dark")
+
+
+def test_navbar_single_logo_without_logo_light_url():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}{{ gth_navbar([], brand) }}""",
+        brand={"name": "GTH", "logo_url": "/l.png", "service_name": None},
+    )
+    assert rendered.count("<img") == 1
+    assert "gth-logo-on-" not in rendered
