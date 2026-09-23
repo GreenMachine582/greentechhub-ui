@@ -9,12 +9,16 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-page-header` | Title + breadcrumb + action-button slot, top of every page |
 | `gth-card` | Standard bordered content container |
 | `gth-stat-card` | Dashboard KPI tile (label, value, delta, icon) |
-| `gth-table` | Sortable/filterable table shell — headers wired for HTMX-driven sort/filter requests, empty-state fallback built in |
+| `gth-table` | Table shell + body with a built-in empty state; the `<tbody>` can be swapped by an HTMX partial (filter/sort controls are the consumer's own — headers render as plain text) |
 | `gth-form` | Form wrapper with consistent label/validation-error layout |
-| `gth-modal` | Generic modal, HTMX-loadable content slot, focus-trapped (see [docs/accessibility.md](accessibility.md)) |
+| `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Renders `flashes` from the [template context contract](contract.md) as accessible toast notifications |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
+| `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
+| `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
+| `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
+| `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
 
@@ -115,4 +119,61 @@ gth_modal(id, title, size=None, static_backdrop=False)
 {# confirm_delete.html — gth_modal + a danger button wired with hx-delete/hx-target.
    Deliberately no hx-confirm: the modal itself is the confirmation step #}
 gth_confirm_delete(id, target_url, item_label, hx_target=None)
+```
+
+## Shipped signatures (v0.7)
+
+Extracted from PyFinBot's Stocks/Transactions pages. Each JS-backed piece is a vanilla script under `static/js/`, loaded through its own `*_js_url` global ([docs/contract.md](contract.md#static-asset-globals)); `shell_globals()` sets all of them.
+
+```jinja
+{# Modal host — app.html now renders <div id="gth-modal-host">. hx-get a
+   route that returns a whole gth_modal / gth_confirm_delete into it
+   (hx-target="#gth-modal-host"); modal-host.js (modal_host_js_url) shows it.
+   A response closes it by firing the closeModal event:
+   greentechhub_ui.toast("Saved", events=["closeModal"]) #}
+
+{# table.html #}
+gth_table_load_more(next_url, label="Load more", colspan=99, total=None)
+{# Last thing in a gth_table_body partial. Replaces its own <tr>
+   (hx-target="closest tr") with the next page's rows. Renders nothing when
+   next_url is None. Pair with greentechhub_fastapi.query.next_page_url. #}
+
+{# busy_button.html #}
+gth_busy_button(label, busy_label, hx_attrs, icon=None, btn_class="btn-outline-secondary", start_toast=None)
+{# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
+   busy_label + spinner while the request runs; start_toast pops at once
+   (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
+   .htmx-request — see theme.css for the htmx 1.9.10 bug that forces it.
+   Still guard the action server-side: this only stops double-clicks in one tab. #}
+
+{# combobox.html — behaviour in static/js/combobox.js (combobox_js_url) #}
+gth_combobox(name, label, url, value=None, value_label=None, errors=None,
+             placeholder="Search…", help_text=None, field_class="mb-3")
+gth_combobox_option(value, label)        {# optional {% call %} body for richer row markup #}
+gth_combobox_empty(message="No matches")
+{# Focusing/typing GETs `url?q=<text>`; the endpoint returns
+   gth_combobox_option rows (they carry data-value/data-label). Picking fills
+   hidden input `name`; typing clears it, so only a picked value is ever
+   submitted. The visible input is `<name>_search` — echo it back as
+   value_label on a 422. Keyboard: ↑/↓ move, Enter picks (never submits the
+   form), Esc closes the panel (not an enclosing modal), Tab closes. #}
+
+{# segmented.html #}
+gth_segmented(name, options, value=None, label=None, field_class="mb-3")
+{# options: [{"value", "label", "style"?, "icon"?}] — style is a
+   btn-outline-* class (default btn-outline-primary). Checked = value, or the
+   first option. Submits name=<value> like any radio group. #}
+```
+
+```python
+# toast.py
+greentechhub_ui.toast(message, kind="success", *, events=())
+# events: extra HX-Trigger events merged into the same header, e.g.
+# ["closeModal", "stocksChanged"] — a response can only carry one HX-Trigger.
+
+# shell.py
+greentechhub_ui.shell_globals(*, service_name, nav_items, assets_prefix="/gth-assets",
+                              theme_prefix="/gth-static", theme_toggle=True, show_logo=False) -> dict
+# Every app.html global in one call (brand, nav_items, all asset URLs pointing at
+# the vendored copies). The consumer still mounts static_path/theme_path at those prefixes.
 ```

@@ -47,6 +47,17 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] Remove Alpine.js from the README badge row and Scope prose — nothing shipped uses it (dark mode is vanilla JS; `gth-modal` doesn't exist yet); revisit vendoring once a real component needs it
 - [ ] v0.6: drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` once consumers have had a release to pick up the vendored globals — services will need to mount `greentechhub_ui.static` (already required for icons/theme) for `app.html` to keep working
 
+### v0.7 — Components
+- [x] `toast(..., events=[...])` — merge extra HX-Trigger events (`closeModal`, table-refresh events) into the one header
+- [x] Modal host — `#gth-modal-host` in `app.html` + `modal-host.js`: server-rendered `gth_modal`s shown on swap, closed by the `closeModal` event (the "HTMX-loadable" `gth-modal` the catalogue always promised)
+- [x] `gth_table_load_more` — `gth_pagination`'s table-row sibling (its fixed `hx-target="this"` can't append `<tr>`s)
+- [x] `gth_busy_button` + `data-gth-start-toast` in `toast.js` — busy styling keyed on `:disabled` (see the htmx item below)
+- [x] `gth_combobox` / `gth_combobox_option` / `gth_combobox_empty` + `combobox.js`
+- [x] `gth_segmented` — `btn-check` radio group
+- [x] `shell_globals()` — all `app.html` globals in one call, vendored asset URLs included; BottleBot, PyFinBot and the playground each hand-set ~10 of them
+- [x] `next_url|e` in `gth_pagination`/`gth_table_load_more` — an unescaped `&` broke strict HTML parsing when autoescape is off
+- [ ] Bump vendored htmx past 1.9.10: it shares one `requestCount` between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks on an element that is both (why `gth-busy-button` keys on `:disabled`). Confirm the fixing version in htmx's changelog; update `VENDORED.md` hash/size
+
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
 - [ ] PyFinBot greenfield build shipped
@@ -65,6 +76,7 @@ Per-service retrofit progress.
 - [x] Drop custom `static/style.css` overrides in favor of the shared theme (`.metric-card`/`.metric-label`/`.metric-value`/`.metric-delta` removed now that `gth-stat-card` covers them via `theme.css`; remaining rules — deal highlighting, watchlist pills, timeline — are genuinely BottleBot-specific business styling, not theme duplication, and are expected to stay)
 - [x] Replace hand-rolled navbar with `gth-navbar`
 - [x] Migrate remaining components one at a time (done: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`; watchlist pagination → `gth-pagination`; health tables (`_scrape_runs_table.html`, `_notification_log_table.html`) and criteria tables → `gth-table`/`gth-table_body`; other cards — done 2026-09-22, `deal.html`'s main product card and `_watchlist_product_card.html` → `gth-card`)
+- [ ] Adopt `shell_globals()` in `web/templating.py` and `toast(..., events=)` where handlers set several HX-Trigger events (v0.7)
 
 ### PyFinBot
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)
