@@ -1,0 +1,5 @@
+{% from "table.html" import gth_table_body, gth_table_load_more %}
+{% call(widget) gth_table_body(rows=widget_rows, empty_message="No widgets.") %}
+<tr><td>{{ widget }}</td></tr>
+{% endcall %}
+{{ gth_table_load_more(widget_next_url, total=widget_total) }}

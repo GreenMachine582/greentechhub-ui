@@ -1,0 +1,6 @@
+{% from "combobox.html" import gth_combobox_option, gth_combobox_empty %}
+{% for widget_id, widget in widgets %}
+{{ gth_combobox_option(widget_id, widget) }}
+{% else %}
+{{ gth_combobox_empty("No matching widgets") }}
+{% endfor %}

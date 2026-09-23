@@ -6,6 +6,7 @@
 {% from "empty_state.html" import gth_empty_state %}
 {% from "toast.html" import gth_toast_flashes %}
 {% from "modal.html" import gth_modal %}
+{% from "busy_button.html" import gth_busy_button %}
 
 {% block title %}Playground{% endblock %}
 
@@ -133,6 +134,26 @@
   <div id="watchlist-demo-list">
     {% include "_watchlist_list.html" %}
   </div>
+</section>
+
+<section class="mb-5" id="v07-demos">
+  <h2>Server-rendered modal host (#gth-modal-host)</h2>
+  <p class="text-secondary">
+    The whole <code>gth_modal</code> comes from the server into <code>#gth-modal-host</code>;
+    <code>modal-host.js</code> shows it, and the form's success response closes it via
+    <code>toast(..., events=["closeModal"])</code>.
+  </p>
+  <button type="button" class="btn btn-outline-secondary"
+    hx-get="/v07-demo/modal" hx-target="#gth-modal-host">Open server-rendered modal</button>
+
+  <h2 class="mt-4">gth-busy-button</h2>
+  {{ gth_busy_button("Run slow job", "Running…", {"hx-post": "/v07-demo/slow-job", "hx-swap": "none"},
+      icon="arrow-repeat", start_toast="Slow job started — takes ~2s") }}
+
+  <h2 class="mt-4">gth-table-load-more</h2>
+  {% call gth_table(headers=["Widget"], tbody_id="widgets-tbody") %}
+    {% include "_widget_rows.html" %}
+  {% endcall %}
 </section>
 
 <section class="mb-5">

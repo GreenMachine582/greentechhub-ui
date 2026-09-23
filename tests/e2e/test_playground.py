@@ -124,3 +124,98 @@ def test_page_makes_no_off_origin_requests(page, playground_url):
     page.wait_for_load_state("networkidle")
 
     assert off_origin_urls == []
+
+
+# ── v0.7: modal host, combobox, segmented, busy button, table load-more ────
+
+MODAL = "#gth-modal-host .modal.show"
+COMBO_INPUT = "#gth-field-widget-search"
+COMBO_VALUE = "#gth-modal-host input[name=widget]"
+COMBO_RESULTS = "#gth-field-widget-results"
+
+
+def _open_v07_modal(page, playground_url):
+    page.goto(playground_url)
+    page.click("text=Open server-rendered modal")
+    expect(page.locator(MODAL)).to_be_visible()
+
+
+def test_combobox_search_clear_restores_full_list(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click(COMBO_INPUT)
+    expect(page.locator(COMBO_RESULTS)).to_be_visible()
+    expect(page.locator(f"{COMBO_RESULTS} [data-value]")).to_have_count(10)
+
+    page.fill(COMBO_INPUT, "#16")
+    expect(page.locator(f"{COMBO_RESULTS} [data-value]")).to_have_count(1)
+    page.click(f"{COMBO_RESULTS} [data-value]")
+    expect(page.locator(COMBO_RESULTS)).to_be_hidden()
+    assert page.input_value(COMBO_INPUT) == "Widget #16"
+    assert page.input_value(COMBO_VALUE) == "16"
+
+    # The reported bug: clearing the search must bring the whole list back
+    # and drop the stale pick.
+    page.fill(COMBO_INPUT, "")
+    expect(page.locator(f"{COMBO_RESULTS} [data-value]")).to_have_count(10)
+    assert page.input_value(COMBO_VALUE) == ""
+
+
+def test_combobox_keyboard_pick_does_not_submit_and_esc_keeps_modal(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click(COMBO_INPUT)
+    expect(page.locator(COMBO_RESULTS)).to_be_visible()
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    expect(page.locator(COMBO_RESULTS)).to_be_hidden()
+    assert page.input_value(COMBO_INPUT) == "Widget #2"
+    expect(page.locator(MODAL)).to_be_visible()  # Enter picked, didn't submit
+
+    page.fill(COMBO_INPUT, "Wid")
+    expect(page.locator(COMBO_RESULTS)).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(COMBO_RESULTS)).to_be_hidden()
+    expect(page.locator(MODAL)).to_be_visible()  # Esc closed the panel, not the modal
+
+
+def test_modal_form_422_then_success_closes_modal(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.fill(COMBO_INPUT, "Wid")  # typed, never picked
+    expect(page.locator(COMBO_RESULTS)).to_be_visible()
+    page.keyboard.press("Escape")  # the open panel overlays the fields below it
+    page.click("#gth-modal-host label:has-text('Large')")
+    page.click("#gth-modal-host button[type=submit]")
+    expect(page.locator("#gth-modal-host")).to_contain_text("Pick a widget from the list.")
+    assert page.input_value(COMBO_INPUT) == "Wid"
+    expect(page.locator("#gth-modal-host input[name=size][value=L]")).to_be_checked()
+
+    page.click(COMBO_INPUT)
+    page.click(f"{COMBO_RESULTS} [data-value='3']")
+    page.click("#gth-modal-host button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved Widget #3 (L)")
+    expect(page.locator(MODAL)).to_have_count(0)
+
+
+def test_busy_button_shows_busy_state_then_resets(page, playground_url):
+    page.goto(playground_url)
+    button = page.locator(".gth-busy-button")
+    button.click()
+    expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Slow job started")
+    expect(button).to_be_disabled()
+    expect(button.locator(".gth-busy-button-busy")).to_be_visible()
+    expect(button.locator(".gth-busy-button-idle")).to_be_hidden()
+
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Slow job finished", timeout=10000)
+    # The reported bug: the busy label must not stick once the request ends.
+    expect(button).to_be_enabled()
+    expect(button.locator(".gth-busy-button-idle")).to_be_visible()
+    expect(button.locator(".gth-busy-button-busy")).to_be_hidden()
+
+
+def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
+    page.goto(playground_url)
+    rows = page.locator("#widgets-tbody tr:not(.gth-table-load-more)")
+    expect(rows).to_have_count(5)
+    for expected in (10, 15, 16):
+        page.click("#widgets-tbody .gth-table-load-more button")
+        expect(rows).to_have_count(expected)
+    expect(page.locator("#widgets-tbody .gth-table-load-more")).to_have_count(0)

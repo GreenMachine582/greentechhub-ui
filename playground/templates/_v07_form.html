@@ -1,0 +1,15 @@
+{% from "form.html" import gth_form %}
+{% from "combobox.html" import gth_combobox %}
+{% from "segmented.html" import gth_segmented %}
+{% call gth_form("/v07-demo/modal", form_attrs={"hx-post": "/v07-demo/modal", "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  {{ gth_combobox("widget", "Widget", "/v07-demo/widgets", value=widget_value, value_label=widget_label,
+      errors=errors.get("widget"), placeholder="Search widgets…") }}
+  {{ gth_segmented("size", [
+      {"value": "S", "label": "Small", "icon": "dash-circle"},
+      {"value": "L", "label": "Large", "style": "btn-outline-warning", "icon": "plus-circle"},
+    ], value=size, label="Size") }}
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+{% endcall %}

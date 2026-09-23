@@ -5,6 +5,7 @@ data — no real database. See docs/testing.md. Run directly:
     # or: uv run playground/app.py
 """
 
+import asyncio
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -64,29 +65,22 @@ templates.env.loader = ChoiceLoader(
         FileSystemLoader(greentechhub_ui.components_path),
     ]
 )
-templates.env.globals["brand"] = greentechhub_ui.theme.brand_context(
-    service_name="Playground", show_logo=True, static_url_prefix="/gth-assets"
-)
-templates.env.globals["nav_items"] = greentechhub_ui.navigation.build_nav_items(
-    custom_items=[
-        {"label": "Playground", "url": "/", "icon": "grid"},
-    ],
-    # Demonstrates the built-in + consumer-registered merge docs/components.md
-    # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
-    # is empty in the real package today (no built-in exists yet) — this
-    # override proves built_in_items render first, ahead of custom_items.
-    built_in_items=[
-        {"label": "Home", "url": "/", "icon": "house"},
-    ],
-)
-templates.env.globals["theme_css_url"] = "/gth-static/theme.css"
-templates.env.globals["icons_css_url"] = "/gth-assets/icons/bootstrap-icons.min.css"
-templates.env.globals["toast_js_url"] = "/gth-assets/js/toast.js"
-templates.env.globals["theme_toggle_js_url"] = "/gth-assets/js/theme-toggle.js"
-templates.env.globals["bootstrap_css_url"] = "/gth-assets/css/bootstrap.min.css"
-templates.env.globals["bootstrap_js_url"] = "/gth-assets/js/bootstrap.bundle.min.js"
-templates.env.globals["htmx_js_url"] = "/gth-assets/js/htmx.min.js"
-templates.env.globals["show_theme_toggle"] = True
+templates.env.globals.update(greentechhub_ui.shell_globals(
+    service_name="Playground",
+    show_logo=True,
+    nav_items=greentechhub_ui.navigation.build_nav_items(
+        custom_items=[
+            {"label": "Playground", "url": "/", "icon": "grid"},
+        ],
+        # Demonstrates the built-in + consumer-registered merge docs/components.md
+        # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
+        # is empty in the real package today (no built-in exists yet) — this
+        # override proves built_in_items render first, ahead of custom_items.
+        built_in_items=[
+            {"label": "Home", "url": "/", "icon": "house"},
+        ],
+    ),
+))
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 app.mount("/gth-static", StaticFiles(directory=greentechhub_ui.theme_path), name="gth-static")
@@ -100,6 +94,19 @@ def _validate_budget(value: float) -> list[str] | None:
     if value > 1000:
         errors.append("Must be less than or equal to 1000")
     return errors or None
+
+
+WIDGET_ROWS_PAGE_SIZE = 5
+
+
+def _widget_rows(page: int) -> dict:
+    """gth_table_load_more demo — same WIDGETS fixture, page/size style."""
+    start = (page - 1) * WIDGET_ROWS_PAGE_SIZE
+    rows = WIDGETS[start: start + WIDGET_ROWS_PAGE_SIZE]
+    next_url = None
+    if start + WIDGET_ROWS_PAGE_SIZE < len(WIDGETS):
+        next_url = "/v07-demo/widget-rows?" + urlencode({"page": page + 1})
+    return {"widget_rows": rows, "widget_total": len(WIDGETS), "widget_next_url": next_url}
 
 
 def _paginate_widgets(offset: int) -> dict:
@@ -123,6 +130,7 @@ async def index(request: Request):
         "extra_head": [EXTRA_HEAD_DEMO],
         "watchlist": WATCHLIST_DEMO,
         **_paginate_widgets(0),
+        **_widget_rows(1),
     })
 
 
@@ -175,6 +183,56 @@ async def watchlist_demo_delete(request: Request, item_id: int):
     return templates.TemplateResponse(
         request, "_watchlist_list.html", {"watchlist": WATCHLIST_DEMO}
     )
+
+
+@app.get("/v07-demo/widget-rows", response_class=HTMLResponse)
+async def v07_widget_rows(request: Request, page: int = 1):
+    return templates.TemplateResponse(request, "_widget_rows.html", _widget_rows(page))
+
+
+@app.get("/v07-demo/widgets", response_class=HTMLResponse)
+async def v07_widget_options(request: Request, q: str = ""):
+    widgets = [(i, w) for i, w in enumerate(WIDGETS, start=1) if q.strip().lower() in w.lower()]
+    return templates.TemplateResponse(request, "_widget_options.html", {"widgets": widgets[:10]})
+
+
+def _v07_modal_context(widget: str = "", size: str = "S", errors: dict | None = None,
+                       search: str = "") -> dict:
+    picked = widget.isdigit() and 0 < int(widget) <= len(WIDGETS)
+    return {
+        "widget_value": widget,
+        "widget_label": WIDGETS[int(widget) - 1] if picked else search,
+        "size": size,
+        "errors": errors or {},
+    }
+
+
+@app.get("/v07-demo/modal", response_class=HTMLResponse)
+async def v07_modal(request: Request):
+    return templates.TemplateResponse(request, "_v07_modal.html", _v07_modal_context())
+
+
+@app.post("/v07-demo/modal", response_class=HTMLResponse)
+async def v07_modal_submit(request: Request, widget: str = Form(""), size: str = Form("S"),
+                           widget_search: str = Form("")):
+    if not widget.isdigit():
+        context = _v07_modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
+                                     widget_search)
+        # Re-render just the form (hx-target="this"); the modal stays open.
+        return templates.TemplateResponse(request, "_v07_form.html", context, status_code=422)
+    resp = HTMLResponse("", status_code=204)
+    resp.headers["HX-Trigger"] = greentechhub_ui.toast(
+        f"Saved {WIDGETS[int(widget) - 1]} ({size})", events=["closeModal"]
+    )
+    return resp
+
+
+@app.post("/v07-demo/slow-job")
+async def v07_slow_job():
+    await asyncio.sleep(2)
+    resp = HTMLResponse("", status_code=204)
+    resp.headers["HX-Trigger"] = greentechhub_ui.toast("Slow job finished")
+    return resp
 
 
 if __name__ == "__main__":
