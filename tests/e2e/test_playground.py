@@ -219,3 +219,32 @@ def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
         page.click("#widgets-tbody .gth-table-load-more button")
         expect(rows).to_have_count(expected)
     expect(page.locator("#widgets-tbody .gth-table-load-more")).to_have_count(0)
+
+
+def test_modal_host_reopen_does_not_leak_backdrops(page, playground_url):
+    page.goto(playground_url)
+    for _ in range(2):
+        page.click("text=Open server-rendered modal")
+        expect(page.locator(MODAL)).to_be_visible()
+        page.click("#gth-modal-host button[data-bs-dismiss=modal] >> nth=0")
+        expect(page.locator("#gth-modal-host .modal")).to_have_count(0)
+    expect(page.locator(".modal-backdrop")).to_have_count(0)
+    assert "modal-open" not in (page.locator("body").get_attribute("class") or "")
+
+    # Swapping a modal in over an open one tears the old one down.
+    page.click("text=Open server-rendered modal")
+    expect(page.locator(MODAL)).to_be_visible()
+    page.evaluate("htmx.ajax('GET', '/v07-demo/modal', {target: '#gth-modal-host'})")
+    expect(page.locator("#gth-modal-host .modal")).to_have_count(1)
+    expect(page.locator(MODAL)).to_be_visible()
+    expect(page.locator(".modal-backdrop")).to_have_count(1)
+
+
+def test_combobox_options_get_panel_scoped_ids(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click(COMBO_INPUT)
+    first = page.locator(f"{COMBO_RESULTS} [data-value]").first
+    expect(first).to_have_id("gth-field-widget-results-opt-0")
+    page.keyboard.press("ArrowDown")
+    active = page.get_attribute(COMBO_INPUT, "aria-activedescendant")
+    assert active == "gth-field-widget-results-opt-1"

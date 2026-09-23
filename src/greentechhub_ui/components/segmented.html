@@ -5,7 +5,7 @@
    btn-outline-primary), "icon" (bootstrap-icons name, optional)} dicts.
    value: the checked option (defaults to the first). Submits `name=<value>`
    like any radio group. #}
-{% set checked = value if value else (options[0].value if options else none) %}
+{% set checked = value if value is not none else (options[0].value if options else none) %}
 <div class="{{ field_class }} gth-form-field gth-segmented">
   {% if label %}<span class="form-label d-block" id="gth-field-{{ name }}-label">{{ label }}</span>{% endif %}
   <div class="btn-group w-100" role="group"{% if label %} aria-labelledby="gth-field-{{ name }}-label"{% endif %}>

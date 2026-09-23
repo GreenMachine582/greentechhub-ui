@@ -131,6 +131,10 @@
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     var box = boxOf(evt.detail.target);
     if (!box || evt.detail.target !== parts(box).panel) return;
+    // Option ids come from the panel's (unique) id, not the option value:
+    // two comboboxes can list the same value, and values may not be valid
+    // ids. aria-activedescendant points at these.
+    options(box).forEach(function (o, i) { o.id = parts(box).panel.id + "-opt-" + i; });
     // A slow response shouldn't pop the list back open after the user moved
     // on (left the field, or dismissed it with Esc/Tab/a pick).
     if (document.activeElement !== parts(box).input) return;

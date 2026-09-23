@@ -6,8 +6,8 @@
    (e.g. {"hx-post": "/sync", "hx-swap": "none"}). Busy styling keys on
    :disabled — see theme.css for why not .htmx-request. #}
 <button type="button" class="btn {{ btn_class }} gth-busy-button" hx-disabled-elt="this"
-  {% for k, v in hx_attrs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  {% if start_toast %}data-gth-start-toast="{{ start_toast }}"{% endif %}>
+  {% for k, v in hx_attrs.items() %}{{ k|e }}="{{ v|e }}" {% endfor %}
+  {% if start_toast %}data-gth-start-toast="{{ start_toast|e }}"{% endif %}>
   <span class="gth-busy-button-idle">{% if icon %}<i class="bi bi-{{ icon }}" aria-hidden="true"></i> {% endif %}{{ label }}</span>
   <span class="gth-busy-button-busy" role="status">
     <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ busy_label }}

@@ -403,3 +403,32 @@ def test_table_load_more_no_next_renders_nothing():
         {{ gth_table_load_more(None) }}"""
     )
     assert rendered.strip() == ""
+
+
+def test_busy_button_escapes_attrs_without_autoescape():
+    rendered = _render(
+        """{% from "busy_button.html" import gth_busy_button %}
+        {{ gth_busy_button("Go", "Going", {"hx-get": "/rows?a=1&b=\\"2\\""},
+            start_toast="Tom & Jerry") }}"""
+    )
+    assert 'hx-get="/rows?a=1&amp;b=&#34;2&#34;"' in rendered
+    assert 'data-gth-start-toast="Tom &amp; Jerry"' in rendered
+
+
+def test_segmented_respects_falsy_value():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("n", [{"value": 1, "label": "One"}, {"value": 0, "label": "Zero"}],
+            value=0) }}"""
+    )
+    radios = rendered.split("<input")[1:]
+    assert " checked" not in radios[0]
+    assert 'value="0"' in radios[1] and " checked" in radios[1]
+
+
+def test_combobox_option_has_no_value_derived_id():
+    rendered = _render(
+        """{% from "combobox.html" import gth_combobox_option %}
+        {{ gth_combobox_option("a b", "A B") }}"""
+    )
+    assert " id=" not in rendered
