@@ -36,6 +36,12 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "form_field_with_errors",
         "toast_flashes_empty",
         "toast_flashes_with_items",
+        "busy_button",
+        "combobox_empty",
+        "combobox_with_value_and_errors",
+        "combobox_options",
+        "segmented",
+        "table_load_more_with_next",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

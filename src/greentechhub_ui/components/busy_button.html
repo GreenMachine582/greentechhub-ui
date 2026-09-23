@@ -1,0 +1,16 @@
+{% macro gth_busy_button(label, busy_label, hx_attrs, icon=None, btn_class="btn-outline-secondary", start_toast=None) %}
+{# A button that fires a long-running htmx request (e.g. a sync). While the
+   request is in flight it's disabled (hx-disabled-elt="this") and shows
+   busy_label + a spinner; start_toast, if given, pops immediately
+   (toast.js) so the user knows it started. hx_attrs: dict of hx-* attributes
+   (e.g. {"hx-post": "/sync", "hx-swap": "none"}). Busy styling keys on
+   :disabled — see theme.css for why not .htmx-request. #}
+<button type="button" class="btn {{ btn_class }} gth-busy-button" hx-disabled-elt="this"
+  {% for k, v in hx_attrs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  {% if start_toast %}data-gth-start-toast="{{ start_toast }}"{% endif %}>
+  <span class="gth-busy-button-idle">{% if icon %}<i class="bi bi-{{ icon }}" aria-hidden="true"></i> {% endif %}{{ label }}</span>
+  <span class="gth-busy-button-busy" role="status">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ busy_label }}
+  </span>
+</button>
+{% endmacro %}

@@ -1,0 +1,25 @@
+
+        
+<div class="table-responsive gth-table-wrapper">
+<table class="table table-hover align-middle gth-table ">
+  <thead><tr><th scope="col">Name</th></tr></thead>
+  <tbody id="rows">
+    
+        <tr><td>Row 1</td></tr>
+        
+
+
+<tr class="gth-pagination gth-table-load-more">
+  <td colspan="99" class="text-center py-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+      hx-get="/rows?page=2&amp;size=50" hx-target="closest tr" hx-swap="outerHTML">
+      Load more <span class="text-secondary">(120 total)</span>
+    </button>
+  </td>
+</tr>
+
+
+        
+  </tbody>
+</table>
+</div>

@@ -74,3 +74,32 @@
 [data-bs-theme="light"] .gth-theme-toggle-icon-dark {
   display: inline-block;
 }
+
+/* gth-busy-button: swap to the busy label while the request is in flight.
+   Keyed on :disabled (set by hx-disabled-elt="this"), NOT .htmx-request:
+   in the vendored htmx 1.9.10 the request-indicator class and
+   hx-disabled-elt share one requestCount per element, so on an element
+   that is both, .htmx-request is never removed after the request ends
+   (disabled is, correctly). */
+.gth-busy-button .gth-busy-button-busy {
+  display: none;
+}
+.gth-busy-button:disabled .gth-busy-button-idle {
+  display: none;
+}
+.gth-busy-button:disabled .gth-busy-button-busy {
+  display: inline;
+}
+.gth-busy-button:disabled {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+/* gth-combobox: results panel floats over the content below the input,
+   above a modal body (Bootstrap modals sit at z-index 1055). */
+.gth-combobox-results {
+  top: 100%;
+  z-index: 1060;
+  max-height: 16rem;
+  overflow-y: auto;
+}

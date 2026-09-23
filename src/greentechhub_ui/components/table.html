@@ -18,3 +18,21 @@
   <tr><td colspan="{{ colspan }}">{{ gth_empty_state(empty_message) }}</td></tr>
 {% endif %}
 {% endmacro %}
+
+{% macro gth_table_load_more(next_url, label="Load more", colspan=99, total=None) %}
+{# gth_pagination's table-row sibling: gth_pagination's fixed
+   hx-target="this" can't append <tr>s, so this renders a trailing row whose
+   button replaces the row itself (hx-target="closest tr") with the next
+   page's rows — which end with their own gth_table_load_more, if any.
+   Render it as the last thing in a gth_table_body partial. #}
+{% if next_url %}
+<tr class="gth-pagination gth-table-load-more">
+  <td colspan="{{ colspan }}" class="text-center py-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML">
+      {{ label }}{% if total is not none %} <span class="text-secondary">({{ total }} total)</span>{% endif %}
+    </button>
+  </td>
+</tr>
+{% endif %}
+{% endmacro %}

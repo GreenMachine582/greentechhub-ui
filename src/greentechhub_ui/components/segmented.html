@@ -1,0 +1,21 @@
+{% macro gth_segmented(name, options, value=None, label=None, field_class="mb-3") %}
+{# A small set of mutually exclusive choices shown as a joined button group
+   (Bootstrap btn-check radios) instead of a <select>. options: list of
+   {"value", "label", "style" (a btn-outline-* class, default
+   btn-outline-primary), "icon" (bootstrap-icons name, optional)} dicts.
+   value: the checked option (defaults to the first). Submits `name=<value>`
+   like any radio group. #}
+{% set checked = value if value else (options[0].value if options else none) %}
+<div class="{{ field_class }} gth-form-field gth-segmented">
+  {% if label %}<span class="form-label d-block" id="gth-field-{{ name }}-label">{{ label }}</span>{% endif %}
+  <div class="btn-group w-100" role="group"{% if label %} aria-labelledby="gth-field-{{ name }}-label"{% endif %}>
+    {% for opt in options %}
+    <input type="radio" class="btn-check" name="{{ name }}" value="{{ opt.value }}"
+      id="gth-field-{{ name }}-{{ loop.index }}" autocomplete="off"{% if opt.value == checked %} checked{% endif %}>
+    <label class="btn {{ opt.style or 'btn-outline-primary' }}" for="gth-field-{{ name }}-{{ loop.index }}">
+      {%- if opt.icon %}<i class="bi bi-{{ opt.icon }}" aria-hidden="true"></i> {% endif %}{{ opt.label -}}
+    </label>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}

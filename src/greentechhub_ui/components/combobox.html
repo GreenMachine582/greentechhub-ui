@@ -1,0 +1,46 @@
+{% macro gth_combobox(name, label, url, value=None, value_label=None, errors=None, placeholder="Search…", help_text=None, field_class="mb-3") %}
+{# Searchable single-select ("autocomplete") backed by a server endpoint —
+   behaviour in static/js/combobox.js (combobox_js_url). Typing or focusing
+   GETs `url?q=<text>` into the results panel; the endpoint renders
+   gth_combobox_option rows. Picking one fills the hidden `name` input with
+   its value and the visible input with its label. Only a picked value is
+   ever submitted: typing clears it, so the server can require it.
+   value/value_label pre-fill an existing pick (edit forms). The visible
+   input is named `<name>_search`, so what was typed can be echoed back
+   (as value_label) on a 422 re-render. #}
+<div class="{{ field_class }} gth-form-field">
+  <label class="form-label" for="gth-field-{{ name }}-search">{{ label }}</label>
+  <div class="position-relative gth-combobox" data-gth-combobox data-gth-combobox-url="{{ url }}">
+    <input type="text" class="form-control{% if errors %} is-invalid{% endif %}"
+      id="gth-field-{{ name }}-search" name="{{ name }}_search" data-gth-combobox-input
+      value="{{ value_label if value_label is not none else '' }}" placeholder="{{ placeholder }}"
+      autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+      aria-controls="gth-field-{{ name }}-results"
+      {% if errors %}aria-invalid="true"{% endif %}
+      {% if help_text or errors %}aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}>
+    <input type="hidden" name="{{ name }}" value="{{ value if value is not none else '' }}" data-gth-combobox-value>
+    <div id="gth-field-{{ name }}-results" class="list-group position-absolute w-100 shadow d-none gth-combobox-results"
+      role="listbox" aria-label="{{ label }} options" data-gth-combobox-results></div>
+  </div>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {% if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro gth_combobox_option(value, label) %}
+{# One result row for a gth_combobox endpoint. Body via optional {% call %}
+   for richer markup; defaults to the plain label. #}
+<button type="button" tabindex="-1" id="gth-combobox-option-{{ value }}"
+  class="list-group-item list-group-item-action gth-combobox-option" role="option" aria-selected="false"
+  data-value="{{ value }}" data-label="{{ label }}">
+  {%- if caller is defined %}{{ caller() }}{% else %}{{ label }}{% endif -%}
+</button>
+{% endmacro %}
+
+{% macro gth_combobox_empty(message="No matches") %}
+<div class="list-group-item text-secondary gth-combobox-empty">{{ message }}</div>
+{% endmacro %}

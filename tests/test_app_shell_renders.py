@@ -88,3 +88,19 @@ def test_app_shell_accepts_populated_flashes():
     context = _context(flashes=[{"message": "Saved", "kind": "success"}])
     html = _env().get_template("app.html").render(**context)
     assert "<nav" in html
+
+
+def test_app_shell_has_modal_host():
+    html = _env().get_template("app.html").render(**_context())
+    assert 'id="gth-modal-host"' in html
+
+
+def test_app_shell_optional_component_scripts():
+    html = _env().get_template("app.html").render(**_context())
+    assert "modal-host.js" not in html and "combobox.js" not in html
+
+    html = _env().get_template("app.html").render(**_context(
+        modal_host_js_url="/a/js/modal-host.js", combobox_js_url="/a/js/combobox.js",
+    ))
+    assert '<script src="/a/js/modal-host.js"></script>' in html
+    assert '<script src="/a/js/combobox.js"></script>' in html

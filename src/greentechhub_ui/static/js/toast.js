@@ -15,3 +15,13 @@ document.body.addEventListener("showToast", function (e) {
   document.getElementById("gth-toast-container").appendChild(el);
   new bootstrap.Toast(el, { delay: 5000 }).show();
 });
+
+// "Started" toast for long-running actions (gth_busy_button's start_toast):
+// any htmx element with data-gth-start-toast shows it the moment its request
+// goes out; the server's own HX-Trigger toast reports the result later.
+document.body.addEventListener("htmx:beforeRequest", function (e) {
+  var message = e.detail.elt.getAttribute && e.detail.elt.getAttribute("data-gth-start-toast");
+  if (message) {
+    document.body.dispatchEvent(new CustomEvent("showToast", { detail: { message: message, kind: "warning" } }));
+  }
+});

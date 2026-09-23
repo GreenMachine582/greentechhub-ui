@@ -325,3 +325,81 @@ def test_toast_flashes_with_flash_message_objects_matches_dict_rendering():
         ],
     )
     assert_snapshot(rendered, "toast_flashes_with_items")
+
+
+def test_busy_button():
+    rendered = _render(
+        """{% from "busy_button.html" import gth_busy_button %}
+        {{ gth_busy_button("Sync ASX", "Syncing ASX…", {"hx-post": "/sync/ASX", "hx-swap": "none"},
+            icon="arrow-repeat", start_toast="ASX sync started") }}"""
+    )
+    assert_snapshot(rendered, "busy_button")
+
+
+def test_combobox_empty():
+    rendered = _render(
+        """{% from "combobox.html" import gth_combobox %}
+        {{ gth_combobox("stock_id", "Stock", "/stocks/options") }}"""
+    )
+    assert_snapshot(rendered, "combobox_empty")
+
+
+def test_combobox_with_value_and_errors():
+    rendered = _render(
+        """{% from "combobox.html" import gth_combobox %}
+        {{ gth_combobox("stock_id", "Stock", "/stocks/options", value=7,
+            value_label="BHP · ASX", errors=["Choose a stock."],
+            help_text="Pick from the list.") }}"""
+    )
+    assert_snapshot(rendered, "combobox_with_value_and_errors")
+
+
+def test_combobox_options():
+    rendered = _render(
+        """{% from "combobox.html" import gth_combobox_option, gth_combobox_empty %}
+        {{ gth_combobox_option(7, "BHP · ASX") }}
+        {% call gth_combobox_option(8, "CBA · ASX") %}<b>CBA</b> · ASX{% endcall %}
+        {{ gth_combobox_empty("No matching stocks") }}"""
+    )
+    assert_snapshot(rendered, "combobox_options")
+
+
+def test_segmented():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("type", [
+            {"value": "Buy", "label": "Buy", "style": "btn-outline-primary", "icon": "plus-circle"},
+            {"value": "Sell", "label": "Sell", "style": "btn-outline-warning"},
+        ], value="Sell", label="Type") }}"""
+    )
+    assert_snapshot(rendered, "segmented")
+
+
+def test_segmented_defaults_to_first_option():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("size", [{"value": "s", "label": "S"}, {"value": "m", "label": "M"}]) }}"""
+    )
+    radios = [line for line in rendered.split("<input")[1:]]
+    assert len(radios) == 2
+    assert 'value="s"' in radios[0] and " checked" in radios[0]
+    assert " checked" not in radios[1]
+
+
+def test_table_load_more_with_next():
+    rendered = _render(
+        """{% from "table.html" import gth_table, gth_table_load_more %}
+        {% call gth_table(headers=["Name"], tbody_id="rows") %}
+        <tr><td>Row 1</td></tr>
+        {{ gth_table_load_more("/rows?page=2&size=50", total=120) }}
+        {% endcall %}"""
+    )
+    assert_snapshot(rendered, "table_load_more_with_next")
+
+
+def test_table_load_more_no_next_renders_nothing():
+    rendered = _render(
+        """{% from "table.html" import gth_table_load_more %}
+        {{ gth_table_load_more(None) }}"""
+    )
+    assert rendered.strip() == ""
