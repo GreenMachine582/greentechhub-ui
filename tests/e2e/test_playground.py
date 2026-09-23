@@ -267,3 +267,12 @@ def test_navbar_follows_color_mode(page, playground_url):
     expect(page.locator(".gth-logo-on-dark")).to_be_hidden()
     brand = page.locator(".gth-navbar-brand").evaluate("el => getComputedStyle(el).color")
     assert brand == "rgb(18, 122, 19)"  # #127a13, 5.2:1 on the light navbar
+
+
+def test_secondary_buttons_follow_color_mode(page, playground_url):
+    page.goto(playground_url)
+    button = page.locator(".gth-busy-button")  # btn-outline-secondary
+    # to_have_css retries: .btn transitions its color
+    expect(button).to_have_css("color", "rgb(206, 212, 218)")  # #ced4da: 10.3:1 on dark
+    page.click(".gth-theme-toggle")
+    expect(button).to_have_css("color", "rgb(108, 117, 125)")  # Bootstrap's light value

@@ -35,6 +35,67 @@
   --gth-on-light-display: inline-block;
 }
 
+/* Secondary buttons. Bootstrap's dark mode keeps its light-mode greys, so
+   .btn-outline-secondary text is #6c757d on #212529 — 3.3:1, below WCAG AA.
+   Dark mode gets lighter text and borders (text ≥ 4.5:1, borders ≥ 3:1);
+   light mode keeps Bootstrap's own values. Set through the same inherited
+   custom properties as the brand colors above, so a dark-pinned region on
+   a light page (e.g. the navbar's theme toggle) resolves correctly. This
+   also covers checked btn-check controls (gth_segmented), which use the
+   active-* values. */
+[data-bs-theme="dark"] {
+  --gth-btn-2nd-bg: #495057;
+  --gth-btn-2nd-color: #f8f9fa;
+  --gth-btn-2nd-border: #6c757d;
+  --gth-btn-2nd-hover-bg: #5c636a;
+  --gth-btn-2nd-hover-border: #adb5bd;
+  --gth-btn-2nd-active-bg: #6c757d;
+  --gth-btn-2nd-outline-color: #ced4da;
+  --gth-btn-2nd-outline-hover-bg: #495057;
+  --gth-btn-2nd-disabled-color: #adb5bd;
+  --gth-btn-2nd-focus-rgb: 173, 181, 189;
+}
+[data-bs-theme="light"] {
+  --gth-btn-2nd-bg: #6c757d;
+  --gth-btn-2nd-color: #fff;
+  --gth-btn-2nd-border: #6c757d;
+  --gth-btn-2nd-hover-bg: #5c636a;
+  --gth-btn-2nd-hover-border: #565e64;
+  --gth-btn-2nd-active-bg: #565e64;
+  --gth-btn-2nd-outline-color: #6c757d;
+  --gth-btn-2nd-outline-hover-bg: #6c757d;
+  --gth-btn-2nd-disabled-color: #6c757d;
+  --gth-btn-2nd-focus-rgb: 130, 138, 145;
+}
+[data-bs-theme] .btn-secondary {
+  --bs-btn-color: var(--gth-btn-2nd-color);
+  --bs-btn-bg: var(--gth-btn-2nd-bg);
+  --bs-btn-border-color: var(--gth-btn-2nd-border);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--gth-btn-2nd-hover-bg);
+  --bs-btn-hover-border-color: var(--gth-btn-2nd-hover-border);
+  --bs-btn-focus-shadow-rgb: var(--gth-btn-2nd-focus-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--gth-btn-2nd-active-bg);
+  --bs-btn-active-border-color: var(--gth-btn-2nd-hover-border);
+  --bs-btn-disabled-color: var(--gth-btn-2nd-color);
+  --bs-btn-disabled-bg: var(--gth-btn-2nd-bg);
+  --bs-btn-disabled-border-color: var(--gth-btn-2nd-border);
+}
+[data-bs-theme] .btn-outline-secondary {
+  --bs-btn-color: var(--gth-btn-2nd-outline-color);
+  --bs-btn-border-color: var(--gth-btn-2nd-border);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--gth-btn-2nd-outline-hover-bg);
+  --bs-btn-hover-border-color: var(--gth-btn-2nd-hover-border);
+  --bs-btn-focus-shadow-rgb: var(--gth-btn-2nd-focus-rgb);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--gth-btn-2nd-active-bg);
+  --bs-btn-active-border-color: var(--gth-btn-2nd-hover-border);
+  --bs-btn-disabled-color: var(--gth-btn-2nd-disabled-color);
+  --bs-btn-disabled-border-color: var(--gth-btn-2nd-border);
+}
+
 .gth-navbar-brand {
   color: var(--gth-brand-fg, var(--gth-color-primary-light)) !important;
   font-weight: 700;
