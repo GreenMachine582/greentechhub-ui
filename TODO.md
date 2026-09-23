@@ -56,7 +56,16 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `gth_segmented` — `btn-check` radio group
 - [x] `shell_globals()` — all `app.html` globals in one call, vendored asset URLs included; BottleBot, PyFinBot and the playground each hand-set ~10 of them
 - [x] `next_url|e` in `gth_pagination`/`gth_table_load_more` — an unescaped `&` broke strict HTML parsing when autoescape is off
-- [ ] Bump vendored htmx past 1.9.10: it shares one `requestCount` between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks on an element that is both (why `gth-busy-button` keys on `:disabled`). Confirm the fixing version in htmx's changelog; update `VENDORED.md` hash/size
+- [x] Hardening pass on the above: escape `gth_busy_button`'s `hx_attrs`/`start_toast` and `gth_form`'s `form_attrs`/`input_attrs`; `gth_segmented` honours a falsy `value`; combobox option ids are panel-scoped (no collisions across comboboxes); the modal host empties itself on hide and tears down an open modal before swapping in another (no leaked backdrops)
+- [x] `gth_navbar` follows the color mode (`#gthNavMain` used to stay `navbar-dark bg-dark` in light mode) — `bg-body-tertiary`, light-mode logo via `brand.logo_light_url`, brand text ≥4.5:1 in both modes; `navbar_theme="dark"` keeps the old look. Color-mode values are now inherited custom properties so a dark-pinned region on a light page resolves correctly
+- [x] Dark-mode secondary buttons — `.btn-secondary`/`.btn-outline-secondary` retuned (outline text 3.3:1 → 10.3:1); light mode unchanged
+- [x] `TableState` + `gth_data_table` — table navigation as config: `mode="pages"` (numbered pager + optional page-size select), `"load_more"`, `"infinite"` (intersect-triggered, skeleton, keyboard fallback button; `max_height` scroll box with sticky header), or `"none"`; one template for the full page and every partial. Allow-listed sort/size parsing from any query `Mapping` (FastAPI or Django)
+- [x] Sortable headers (`{"label", "sort_key"}` → `aria-sort` sort buttons) and `gth_table_filter` (debounced search + filter-control slot, resets to page 1)
+- [x] `gth_skeleton` / `gth_skeleton_rows` loading placeholders
+- [x] `gth_badge` (good/bad/warn/info/neutral/brand tones), `gth_tabs` (static or htmx-lazy panes, Bootstrap tab JS), `gth_chips` (multi-select filter pills), `gth_switch`
+- [x] `gth_multiselect` — chips + hidden inputs via `combobox.js` multi mode, reusing `gth_combobox` endpoints; tags mode (`allow_create`, or no `url`), `max_items`, live-region announcements
+- [x] `gth_record_picker` + `record-picker.js` (`record_picker_js_url`) — click a field for a floating, searchable/sortable/paged `gth_data_table` panel; keyboard model, modal-safe (lives in the `.modal` while open), 422-safe
+- [ ] Bump vendored htmx past 1.9.10: it shares one `requestCount` between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks on an element that is both (why `gth-busy-button` keys on `:disabled`). Checked 2026-09-24: the 1.9.11/1.9.12 changelogs don't mention a fix, so the 1.9.x line can't be assumed to fix it — needs a repro against 1.9.12 (or a 2.x migration plan) before bumping; update `VENDORED.md` hash/size when it lands
 
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
@@ -77,6 +86,7 @@ Per-service retrofit progress.
 - [x] Replace hand-rolled navbar with `gth-navbar`
 - [x] Migrate remaining components one at a time (done: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`; watchlist pagination → `gth-pagination`; health tables (`_scrape_runs_table.html`, `_notification_log_table.html`) and criteria tables → `gth-table`/`gth-table_body`; other cards — done 2026-09-22, `deal.html`'s main product card and `_watchlist_product_card.html` → `gth-card`)
 - [ ] Adopt `shell_globals()` in `web/templating.py` and `toast(..., events=)` where handlers set several HX-Trigger events (v0.7)
+- [ ] Decide on the v0.7 navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)
