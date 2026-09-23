@@ -592,3 +592,14 @@ def test_multiselect_without_url_is_a_tags_input():
     assert_snapshot(rendered, "multiselect_tags")
     assert "data-gth-combobox-create" in rendered
     assert "data-gth-combobox-url" not in rendered and 'role="combobox"' not in rendered
+
+
+def test_form_attrs_and_input_attrs_are_escaped_without_autoescape():
+    rendered = _render(
+        """{% from "form.html" import gth_form, gth_form_field %}
+        {% call gth_form("/x", form_attrs={"hx-post": "/x?a=1&b=2"}) %}
+        {{ gth_form_field("n", "N", input_attrs={"data-x": 'say "hi"'}) }}
+        {% endcall %}"""
+    )
+    assert 'hx-post="/x?a=1&amp;b=2"' in rendered
+    assert 'data-x="say &#34;hi&#34;"' in rendered
