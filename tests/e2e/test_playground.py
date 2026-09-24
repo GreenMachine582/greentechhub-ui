@@ -4,6 +4,7 @@ Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
 `pytest.importorskip`.
 """
 
+import re
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect
@@ -651,3 +652,71 @@ def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_ur
     page.keyboard.press("Escape")  # immediately: focus may still be on the trigger
     expect(page.locator("#gth-field-record-panel")).to_be_hidden()
     expect(page.locator(MODAL)).to_be_visible()
+
+
+def test_record_picker_expand_shrink_and_dismiss(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(playground_url)
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    search = panel.locator("input[type=search]")
+    expect(search).to_be_focused()
+    search.fill("bravo")
+    expect(panel.locator(".gth-table-summary")).to_contain_text("of 20")
+    small = panel.bounding_box()
+    backdrop = page.locator("[data-gth-record-picker-backdrop][data-for=gth-field-part-panel]")
+
+    toggle = panel.locator("[data-gth-record-picker-size]")
+    toggle.click()
+    expect(panel).to_have_class(re.compile("gth-record-picker-panel--modal"))
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    expect(backdrop).to_be_visible()
+    big = panel.bounding_box()
+    assert big["width"] > small["width"]
+    assert abs((big["x"] + big["width"] / 2) - 640) < 4  # centred
+    assert search.input_value() == "bravo"  # content kept, not reloaded
+    expect(panel.locator(".gth-table-summary")).to_contain_text("of 20")
+
+    # Tab wraps inside the panel at modal size.
+    panel.locator("[data-gth-record-picker-size]").focus()
+    page.keyboard.press("Shift+Tab")
+    focused_inside = page.evaluate(
+        "document.getElementById('gth-field-part-panel').contains(document.activeElement)")
+    assert focused_inside
+
+    toggle.click()  # shrink: back under the trigger
+    expect(backdrop).to_be_hidden()
+    trigger_box = page.locator(PART_TRIGGER).bounding_box()
+    assert abs(panel.bounding_box()["y"] - (trigger_box["y"] + trigger_box["height"])) < 10
+
+    toggle.click()
+    backdrop.click(position={"x": 10, "y": 10})  # dismiss via the backdrop
+    expect(panel).to_be_hidden()
+    expect(backdrop).to_be_hidden()
+    expect(page.locator(PART_TRIGGER)).to_be_focused()
+    assert "gth-picker-modal-open" not in (page.locator("body").get_attribute("class") or "")
+
+    page.click(PART_TRIGGER)  # reopens at its configured size (panel)
+    expect(panel).not_to_have_class(re.compile("gth-record-picker-panel--modal"))
+    panel.locator("[data-gth-record-picker-close]").click()
+    expect(panel).to_be_hidden()
+
+
+def test_record_picker_modal_size_inside_bootstrap_modal(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click("#gth-field-record-trigger")
+    panel = page.locator("#gth-field-record-panel")
+    expect(panel.locator("input[type=search]")).to_be_focused()
+    panel.locator("[data-gth-record-picker-size]").click()
+    expect(panel).to_have_class(re.compile("gth-record-picker-panel--modal"))
+    page.keyboard.press("Escape")
+    expect(panel).to_be_hidden()
+    expect(page.locator(MODAL)).to_be_visible()  # only the picker closed
+
+    page.click("#gth-field-record-trigger")
+    panel.locator("[data-gth-record-picker-size]").click()
+    row = panel.locator("[data-gth-pick]").first
+    label = row.get_attribute("data-label")
+    row.click()
+    expect(page.locator("#gth-field-record-trigger")).to_have_text(label)
+    expect(page.locator("[data-gth-record-picker-backdrop][data-for=gth-field-record-panel]")).to_be_hidden()

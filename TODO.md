@@ -65,6 +65,8 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [x] `gth_badge` (good/bad/warn/info/neutral/brand tones), `gth_tabs` (static or htmx-lazy panes, Bootstrap tab JS), `gth_chips` (multi-select filter pills), `gth_switch`
 - [x] `gth_multiselect` — chips + hidden inputs via `combobox.js` multi mode, reusing `gth_combobox` endpoints; tags mode (`allow_create`, or no `url`), `max_items`, live-region announcements
 - [x] `gth_record_picker` + `record-picker.js` (`record_picker_js_url`) — click a field for a floating, searchable/sortable/paged `gth_data_table` panel; keyboard model, modal-safe (lives in the `.modal` while open), 422-safe
+- [x] `gth_record_picker` expand/shrink — a modal-sized popover (backdrop, ✕/Esc/backdrop dismiss, Tab wrap, fullscreen on phones) toggled from the panel header without reloading; `size="modal"` opens there directly
+- [ ] `gth_record_picker` third size — hand the pick off to the real list screen for full room (e.g. an "Open full page" link carrying `?pick_for=<field>&return=<url>`, the list screen offering a "Use this record" action that returns the pick)
 - [ ] Bump vendored htmx past 1.9.10: it shares one `requestCount` between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks on an element that is both (why `gth-busy-button` keys on `:disabled`). Checked 2026-09-24: the 1.9.11/1.9.12 changelogs don't mention a fix, so the 1.9.x line can't be assumed to fix it — needs a repro against 1.9.12 (or a 2.x migration plan) before bumping; update `VENDORED.md` hash/size when it lands
 
 ### v1.0 — Validated in production

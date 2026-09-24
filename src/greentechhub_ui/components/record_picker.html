@@ -1,6 +1,6 @@
 {% from "skeleton.html" import gth_skeleton %}
 
-{% macro gth_record_picker(name, label, url, value=None, value_label=None, errors=None, placeholder="Select…", help_text=None, field_class="mb-3", panel_width="40rem", clearable=True) %}
+{% macro gth_record_picker(name, label, url, value=None, value_label=None, errors=None, placeholder="Select…", help_text=None, field_class="mb-3", panel_width="40rem", clearable=True, size="panel", expandable=True) %}
 {# A field that opens a floating panel with a searchable, sortable, paged
    table for picking one record — for records too rich for a combobox row.
    Behaviour in static/js/record-picker.js (record_picker_js_url).
@@ -12,11 +12,16 @@
    echo value_label back). The panel is moved to <body> — or the enclosing
    .modal, inside Bootstrap's focus trap — while open, so its table's forms
    never nest in yours. It's a custom panel, not a Bootstrap Popover: the
-   popover sanitizer strips tables and inputs. #}
+   popover sanitizer strips tables and inputs.
+   Sizes: "panel" floats under the field; "modal" is a centred, modal-sized
+   popover over a backdrop (dismissed by the backdrop, ✕ or Esc) for big
+   tables. `size` is the one it opens at; `expandable` shows the
+   Expand/Shrink toggle in the panel header. Resizing keeps the content. #}
 {% set has_value = value is not none and value != "" %}
 <div class="{{ field_class }} gth-form-field">
   <label class="form-label" for="gth-field-{{ name }}-trigger">{{ label }}</label>
-  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="{{ url|e }}">
+  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="{{ url|e }}"
+    data-gth-record-picker-size="{{ 'modal' if size == 'modal' else 'panel' }}">
     <div class="input-group{% if errors %} has-validation{% endif %}">
       <button type="button" class="form-select text-start gth-record-picker-trigger{% if errors %} is-invalid{% endif %}"
         id="gth-field-{{ name }}-trigger" data-gth-record-picker-trigger
@@ -34,9 +39,21 @@
     <input type="hidden" name="{{ name }}" value="{{ (value if has_value else '')|e }}" data-gth-record-picker-value>
     <input type="hidden" name="{{ name }}_label" value="{{ (value_label or '')|e }}" data-gth-record-picker-value-label>
     <div id="gth-field-{{ name }}-panel" class="card shadow d-none gth-record-picker-panel" role="dialog"
-      aria-label="{{ label|e }}" style="--gth-picker-width: {{ panel_width|e }}" data-gth-record-picker-panel>
+      aria-labelledby="gth-field-{{ name }}-panel-title" style="--gth-picker-width: {{ panel_width|e }}" data-gth-record-picker-panel>
+      <div class="card-header d-flex align-items-center gap-1 py-1 px-2 gth-record-picker-header">
+        <span class="fw-semibold small me-auto" id="gth-field-{{ name }}-panel-title">{{ label }}</span>
+        {% if expandable %}
+        <button type="button" class="btn btn-sm btn-link text-body gth-record-picker-size" data-gth-record-picker-size
+          aria-pressed="false" aria-label="Expand" title="Expand">
+          <i class="bi bi-arrows-angle-expand gth-when-panel" aria-hidden="true"></i>
+          <i class="bi bi-arrows-angle-contract gth-when-modal" aria-hidden="true"></i>
+        </button>
+        {% endif %}
+        <button type="button" class="btn-close" data-gth-record-picker-close aria-label="Close"></button>
+      </div>
       <div class="card-body p-2" data-gth-record-picker-body>{{ gth_skeleton(4) }}</div>
     </div>
+    <div class="gth-record-picker-backdrop d-none" data-gth-record-picker-backdrop data-for="gth-field-{{ name }}-panel"></div>
   </div>
   {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
   {% if errors %}

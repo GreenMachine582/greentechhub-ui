@@ -638,3 +638,14 @@ def test_multiselect_custom_max_message():
         {{ gth_multiselect("w", "W", url="/w", max_items=2, max_message="Two & no more.") }}"""
     )
     assert 'data-gth-combobox-max-message="Two &amp; no more."' in rendered
+
+
+def test_record_picker_opens_at_modal_size_without_toggle():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/p", size="modal", expandable=False) }}"""
+    )
+    assert_snapshot(rendered, "record_picker_modal_fixed")
+    assert 'data-gth-record-picker-size="modal"' in rendered
+    assert "data-gth-record-picker-size aria" not in rendered  # no toggle button
+    assert "data-gth-record-picker-close" in rendered

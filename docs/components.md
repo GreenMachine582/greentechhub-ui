@@ -307,7 +307,7 @@ gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js bui
 {# record_picker.html — behaviour in static/js/record-picker.js (record_picker_js_url) #}
 gth_record_picker(name, label, url, value=None, value_label=None, errors=None,
                   placeholder="Select…", help_text=None, field_class="mb-3",
-                  panel_width="40rem", clearable=True)
+                  panel_width="40rem", clearable=True, size="panel", expandable=True)
 gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells via {% call %} #}
 {# For records too rich for a combobox row. Clicking the field (or ↓ on it) opens
    a floating panel and loads `url` into it once. That endpoint returns
@@ -327,5 +327,13 @@ gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells v
    filter <form> out of your form and stops a modal body clipping it. Keyboard:
    focus starts in the search box; ↓ enters the rows; ↑/↓/Home/End move;
    Enter/Space pick; Esc closes the panel only (not an enclosing modal).
-   Not a Bootstrap Popover: its sanitizer strips tables and inputs. #}
+   Not a Bootstrap Popover: its sanitizer strips tables and inputs.
+   Two sizes: "panel" (floating under the field) and "modal" (a centred,
+   modal-sized popover over a backdrop — fullscreen under 576px — dismissed by
+   the backdrop, its ✕ or Esc). The header's Expand/Shrink toggle
+   (expandable=True) switches between them without reloading the content;
+   `size` is the one each open starts at — size="modal" for big tables. It's
+   the same panel restyled, not a second Bootstrap modal, so it works inside
+   one. At modal size Tab wraps inside it. An open picker takes Esc first,
+   wherever focus is. #}
 ```

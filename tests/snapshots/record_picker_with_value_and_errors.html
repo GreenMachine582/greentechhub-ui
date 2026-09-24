@@ -4,7 +4,8 @@
 
 <div class="mb-3 gth-form-field">
   <label class="form-label" for="gth-field-part-trigger">Part</label>
-  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="/parts/picker">
+  <div class="gth-record-picker" data-gth-record-picker data-gth-record-picker-url="/parts/picker"
+    data-gth-record-picker-size="panel">
     <div class="input-group has-validation">
       <button type="button" class="form-select text-start gth-record-picker-trigger is-invalid"
         id="gth-field-part-trigger" data-gth-record-picker-trigger
@@ -19,7 +20,18 @@
     <input type="hidden" name="part" value="17" data-gth-record-picker-value>
     <input type="hidden" name="part_label" value="Kilo &lt;17&gt;" data-gth-record-picker-value-label>
     <div id="gth-field-part-panel" class="card shadow d-none gth-record-picker-panel" role="dialog"
-      aria-label="Part" style="--gth-picker-width: 50rem" data-gth-record-picker-panel>
+      aria-labelledby="gth-field-part-panel-title" style="--gth-picker-width: 50rem" data-gth-record-picker-panel>
+      <div class="card-header d-flex align-items-center gap-1 py-1 px-2 gth-record-picker-header">
+        <span class="fw-semibold small me-auto" id="gth-field-part-panel-title">Part</span>
+        
+        <button type="button" class="btn btn-sm btn-link text-body gth-record-picker-size" data-gth-record-picker-size
+          aria-pressed="false" aria-label="Expand" title="Expand">
+          <i class="bi bi-arrows-angle-expand gth-when-panel" aria-hidden="true"></i>
+          <i class="bi bi-arrows-angle-contract gth-when-modal" aria-hidden="true"></i>
+        </button>
+        
+        <button type="button" class="btn-close" data-gth-record-picker-close aria-label="Close"></button>
+      </div>
       <div class="card-body p-2" data-gth-record-picker-body>
 
 <div class="placeholder-glow gth-skeleton " aria-hidden="true">
@@ -27,6 +39,7 @@
 </div>
 </div>
     </div>
+    <div class="gth-record-picker-backdrop d-none" data-gth-record-picker-backdrop data-for="gth-field-part-panel"></div>
   </div>
   <div class="form-text" id="gth-field-part-help">Search 120 parts.</div>
   

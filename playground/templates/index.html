@@ -199,7 +199,7 @@
   <form id="record-demo" class="gth-form" hx-post="/v07-demo/record-pick" hx-target="#record-demo-result"
     hx-trigger="change">
     {{ gth_record_picker("part", "Part", "/v07-demo/record-picker?for=page", placeholder="Choose a part…",
-        help_text="Click to search 120 parts; also inside the server-rendered modal above.") }}
+        help_text="Click to search 120 parts — expand (⤢) for a modal-sized view; also inside the server-rendered modal above.") }}
     <p class="text-secondary small mb-0">Submitted: <code id="record-demo-result">nothing yet</code></p>
   </form>
 

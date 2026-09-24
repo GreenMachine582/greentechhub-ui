@@ -56,6 +56,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "record_picker_empty",
         "record_picker_with_value_and_errors",
         "record_picker_row",
+        "record_picker_modal_fixed",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

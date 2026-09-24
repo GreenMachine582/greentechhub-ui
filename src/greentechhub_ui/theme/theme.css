@@ -339,6 +339,57 @@ th[aria-sort] .gth-table-sort .bi {
   width: min(var(--gth-picker-width, 40rem), calc(100vw - 1rem));
   overflow-y: auto;
 }
+.gth-record-picker-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--bs-tertiary-bg);
+}
+.gth-record-picker-size .gth-when-modal,
+.gth-record-picker-panel--modal .gth-record-picker-size .gth-when-panel {
+  display: none;
+}
+.gth-record-picker-panel--modal .gth-record-picker-size .gth-when-modal {
+  display: inline-block;
+}
+/* Modal size: centred over a backdrop, header fixed, body scrolls.
+   !important beats the inline top/left/max-height the panel size uses. */
+.gth-record-picker-panel--modal {
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%);
+  width: min(72rem, calc(100vw - 2rem));
+  height: min(85vh, 60rem);
+  max-height: none !important;
+  overflow: hidden;
+  z-index: 1061;
+}
+.gth-record-picker-panel--modal > .card-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+@media (max-width: 575.98px) {
+  .gth-record-picker-panel--modal {
+    top: 0 !important;
+    left: 0 !important;
+    transform: none;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}
+.gth-record-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+body.gth-picker-modal-open {
+  overflow: hidden;
+}
 .gth-record-picker-row {
   cursor: pointer;
 }

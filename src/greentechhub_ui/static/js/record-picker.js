@@ -17,10 +17,17 @@
 // Home/End move between rows; Enter/Space picks; Esc closes (not an
 // enclosing modal) and returns focus to the trigger.
 //
+// Sizes: "panel" (floating under the trigger) and "modal" (centred over a
+// backdrop, [data-gth-record-picker-backdrop], moved along with the panel).
+// The header's [data-gth-record-picker-size] toggles between them without
+// reloading; each open starts at data-gth-record-picker-size. At modal size
+// Tab wraps inside the panel, and the backdrop, ✕ or Esc close it.
+//
 // Delegated from document, so it survives htmx swaps and 422 re-renders.
 // Requires htmx (htmx.ajax) and nothing else.
 (function () {
   var panels = new WeakMap();   // picker → its panel (wherever it now lives)
+  var backdrops = new WeakMap(); // picker → its backdrop (moved with the panel)
   var owners = new WeakMap();   // panel → its picker
   var openPicker = null;
 
@@ -34,6 +41,17 @@
     }
     return panel;
   }
+  function backdropOf(picker) {
+    var backdrop = backdrops.get(picker);
+    if (!backdrop) {
+      backdrop = picker.querySelector("[data-gth-record-picker-backdrop]");
+      backdrops.set(picker, backdrop);
+    }
+    return backdrop;
+  }
+  function isModal(picker) {
+    return panelOf(picker).classList.contains("gth-record-picker-panel--modal");
+  }
   function ownerOf(el) {
     var panel = el && el.closest ? el.closest("[data-gth-record-picker-panel]") : null;
     return panel ? owners.get(panel) : null;
@@ -46,18 +64,46 @@
 
   function portal(picker) {
     var panel = panelOf(picker);
+    var backdrop = backdropOf(picker);
     var host = picker.closest(".modal") || document.body;
     if (panel.parentNode !== host) {
       // A re-rendered form (e.g. a 422) leaves the old picker's portaled
-      // panel behind with the same id — drop it.
+      // panel (and backdrop) behind with the same id — drop them.
       document.querySelectorAll("[data-gth-record-picker-panel]").forEach(function (p) {
         if (p !== panel && p.id === panel.id) p.remove();
       });
+      document.querySelectorAll("[data-gth-record-picker-backdrop]").forEach(function (b) {
+        if (b !== backdrop && b.getAttribute("data-for") === panel.id) b.remove();
+      });
+      if (backdrop) host.appendChild(backdrop);
       host.appendChild(panel);
+    }
+  }
+  function setSize(picker, size) {
+    var panel = panelOf(picker);
+    var modal = size === "modal";
+    panel.classList.toggle("gth-record-picker-panel--modal", modal);
+    if (modal) panel.setAttribute("aria-modal", "true");
+    else panel.removeAttribute("aria-modal");
+    var backdrop = backdropOf(picker);
+    if (backdrop) backdrop.classList.toggle("d-none", !modal);
+    // Inside a Bootstrap modal the page is already scroll-locked.
+    document.body.classList.toggle("gth-picker-modal-open", modal && !picker.closest(".modal"));
+    var toggle = panel.querySelector("[data-gth-record-picker-size]");
+    if (toggle) {
+      toggle.setAttribute("aria-pressed", modal ? "true" : "false");
+      toggle.setAttribute("aria-label", modal ? "Shrink" : "Expand");
+      toggle.title = modal ? "Shrink" : "Expand";
+    }
+    if (modal) {
+      ["top", "bottom", "left", "right", "maxHeight"].forEach(function (p) { panel.style[p] = ""; });
+    } else {
+      position(picker);
     }
   }
   function position(picker) {
     var panel = panelOf(picker);
+    if (isModal(picker)) return;  // CSS centres it
     var r = trigger(picker).getBoundingClientRect();
     var gap = 4, margin = 8;
     var below = window.innerHeight - r.bottom - gap - margin;
@@ -103,7 +149,7 @@
     panel.classList.remove("d-none");
     trigger(picker).setAttribute("aria-expanded", "true");
     openPicker = picker;
-    position(picker);
+    setSize(picker, picker.getAttribute("data-gth-record-picker-size"));
     if (!panel.hasAttribute("data-loaded")) {
       panel.setAttribute("data-loaded", "");
       panel.setAttribute("data-focus-on-load", "");
@@ -116,6 +162,8 @@
   }
   function close(picker, restoreFocus) {
     panelOf(picker).classList.add("d-none");
+    if (backdropOf(picker)) backdropOf(picker).classList.add("d-none");
+    document.body.classList.remove("gth-picker-modal-open");
     trigger(picker).setAttribute("aria-expanded", "false");
     if (openPicker === picker) openPicker = null;
     if (restoreFocus) trigger(picker).focus();
@@ -183,6 +231,22 @@
       trigger(cp).focus();
       return;
     }
+    var sizeBtn = t.closest && t.closest("[data-gth-record-picker-size]");
+    if (sizeBtn && ownerOf(sizeBtn)) {
+      var sp = ownerOf(sizeBtn);
+      setSize(sp, isModal(sp) ? "panel" : "modal");
+      sizeBtn.focus();
+      return;
+    }
+    var closeBtn = t.closest && t.closest("[data-gth-record-picker-close]");
+    if (closeBtn && ownerOf(closeBtn)) {
+      close(ownerOf(closeBtn), true);
+      return;
+    }
+    if (openPicker && t.matches && t.matches("[data-gth-record-picker-backdrop]")) {
+      close(openPicker, true);
+      return;
+    }
     var row = t.closest && t.closest("[data-gth-pick]");
     var owner = row && ownerOf(row);
     if (owner) {
@@ -212,6 +276,16 @@
     }
     var picker = ownerOf(t);
     if (!picker) return;
+    if (evt.key === "Tab" && isModal(picker)) {
+      // Modal size: Tab / Shift+Tab wrap inside the panel.
+      var focusables = Array.prototype.slice.call(panelOf(picker).querySelectorAll(
+        "a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), [tabindex='0']"
+      )).filter(function (el) { return el.offsetParent !== null; });
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (evt.shiftKey && t === first) { evt.preventDefault(); last.focus(); }
+      else if (!evt.shiftKey && t === last) { evt.preventDefault(); first.focus(); }
+      return;
+    }
     var all = rows(picker);
     var i = all.indexOf(t);
     if (i === -1) {
