@@ -611,6 +611,7 @@ def test_record_picker_search_then_click_fires_no_extra_request(page, playground
     page.goto(playground_url)
     page.click(PART_TRIGGER)
     panel = page.locator(PART_PANEL)
+    expect(panel.locator("input[type=search]")).to_be_focused()  # panel ready
     panel.locator("input[type=search]").fill("part 01")
     expect(panel.locator(".gth-table-summary")).to_contain_text("1–10 of 10")  # search landed
     _htmx_idle(page)
@@ -642,3 +643,11 @@ def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playgroun
     page.mouse.up()
     expect(page.locator(PART_TRIGGER)).to_have_text(label)  # the pressed row, not page 2's
     expect(panel).to_be_hidden()
+
+
+def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_url):
+    _open_v07_modal(page, playground_url)
+    page.click("#gth-field-record-trigger")
+    page.keyboard.press("Escape")  # immediately: focus may still be on the trigger
+    expect(page.locator("#gth-field-record-panel")).to_be_hidden()
+    expect(page.locator(MODAL)).to_be_visible()

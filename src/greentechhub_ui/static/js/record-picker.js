@@ -200,16 +200,18 @@
       open(pickerOf(t));
       return;
     }
-    var picker = ownerOf(t);
-    if (!picker) return;
-    if (evt.key === "Escape") {
-      // Capture phase + stopPropagation: close the panel, not an enclosing
-      // modal (Bootstrap listens on the modal element).
+    if (evt.key === "Escape" && openPicker) {
+      // An open picker takes Esc first, wherever focus is (it may still be
+      // on the trigger while the panel loads). Capture phase +
+      // stopPropagation: close the panel, not an enclosing modal (Bootstrap
+      // listens on the modal element).
       evt.preventDefault();
       evt.stopPropagation();
-      close(picker, true);
+      close(openPicker, true);
       return;
     }
+    var picker = ownerOf(t);
+    if (!picker) return;
     var all = rows(picker);
     var i = all.indexOf(t);
     if (i === -1) {
@@ -241,14 +243,23 @@
     var panel = panelOf(picker);
     markSelected(picker);
     if (panel.hasAttribute("data-focus-on-load")) {
-      panel.removeAttribute("data-focus-on-load");
-      if (openPicker === picker) focusFirst(picker);
+      // Focused on htmx:afterSettle (below): until then htmx hasn't wired
+      // up the new filter form, and a fast typist's first keys are lost.
     } else if (openPicker === picker && (document.activeElement === document.body || !document.activeElement)) {
       // A sort/page swap removed the focused control: keep focus in the panel.
       var first = rows(picker)[0];
       if (first) first.focus();
     }
     if (openPicker === picker) position(picker);
+  });
+
+  document.body.addEventListener("htmx:afterSettle", function (evt) {
+    var picker = ownerOf(evt.detail.target);
+    if (!picker) return;
+    var panel = panelOf(picker);
+    if (!panel.hasAttribute("data-focus-on-load")) return;
+    panel.removeAttribute("data-focus-on-load");
+    if (openPicker === picker) focusFirst(picker);
   });
 
   function reposition(evt) {
