@@ -25,7 +25,7 @@
       <img src="{{ brand.logo_url }}" alt="" height="24" class="me-2 gth-logo-on-dark">
       <img src="{{ brand.logo_light_url }}" alt="" height="24" class="me-2 gth-logo-on-light">
       {%- elif brand.logo_url %}<img src="{{ brand.logo_url }}" alt="" height="24" class="me-2">{% endif -%}
-      {{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}
+      <span class="gth-navbar-brand-text">{{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}</span>
     </a>
     <div class="d-flex align-items-center gap-2">
       {% if show_search %}

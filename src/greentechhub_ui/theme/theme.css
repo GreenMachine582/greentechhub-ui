@@ -3,6 +3,7 @@
    Values here must stay in sync with tokens.py. */
 
 :root {
+  --gth-logo-height: 3rem;  /* gth_navbar's logo (was 24px before v0.8) */
   --gth-color-primary: #1FBE1E;
   --gth-color-primary-dark: #169617;
   --gth-color-primary-light: #A6EBA6;
@@ -99,6 +100,20 @@
 .gth-navbar-brand {
   color: var(--gth-brand-fg, var(--gth-color-primary-light)) !important;
   font-weight: 700;
+}
+
+/* Logo size is a token (the markup keeps height="24" as the no-CSS
+   fallback). The brand's own vertical padding is trimmed so a bigger logo
+   doesn't pad the bar out; --gth-navbar-height below matches the result. */
+.gth-navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.gth-navbar-brand img {
+  width: auto;
+  height: var(--gth-logo-height);
 }
 
 .gth-navbar-brand:hover {
@@ -596,7 +611,10 @@ body.gth-picker-modal-open {
 :root {
   --gth-sidebar-width: 16rem;
   --gth-sidebar-rail-width: 4.25rem;
-  --gth-navbar-height: 3.5rem;
+  /* The navbar is the logo plus its 0.5rem top/bottom padding and 1px
+     border — derived, so resizing the logo keeps the sticky sidebar and
+     anchor scroll-padding aligned under it. */
+  --gth-navbar-height: calc(var(--gth-logo-height) + 1rem + 1px);
 }
 .gth-shell {
   display: flex;
@@ -794,6 +812,9 @@ body.gth-picker-modal-open {
   flex-wrap: nowrap;
 }
 .gth-navbar-sidebar .navbar-brand {
+  min-width: 0;
+}
+.gth-navbar-brand-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

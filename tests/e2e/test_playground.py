@@ -1247,3 +1247,18 @@ def test_sidebar_demo_links_back_to_the_playground(page, playground_url):
     page.locator(f"{SB} a:has-text('Back to playground')").click()
     expect(page).to_have_url(re.compile(r"/$"))
     expect(page.locator("main h1")).to_have_text("greentechhub-ui playground")
+
+
+def test_logo_is_48px_and_the_sidebar_docks_under_the_navbar(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/forms")
+    logo = page.locator(".gth-navbar-brand img:visible").first
+    assert logo.bounding_box()["height"] == 48
+    page.evaluate("window.scrollTo(0, 2000)")
+    page.wait_for_timeout(100)
+    nav_bottom = page.locator("nav.gth-navbar").evaluate("e => e.getBoundingClientRect().bottom")
+    sidebar_top = page.locator("#gth-sidebar").evaluate("e => e.getBoundingClientRect().top")
+    assert abs(sidebar_top - nav_bottom) <= 1
+
+    page.goto(f"{playground_url}/layouts/sidebar")  # the logo in the other demo too
+    assert page.locator(".gth-navbar-brand img:visible").first.bounding_box()["height"] == 48
