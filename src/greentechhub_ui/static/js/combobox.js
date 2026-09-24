@@ -14,7 +14,12 @@
 // panel stays open for more picks and hides options already chosen.
 // [data-gth-combobox-create] (tags) turns Enter/comma on unmatched text into
 // a chip whose value is the text; without a url that's the only way in.
-// [data-gth-combobox-max] caps the chip count.
+// [data-gth-combobox-max] caps the chip count; going over it pops a
+// warning toast (showToast, see toast.js) with
+// [data-gth-combobox-max-message]. Text typed but never turned into a chip
+// is cleared when focus leaves the box, and removing a chip moves focus to
+// a neighbouring chip without reopening the list — clicking into the input
+// does that.
 //
 // Delegated from document, so it survives htmx swaps and 422 re-renders of
 // the form it lives in. Requires htmx (htmx.ajax).
@@ -117,9 +122,17 @@
   // Same markup as gth_multiselect_chip; built with textContent/value so a
   // label or a typed tag can't inject HTML.
   function addChip(box, value, label) {
-    if (chosenValues(box).indexOf(value) !== -1) return false;
+    if (chosenValues(box).indexOf(value) !== -1) {
+      announce(box, label + " is already added");
+      return false;
+    }
     if (atMax(box)) {
-      announce(box, "Limit reached");
+      // Visible feedback too: the live region is screen-reader-only.
+      var message = box.getAttribute("data-gth-combobox-max-message") || "Limit reached";
+      announce(box, message);
+      document.body.dispatchEvent(new CustomEvent("showToast", {
+        detail: { message: message, kind: "warning" },
+      }));
       return false;
     }
     var chip = document.createElement("span");
@@ -175,15 +188,44 @@
     if (addChip(box, text, text)) {
       p.input.value = "";
       load(box, "");
+    } else if (chosenValues(box).indexOf(text) !== -1) {
+      p.input.value = "";  // a duplicate: nothing to keep
     }
   }
 
   document.addEventListener("focusin", function (evt) {
     var box = boxOf(evt.target);
     if (!isInput(box, evt.target)) return;
+    // Focus handed back after removing the last chip: don't pop the list.
+    if (box.hasAttribute("data-gth-combobox-quiet")) {
+      box.removeAttribute("data-gth-combobox-quiet");
+      return;
+    }
     var p = parts(box);
     if (p.value && p.value.value) evt.target.select();  // typing replaces the label
     load(box, currentQuery(box));
+  });
+
+  // Multi mode: leaving the box discards text that was never picked or
+  // turned into a tag, so it can't read as a selection it isn't.
+  document.addEventListener("focusout", function (evt) {
+    var box = boxOf(evt.target);
+    if (!box || !isMulti(box)) return;
+    if (evt.relatedTarget && box.contains(evt.relatedTarget)) return;
+    clearTimeout(timers.get(box));
+    parts(box).input.value = "";
+    close(box);
+  });
+
+  // Clicking results mustn't move focus off the input: the option still
+  // gets its click, and the focusout above (or a browser that doesn't
+  // focus buttons on click) can't close the panel under the pointer.
+  // Also note whether the input already had focus, for the click below.
+  var focusedAtMousedown = null;
+  document.addEventListener("mousedown", function (evt) {
+    var box = boxOf(evt.target);
+    focusedAtMousedown = document.activeElement;
+    if (box && evt.target.closest("[data-gth-combobox-results]")) evt.preventDefault();
   });
 
   document.addEventListener("input", function (evt) {
@@ -238,11 +280,31 @@
   }, true);
 
   document.addEventListener("click", function (evt) {
+    var cbox = boxOf(evt.target);
+    // Clicking an input that already has focus (after Esc, a pick or a
+    // removal) reopens the list; a first click is handled by focusin.
+    if (isInput(cbox, evt.target) && !isOpen(cbox) && focusedAtMousedown === evt.target) {
+      load(cbox, currentQuery(cbox));
+      return;
+    }
     var remove = evt.target.closest && evt.target.closest("[data-gth-combobox-remove]");
     if (remove) {
+      // Focus moves to a neighbouring chip (or quietly back to the input),
+      // never reopening the list: clicking into the input does that.
       var rbox = boxOf(remove);
-      removeChip(rbox, remove.closest("[data-gth-combobox-chip]"));
-      parts(rbox).input.focus();
+      var chip = remove.closest("[data-gth-combobox-chip]");
+      var all = chips(rbox);
+      var neighbour = all[all.indexOf(chip) + 1] || all[all.indexOf(chip) - 1];
+      close(rbox);
+      removeChip(rbox, chip);
+      if (neighbour) {
+        neighbour.querySelector("[data-gth-combobox-remove]").focus();
+      } else if (document.activeElement !== parts(rbox).input) {
+        // (Already focused — e.g. Safari doesn't focus a clicked button —
+        // means no focusin will come to consume the flag.)
+        rbox.setAttribute("data-gth-combobox-quiet", "");
+        parts(rbox).input.focus();
+      }
       return;
     }
     var opt = evt.target.closest && evt.target.closest("[data-gth-combobox-results] [data-value]");

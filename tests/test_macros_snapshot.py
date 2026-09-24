@@ -630,3 +630,11 @@ def test_record_picker_row():
         </tbody></table>"""
     )
     assert_snapshot(rendered, "record_picker_row")
+
+
+def test_multiselect_custom_max_message():
+    rendered = _render(
+        """{% from "multiselect.html" import gth_multiselect %}
+        {{ gth_multiselect("w", "W", url="/w", max_items=2, max_message="Two & no more.") }}"""
+    )
+    assert 'data-gth-combobox-max-message="Two &amp; no more."' in rendered

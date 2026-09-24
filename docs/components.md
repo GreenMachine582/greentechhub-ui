@@ -281,7 +281,8 @@ gth_switch(name, label, checked=False, value="on", help_text=None, field_class="
 ```jinja
 {# multiselect.html — behaviour is combobox.js's multi mode (combobox_js_url) #}
 gth_multiselect(name, label, url=None, values=(), allow_create=False, max_items=None,
-                errors=None, placeholder="Search…", help_text=None, field_class="mb-3")
+                max_message=None, errors=None, placeholder="Search…", help_text=None,
+                field_class="mb-3")
 gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js builds the same markup #}
 {# url: a gth_combobox endpoint (gth_combobox_option rows); picked options are
    hidden from its results and the panel stays open for the next pick. Each
@@ -291,9 +292,13 @@ gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js bui
    is a tags input: Enter or comma adds the typed text (an exact label match
    takes the existing option instead); nothing is highlighted until ↑/↓, so
    Enter never silently takes the first suggestion. Backspace on the empty
-   input removes the last chip; max_items caps the count; adds/removals are
-   announced in a polite live region. Chips are built with textContent, so a
-   typed tag can't inject HTML. #}
+   input removes the last chip; max_items caps the count, and trying to go over
+   it pops a warning toast (max_message, default "You can choose up to N." —
+   needs toast_js_url). Typed text that was never picked or made a tag is
+   cleared when focus leaves the field. Removing a chip moves focus to the next
+   chip without reopening the list; clicking into the input opens it (also
+   after Esc). Adds/removals are announced in a polite live region. Chips are
+   built with textContent, so a typed tag can't inject HTML. #}
 ```
 
 ### Record picker (v0.7)

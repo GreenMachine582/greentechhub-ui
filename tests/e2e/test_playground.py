@@ -428,14 +428,60 @@ def test_multiselect_pick_hides_chosen_and_backspace_removes(page, playground_ur
         "Removed Widget #3")
 
 
-def test_multiselect_remove_button_and_max_items(page, playground_url):
+def test_multiselect_max_items_toasts_and_remove_stays_closed(page, playground_url):
     page.goto(playground_url)
     page.click(MS_INPUT)
-    for value in ("1", "2", "3", "4", "5", "6"):
+    for value in ("1", "2", "3", "4", "5"):
         page.click(f"{MS_RESULTS} [data-value='{value}']")
-    expect(page.locator(MS_CHIPS)).to_have_count(5)  # max_items=5
+    expect(page.locator(MS_CHIPS)).to_have_count(5)
+    page.click(f"{MS_RESULTS} [data-value='6']")  # one over max_items=5
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("You can choose up to 5 widgets.")
+    expect(page.locator(MS_CHIPS)).to_have_count(5)
+
+    # Removing a chip doesn't open the list; focus moves to the next chip.
+    page.keyboard.press("Escape")
+    expect(page.locator(MS_RESULTS)).to_be_hidden()
     page.click(f"{MS_CHIPS} >> nth=0 >> [data-gth-combobox-remove]")
     expect(page.locator(MS_CHIPS)).to_have_count(4)
+    expect(page.locator(MS_RESULTS)).to_be_hidden()
+    expect(page.locator(f"{MS_CHIPS} >> nth=0 >> [data-gth-combobox-remove]")).to_be_focused()
+
+    # Removing the last chip hands focus back to the input — still closed.
+    for _ in range(4):
+        page.click(f"{MS_CHIPS} >> nth=0 >> [data-gth-combobox-remove]")
+    expect(page.locator(MS_CHIPS)).to_have_count(0)
+    expect(page.locator(MS_INPUT)).to_be_focused()
+    expect(page.locator(MS_RESULTS)).to_be_hidden()
+
+    # Clicking into the (already focused) input opens it.
+    page.click(MS_INPUT)
+    expect(page.locator(MS_RESULTS)).to_be_visible()
+
+
+def test_multiselect_unpicked_text_is_cleared_on_blur(page, playground_url):
+    page.goto(playground_url)
+    page.fill(MS_INPUT, "Wid")
+    expect(page.locator(MS_RESULTS)).to_be_visible()
+    page.click("h2:has-text('gth-multiselect')")  # outside
+    expect(page.locator(MS_RESULTS)).to_be_hidden()
+    assert page.input_value(MS_INPUT) == ""
+    expect(page.locator(MS_CHIPS)).to_have_count(0)
+
+    page.fill(TAG_INPUT, "half-typed")
+    page.keyboard.press("Tab")
+    assert page.input_value(TAG_INPUT) == ""
+    expect(page.locator(TAG_CHIPS)).to_have_count(1)  # just the pre-filled "urgent"
+
+
+def test_combobox_click_reopens_after_escape(page, playground_url):
+    page.goto(playground_url)
+    page.click(MS_INPUT)
+    expect(page.locator(MS_RESULTS)).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(MS_RESULTS)).to_be_hidden()
+    expect(page.locator(MS_INPUT)).to_be_focused()
+    page.click(MS_INPUT)
+    expect(page.locator(MS_RESULTS)).to_be_visible()
 
 
 def test_tags_enter_comma_and_422_round_trip(page, playground_url):
@@ -444,12 +490,11 @@ def test_tags_enter_comma_and_422_round_trip(page, playground_url):
     page.fill(TAG_INPUT, "blue")
     page.keyboard.press("Enter")
     page.type(TAG_INPUT, "red,")
-    page.fill(TAG_INPUT, "urgent")  # duplicate: ignored
+    page.fill(TAG_INPUT, "urgent")  # duplicate: ignored, and cleared
     page.keyboard.press("Enter")
     expect(page.locator(TAG_CHIPS)).to_have_count(3)
-    assert page.input_value(TAG_INPUT) == "urgent"
+    assert page.input_value(TAG_INPUT) == ""
 
-    page.fill(TAG_INPUT, "")
     page.click("#multi-demo button[type=submit]")  # no widgets picked → 422
     expect(page.locator("#multi-demo")).to_contain_text("Pick at least one widget.")
     expect(page.locator(TAG_CHIPS)).to_have_count(3)  # tags echoed back
