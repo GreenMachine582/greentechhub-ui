@@ -1,11 +1,11 @@
-{% from "badge.html" import gth_badge %}
+{% from "badge.html" import gth_nav_badge %}
 
 {% macro _sidebar_link(item, url, label, active, icon, top) -%}
 <a class="gth-sidebar-link{% if active %} active{% endif %}" href="{{ url|e }}"
   {%- if active %} aria-current="page"{% endif %}{% if top %} data-gth-tip="{{ label|e }}"{% endif %}>
   <i class="bi bi-{{ icon or ('dot' if not top else 'circle') }} gth-sidebar-icon" aria-hidden="true"></i>
   <span class="gth-sidebar-label">{{ label }}</span>
-  {%- if item.badge %}<span class="gth-sidebar-badge">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif %}
+  {{- gth_nav_badge(item, "gth-sidebar-badge") }}
 </a>
 {%- endmacro %}
 
@@ -44,7 +44,7 @@
         aria-controls="{{ gid }}" data-gth-sidebar-group="{{ item.label|e }}"{% if top %} data-gth-tip="{{ item.label|e }}"{% endif %}>
         <i class="bi bi-{{ item.icon or 'folder2' }} gth-sidebar-icon" aria-hidden="true"></i>
         <span class="gth-sidebar-label">{{ item.label }}</span>
-        {%- if item.badge %}<span class="gth-sidebar-badge">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif %}
+        {{- gth_nav_badge(item, "gth-sidebar-badge") }}
         <i class="bi bi-chevron-down gth-sidebar-chevron" aria-hidden="true"></i>
       </button>
       <ul class="gth-sidebar-list list-unstyled mb-0" id="{{ gid }}"{% if not open %} hidden{% endif %} data-gth-sidebar-children

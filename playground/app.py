@@ -277,10 +277,39 @@ SIDEBAR_DEMO_NAV = [
     {"label": "Reports", "url": "/layouts/sidebar/reports", "icon": "bar-chart", "children": [
         {"label": "Monthly", "url": "/layouts/sidebar/reports/monthly"},
         {"label": "Health", "url": "/layouts/sidebar/reports/health",
-         "badge": {"label": "3", "tone": "warn"}},
+         "badge_url": "/layouts/sidebar-badges/health", "badge_event": "healthChanged"},
     ]},
     {"label": "Settings", "url": "/layouts/sidebar/settings", "icon": "gear"},
 ]
+
+
+# Live nav badge demo: an open-issues count the Health item re-fetches
+# whenever a response fires healthChanged.
+HEALTH_ISSUES = {"open": 3}
+_BADGE = templates.env.from_string(
+    '{% from "badge.html" import gth_badge %}'
+    '{% if n %}{{ gth_badge(n, "warn") }}{% endif %}'
+)
+
+
+@app.get("/layouts/sidebar-badges/health", response_class=HTMLResponse)
+async def health_badge():
+    return HTMLResponse(_BADGE.render(n=HEALTH_ISSUES["open"]))
+
+
+@app.post("/layouts/sidebar-badges/health/{action}")
+async def health_badge_action(action: str):
+    if action == "resolve":
+        HEALTH_ISSUES["open"] = max(0, HEALTH_ISSUES["open"] - 1)
+    elif action == "reset":
+        HEALTH_ISSUES["open"] = 3
+    else:
+        return HTMLResponse("Unknown action", status_code=404)
+    resp = HTMLResponse("", status_code=204)
+    resp.headers["HX-Trigger"] = greentechhub_ui.toast(
+        f"{HEALTH_ISSUES['open']} open issue(s)", kind="info", events=["healthChanged"]
+    )
+    return resp
 
 
 @app.get("/layouts/sidebar", response_class=HTMLResponse)

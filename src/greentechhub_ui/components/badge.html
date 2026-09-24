@@ -13,3 +13,15 @@
 {%- endif %}
 {%- if icon %}<i class="bi bi-{{ icon }} me-1" aria-hidden="true"></i>{% endif %}{{ label }}</span>
 {% endmacro %}
+
+{% macro gth_nav_badge(item, badge_class="") -%}
+{#- A NavItem's count/status for gth_sidebar and gth_navbar: `badge`
+    ({label, tone}) renders at once; `badge_url` is fetched on load and
+    again whenever `badge_event` fires on <body> — e.g. a response's
+    greentechhub_ui.toast(..., events=["healthChanged"]). The endpoint
+    returns a gth_badge, or nothing to hide it. Renders nothing for an item
+    with neither. -#}
+{%- if item.badge %}<span class="gth-nav-badge {{ badge_class }}">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif -%}
+{%- if item.badge_url %}<span class="gth-nav-badge {{ badge_class }}" hx-get="{{ item.badge_url|e }}"
+  hx-trigger="load{% if item.badge_event %}, {{ item.badge_event|e }} from:body{% endif %}" hx-swap="innerHTML"></span>{% endif -%}
+{%- endmacro %}

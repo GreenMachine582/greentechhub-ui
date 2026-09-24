@@ -17,4 +17,17 @@
     the window below 992px for the <strong>drawer</strong>. <a href="/">Back to the playground</a>.
   </p>
 {% endcall %}
+{% call gth_card(title="Live nav badge", card_class="mt-3") %}
+  <p class="text-secondary">
+    <strong>Reports › Health</strong> shows an open-issue count fetched from <code>badge_url</code>. These buttons change
+    it server-side and fire <code>healthChanged</code> (via <code>toast(..., events=[...])</code>), which re-fetches the
+    badge — it disappears at zero.
+  </p>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="health-resolve"
+      hx-post="/layouts/sidebar-badges/health/resolve" hx-swap="none">Resolve one issue</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="health-reset"
+      hx-post="/layouts/sidebar-badges/health/reset" hx-swap="none">Reset to 3</button>
+  </div>
+{% endcall %}
 {% endblock %}

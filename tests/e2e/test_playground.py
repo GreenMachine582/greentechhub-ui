@@ -825,3 +825,18 @@ def test_sidebar_drawer_on_mobile(page, playground_url):
     page.locator(f"{SB} a:has-text('Settings')").click()
     expect(page.locator("#sidebar-demo-path")).to_have_text("/layouts/sidebar/settings")
     expect(page.locator("#gth-sidebar")).to_be_hidden()
+
+
+def test_sidebar_live_badge_refreshes_on_event(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar/reports/health")
+    badge = page.locator(f"{SB} a:has-text('Health') .gth-nav-badge")
+    page.click("#health-reset")
+    expect(badge).to_have_text("3")
+    page.click("#health-resolve")
+    expect(badge).to_have_text("2")
+    for _ in range(2):
+        page.click("#health-resolve")
+    expect(badge.locator(".badge")).to_have_count(0)  # zero: hidden
+    page.click("#health-reset")
+    expect(badge).to_have_text("3")

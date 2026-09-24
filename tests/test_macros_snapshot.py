@@ -709,3 +709,16 @@ def test_navbar_dropdown_for_nested_items():
     assert_snapshot(rendered, "navbar_dropdown")
     assert rendered.count('class="nav-item dropdown"') == 2
     assert 'class="dropdown-item active" href="/archive/2024"' in rendered
+
+
+def test_nav_badge_static_live_and_none():
+    rendered = _render(
+        """{% from "badge.html" import gth_nav_badge %}
+        [{{ gth_nav_badge({"label": "x"}) }}]
+        {{ gth_nav_badge({"badge": {"label": "3", "tone": "warn"}}) }}
+        {{ gth_nav_badge({"badge_url": "/b?a=1&c=2", "badge_event": "healthChanged"}) }}"""
+    )
+    assert "[]" in rendered
+    assert "text-warning-emphasis" in rendered and ">3</span>" in rendered
+    assert 'hx-get="/b?a=1&amp;c=2"' in rendered
+    assert 'hx-trigger="load, healthChanged from:body"' in rendered
