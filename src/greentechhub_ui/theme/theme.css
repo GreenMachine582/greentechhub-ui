@@ -420,6 +420,11 @@ body.gth-picker-modal-open {
   display: flex;
   align-items: flex-start;
 }
+/* In-page anchors (sidebar links like /forms#combobox) mustn't land under
+   the sticky navbar. */
+:root:has(.gth-shell) {
+  scroll-padding-top: calc(var(--gth-navbar-height) + 0.75rem);
+}
 .gth-main {
   flex: 1 1 auto;
   min-width: 0;
@@ -600,6 +605,17 @@ body.gth-picker-modal-open {
   [data-gth-sidebar="rail"] .gth-sidebar-rail-toggle {
     margin: 0 auto;
   }
+}
+/* The sidebar layout's navbar stays one row on a phone: the brand
+   truncates instead of pushing search/theme onto a second line. */
+.gth-navbar-sidebar > .container-fluid {
+  flex-wrap: nowrap;
+}
+.gth-navbar-sidebar .navbar-brand {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .gth-kbd {
   padding: 0.05rem 0.35rem;

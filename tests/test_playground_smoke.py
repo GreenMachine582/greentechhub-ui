@@ -25,31 +25,45 @@ def test_app_is_a_fastapi_instance():
 
 
 def test_every_template_compiles():
-    for name in ["index.html", "_tasks_tbody.html", "_pagination_list.html", "_form_demo.html",
+    for name in ["pages/overview.html", "pages/layout.html", "pages/data.html", "pages/forms.html",
+                 "pages/feedback.html", "pages/overlays.html", "pages/navigation.html",
+                 "pages/extensibility.html", "_tasks_tbody.html", "_pagination_list.html",
+                 "_form_demo.html",
                  "tables.html", "_records_table.html", "_multi_form.html",
                  "_record_picker_panel.html", "_v07_form.html"]:
         templates.env.get_template(name)
 
 
-def test_index_renders_every_component():
+def _page_html(name, path, **context):
+    return templates.get_template(f"pages/{name}.html").render(
+        current_path=path, page_title=name.title(), page_subtitle="", **context)
+
+
+def test_pages_render_every_component():
+    """What the single index page used to prove, per category page."""
     tasks = [{"id": 1, "title": "Sample", "status": "pending", "priority": 50}]
-    html = templates.get_template("index.html").render(
-        tasks=tasks,
-        field_errors={},
-        budget_value=250,
-        flashes_demo=[{"message": "x", "kind": "success"}],
-        **_paginate_widgets(0),
-        **_widget_rows(1),
-        **_multi_context(tags=["urgent"]),
-    )
-    assert "gth-stat-card" in html
-    assert "gth-card" in html
-    assert "gth-table" in html
-    assert "gth-pagination" in html
-    assert "gth-empty-state" in html
-    assert "gth-form-field" in html
-    assert "gth-toast" in html
-    assert "gth-multiselect" in html and "gth-badge" in html and "gth-tabs" in html
+    html = {
+        "layout": _page_html("layout", "/layout"),
+        "data": _page_html("data", "/data", tasks=tasks, **_paginate_widgets(0), **_widget_rows(1)),
+        "forms": _page_html("forms", "/forms", field_errors={}, budget_value=250,
+                            **_multi_context(tags=["urgent"])),
+        "feedback": _page_html("feedback", "/feedback",
+                               flashes_demo=[{"message": "x", "kind": "success"}]),
+        "overlays": _page_html("overlays", "/overlays", watchlist=[{"id": 1, "name": "W"}]),
+    }
+    assert "gth-stat-card" in html["layout"]
+    assert "gth-card" in html["layout"]
+    assert "gth-empty-state" in html["layout"]
+    assert "gth-badge" in html["layout"] and "gth-tabs" in html["layout"]
+    assert "gth-skeleton" in html["layout"]
+    assert "gth-table" in html["data"]
+    assert "gth-pagination" in html["data"]
+    assert "gth-form-field" in html["forms"]
+    assert "gth-multiselect" in html["forms"] and "gth-record-picker" in html["forms"]
+    assert "gth-toast" in html["feedback"]
+    assert "gth-confirm-delete" in html["overlays"] and "gth-modal" in html["overlays"]
+    # Every page sits in the sidebar layout.
+    assert all('class="gth-shell"' in page for page in html.values())
 
 
 def test_tasks_tbody_partial_has_no_table_wrapper():

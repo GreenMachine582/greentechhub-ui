@@ -1,0 +1,52 @@
+{% extends "pages/_base.html" %}
+{% from "card.html" import gth_card %}
+{% from "table.html" import gth_table %}
+
+{% block page %}
+<section class="mb-5" id="table">
+  <h2 class="h4">gth-table + gth-table_body + gth-empty-state (row-level)</h2>
+  <form id="task-filter-form"
+    hx-get="/table-demo/filter"
+    hx-trigger="keyup changed delay:400ms from:#task-q-input"
+    hx-target="#tasks-tbody"
+    hx-swap="innerHTML"
+    class="row g-2 mb-3">
+    <div class="col-12 col-md-4">
+      <input type="search" id="task-q-input" name="q" class="form-control form-control-sm"
+        placeholder="Search tasks… (try &quot;zzz&quot; for the empty state)" autocomplete="off">
+    </div>
+  </form>
+  {% call gth_table(headers=["Priority", "Title", "Status"], tbody_id="tasks-tbody") %}
+  {% include "_tasks_tbody.html" %}
+  {% endcall %}
+</section>
+
+<section class="mb-5" id="pagination">
+  <h2 class="h4">gth-pagination</h2>
+  <div id="widgets-list">
+    {% include "_pagination_list.html" with context %}
+  </div>
+</section>
+
+<section class="mb-5" id="load-more">
+  <h2 class="h4">gth-table-load-more</h2>
+  {% call gth_table(headers=["Widget"], tbody_id="widgets-tbody") %}
+    {% include "_widget_rows.html" %}
+  {% endcall %}
+</section>
+
+<div class="row g-3 mb-5">
+  <div class="col-md-6">
+    {% call gth_card(title='<i class="bi bi-grid-3x3 me-2" aria-hidden="true"></i>gth-data-table'|safe, card_class="h-100") %}
+      <p>Sortable, filterable, with navigation picked by config: pages, load more, infinite scroll, or none.</p>
+      <a class="btn btn-sm btn-outline-secondary" href="/tables">Open the table demo</a>
+    {% endcall %}
+  </div>
+  <div class="col-md-6">
+    {% call gth_card(title='<i class="bi bi-diagram-3 me-2" aria-hidden="true"></i>gth-tree'|safe, card_class="h-100") %}
+      <p>An APG tree with lazy children, single or tri-state selection and a detail pane.</p>
+      <a class="btn btn-sm btn-outline-secondary" href="/tree">Open the tree demo</a>
+    {% endcall %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "pages/_base.html" %}
+{% from "page_header.html" import gth_page_header %}
+
+{% block page %}
+<section class="mb-5" id="sidebar">
+  <h2 class="h4">gth-sidebar</h2>
+  <p class="text-secondary">
+    This playground runs in <code>app.html</code>'s <code>layout="sidebar"</code>: nested groups open along the
+    current page's trail, a filter box, a live badge (Overlays › Confirm delete), an icon rail (the button at the
+    bottom, remembered per browser; groups open as flyouts there) and, below 992px, a drawer.
+  </p>
+  <a class="btn btn-sm btn-outline-secondary" href="/layouts/sidebar">Open the standalone sidebar demo</a>
+</section>
+
+<section class="mb-5" id="breadcrumbs">
+  <h2 class="h4">Breadcrumbs from the nav tree</h2>
+  <p class="text-secondary">
+    <code>nav_breadcrumbs(current_path)</code> (a global <code>shell_globals()</code> installs) turns the nav trail
+    into <code>gth_page_header</code> breadcrumbs. For <code>/tables</code>:
+  </p>
+  <div class="border rounded p-3" id="breadcrumbs-demo">
+    {{ gth_page_header("Data tables", breadcrumbs=nav_breadcrumbs("/tables"), header_class="mb-0") }}
+  </div>
+</section>
+
+<section class="mb-5" id="command-palette">
+  <h2 class="h4">gth-command-palette</h2>
+  <p class="text-secondary">
+    Press <kbd class="gth-kbd">Ctrl K</kbd> (<kbd class="gth-kbd">⌘K</kbd> on a Mac) or the navbar's search button:
+    it searches every page and demo in the sidebar.
+  </p>
+  <button type="button" class="btn btn-outline-secondary" data-gth-command-open>
+    <i class="bi bi-search" aria-hidden="true"></i> Open the command palette
+  </button>
+</section>
+{% endblock %}

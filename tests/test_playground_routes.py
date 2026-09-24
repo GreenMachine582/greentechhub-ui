@@ -40,6 +40,18 @@ def test_index_returns_200():
     assert response.status_code == 200
 
 
+def test_every_sidebar_link_returns_200():
+    from greentechhub_ui.navigation import flatten
+    from playground.app import PLAYGROUND_NAV
+
+    paths = {entry["url"].split("#")[0] for entry in flatten(PLAYGROUND_NAV)}
+    assert {"/layout", "/data", "/forms", "/tables", "/tree"} <= paths
+    for path in sorted(paths):
+        response = _run(_get(path))
+        assert response.status_code == 200, path
+        assert 'aria-current="page"' in response.text, path  # the sidebar marks it
+
+
 def test_table_filter_returns_matching_rows_only():
     response = _run(_get("/table-demo/filter", params={"q": "release"}))
     assert response.status_code == 200
@@ -91,13 +103,23 @@ def test_form_demo_above_max_returns_422():
     assert response.status_code == 422
     assert "Must be less than or equal to 1000" in response.text
 
-def test_index_renders_v07_demos_with_vendored_assets():
-    response = _run(_get("/"))
-    assert 'id="gth-modal-host"' in response.text
-    assert '<script src="/gth-assets/js/modal-host.js"></script>' in response.text
-    assert '<script src="/gth-assets/js/combobox.js"></script>' in response.text
-    assert "gth-busy-button" in response.text
-    assert "gth-table-load-more" in response.text
+def test_pages_render_v07_demos_with_vendored_assets():
+    overlays = _run(_get("/overlays")).text
+    assert 'id="gth-modal-host"' in overlays
+    assert '<script src="/gth-assets/js/modal-host.js"></script>' in overlays
+    assert '<script src="/gth-assets/js/combobox.js"></script>' in overlays
+    assert "gth-busy-button" in _run(_get("/forms")).text
+    assert "gth-table-load-more" in _run(_get("/data")).text
+
+
+def test_playground_runs_in_the_sidebar_layout():
+    html = _run(_get("/forms")).text
+    assert 'id="gth-sidebar"' in html
+    assert '<script src="/gth-assets/js/sidebar.js"></script>' in html
+    assert "<dialog" in html  # the command palette comes with the sidebar layout
+    # Breadcrumbs derived from the nav: /tables sits under the Data group.
+    tables = _run(_get("/tables")).text
+    assert '<a href="/data">Data</a>' in tables
 
 
 def test_widget_rows_load_more_pages_through_and_stops():

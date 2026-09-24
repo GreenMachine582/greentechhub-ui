@@ -1,0 +1,88 @@
+{% extends "pages/_base.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "card.html" import gth_card %}
+{% from "stat_card.html" import gth_stat_card %}
+{% from "empty_state.html" import gth_empty_state %}
+{% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
+{% from "badge.html" import gth_badge %}
+{% from "tabs.html" import gth_tabs %}
+
+{% block page %}
+<section class="mb-5" id="page-header">
+  <h2 class="h4">gth-page-header</h2>
+  <p class="text-secondary">Title, subtitle, breadcrumbs and an optional action slot. Every page here uses one, with
+    breadcrumbs derived from the nav (see <a href="/navigation#breadcrumbs">Navigation</a>).</p>
+  <div class="border rounded p-3">
+    {% call gth_page_header("Deal breakdown", subtitle="Reviewing terms before you commit",
+        breadcrumbs=[{"label": "Deals", "url": "#"}, {"label": "Deal breakdown"}], header_class="mb-0") %}
+    <button type="button" class="btn btn-sm btn-outline-secondary">New task</button>
+    {% endcall %}
+  </div>
+</section>
+
+<section class="mb-5" id="card">
+  <h2 class="h4">gth-card</h2>
+  {% call gth_card(title="About this playground", footer="See docs/testing.md") %}
+  <p class="mb-0">
+    This app exists so a contributor can check "what does <code>gth-table</code> actually
+    look like" without reading macro source, and as the target for the Playwright tests.
+  </p>
+  {% endcall %}
+</section>
+
+<section class="mb-5" id="stat-card">
+  <h2 class="h4">gth-stat-card</h2>
+  <div class="row g-3">
+    <div class="col-6 col-md-3">{{ gth_stat_card("Open tasks", "5", icon="list-check") }}</div>
+    <div class="col-6 col-md-3">{{ gth_stat_card("Avg priority", "56", delta="+12", delta_tone="bad") }}</div>
+    <div class="col-6 col-md-3">{{ gth_stat_card("Completed", "2", delta="-1", delta_tone="good") }}</div>
+    <div class="col-6 col-md-3">{{ gth_stat_card("Blocked", "2", value_tone="bad") }}</div>
+  </div>
+</section>
+
+<section class="mb-5" id="empty-state">
+  <h2 class="h4">gth-empty-state</h2>
+  <div class="row g-3">
+    <div class="col-md-6">{{ gth_empty_state("Nothing here yet.", icon="📭") }}</div>
+    <div class="col-md-6">
+      {% call gth_empty_state(message="No scrapers configured.") %}
+      <button class="btn btn-sm btn-outline-secondary">Add one</button>
+      {% endcall %}
+    </div>
+  </div>
+</section>
+
+<section class="mb-5" id="skeleton">
+  <h2 class="h4">gth-skeleton</h2>
+  <div class="row g-3">
+    <div class="col-md-6"><div class="border rounded p-3">{{ gth_skeleton(3) }}</div></div>
+    <div class="col-md-6">
+      <table class="table mb-0"><tbody>{{ gth_skeleton_rows(3) }}</tbody></table>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5" id="badge">
+  <h2 class="h4">gth-badge</h2>
+  <p id="badge-demo" class="d-flex flex-wrap gap-2">
+    {{ gth_badge("Healthy", "good", icon="check-circle") }}
+    {{ gth_badge("Failed", "bad", icon="x-circle") }}
+    {{ gth_badge("Stale", "warn", icon="exclamation-triangle") }}
+    {{ gth_badge("Syncing", "info", icon="arrow-repeat") }}
+    {{ gth_badge("Draft", "neutral") }}
+    {{ gth_badge("GreenTechHub", "brand", icon="leaf") }}
+    {{ gth_badge("Square", "neutral", pill=False) }}
+  </p>
+</section>
+
+<section class="mb-5" id="tabs">
+  <h2 class="h4">gth-tabs</h2>
+  {% call(key) gth_tabs("demo-tabs", [
+      {"key": "overview", "label": "Overview", "icon": "info-circle"},
+      {"key": "activity", "label": "Activity (lazy)", "icon": "clock-history", "url": "/v07-demo/tab/activity"},
+      {"key": "settings", "label": "Settings (lazy)", "icon": "gear", "url": "/v07-demo/tab/settings"},
+    ]) %}
+    {% if key == "overview" %}<p class="mb-0">A static pane rendered from the <code>{% raw %}{% call(key) %}{% endraw %}</code> body.</p>{% endif %}
+  {% endcall %}
+</section>
+{% endblock %}

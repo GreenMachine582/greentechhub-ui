@@ -7,7 +7,7 @@
 
 {% block content %}
 {{ gth_page_header("gth-data-table", subtitle="One template, navigation chosen by TableState(mode=...): pages, load more, infinite scroll, or none.",
-    breadcrumbs=[{"label": "Playground", "url": "/"}, {"label": "Tables"}]) }}
+    breadcrumbs=nav_breadcrumbs(current_path)) }}
 
 <nav class="mb-3 d-flex flex-wrap gap-2" aria-label="Table navigation mode">
   {% for m, label in [("pages", "Pages"), ("load_more", "Load more"), ("infinite", "Infinite"), ("none", "None")] %}

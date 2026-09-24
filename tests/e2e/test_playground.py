@@ -9,6 +9,11 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import expect
 
+# Every playground page (the category pages the sidebar links to, plus the
+# data-table / tree / standalone sidebar demos).
+PAGES = ["/", "/layout", "/data", "/forms", "/feedback", "/overlays", "/navigation",
+         "/extensibility", "/tables", "/tree", "/layouts/sidebar"]
+
 # Dynamically-triggered toasts land in #gth-toast-container. The static
 # gth_toast_flashes demo section on the page also renders `.toast.show`
 # elements (unconditionally, inline) — this selector must not match those.
@@ -28,7 +33,7 @@ def test_dark_mode_toggle_persists(page, playground_url):
 
 
 def test_form_validation_and_success_toast(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
 
     page.fill("#gth-field-budget", "-5")
     page.click("#form-demo-container button[type=submit]")
@@ -41,13 +46,13 @@ def test_form_validation_and_success_toast(page, playground_url):
 
 
 def test_standalone_toast_trigger(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")
     expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Demo toast triggered")
 
 
 def test_table_filter_and_keyboard_focus(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/data")
     assert "Design onboarding flow" in page.inner_text("#tasks-tbody")
 
     page.locator("#task-q-input").focus()
@@ -59,7 +64,7 @@ def test_table_filter_and_keyboard_focus(page, playground_url):
 
 
 def test_extra_css_and_js_and_head_slots_actually_work(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/extensibility")
 
     # extra_css: a real applied stylesheet, not just markup presence — checks
     # the browser's computed style, proving the data: URI stylesheet loaded.
@@ -75,7 +80,7 @@ def test_extra_css_and_js_and_head_slots_actually_work(page, playground_url):
 
 
 def test_modal_traps_focus_and_escape_returns_it_to_trigger(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/overlays")
     trigger = page.get_by_role("button", name="Open modal", exact=True)
     trigger.click()
 
@@ -95,7 +100,7 @@ def test_modal_traps_focus_and_escape_returns_it_to_trigger(page, playground_url
 
 
 def test_confirm_delete_removes_watchlist_item(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/overlays")
     watchlist = page.locator("#watchlist-demo-list")
     expect(watchlist).to_contain_text("Widget A")
 
@@ -121,8 +126,9 @@ def test_page_makes_no_off_origin_requests(page, playground_url):
             off_origin_urls.append(request.url)
 
     page.on("request", _record_off_origin)
-    page.goto(playground_url)
-    page.wait_for_load_state("networkidle")
+    for path in PAGES:
+        page.goto(f"{playground_url}{path}")
+        page.wait_for_load_state("networkidle")
 
     assert off_origin_urls == []
 
@@ -136,7 +142,7 @@ COMBO_RESULTS = "#gth-field-widget-results"
 
 
 def _open_v07_modal(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/overlays")
     page.click("text=Open server-rendered modal")
     expect(page.locator(MODAL)).to_be_visible()
 
@@ -197,7 +203,7 @@ def test_modal_form_422_then_success_closes_modal(page, playground_url):
 
 
 def test_busy_button_shows_busy_state_then_resets(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     button = page.locator(".gth-busy-button")
     button.click()
     expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Slow job started")
@@ -213,7 +219,7 @@ def test_busy_button_shows_busy_state_then_resets(page, playground_url):
 
 
 def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/data")
     rows = page.locator("#widgets-tbody tr:not(.gth-table-load-more)")
     expect(rows).to_have_count(5)
     for expected in (10, 15, 16):
@@ -223,7 +229,7 @@ def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
 
 
 def test_modal_host_reopen_does_not_leak_backdrops(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/overlays")
     for _ in range(2):
         page.click("text=Open server-rendered modal")
         expect(page.locator(MODAL)).to_be_visible()
@@ -271,7 +277,7 @@ def test_navbar_follows_color_mode(page, playground_url):
 
 
 def test_secondary_buttons_follow_color_mode(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     button = page.locator(".gth-busy-button")  # btn-outline-secondary
     # to_have_css retries: .btn transitions its color
     expect(button).to_have_css("color", "rgb(206, 212, 218)")  # #ced4da: 10.3:1 on dark
@@ -365,7 +371,7 @@ def test_data_table_infinite_inside_scroll_box(page, playground_url):
 
 
 def test_tabs_lazy_load_once_and_keyboard(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/layout")
     requests = []
     page.on("request", lambda r: requests.append(r.url) if "/v07-demo/tab/" in r.url else None)
     activity = page.locator("#demo-tabs-pane-activity")
@@ -386,7 +392,7 @@ def test_tabs_lazy_load_once_and_keyboard(page, playground_url):
 
 
 def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     result = page.locator("#chips-demo-result")
     page.click("#chips-demo label:has-text('Sensors')")
     expect(result).to_have_text("tags=sensor, tags=motor, alerts=on")
@@ -409,7 +415,7 @@ TAG_CHIPS = "#multi-demo [data-gth-combobox-name=tags] [data-gth-combobox-chip]"
 
 
 def test_multiselect_pick_hides_chosen_and_backspace_removes(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(MS_INPUT)
     expect(page.locator(f"{MS_RESULTS} [data-value]")).to_have_count(10)
     page.click(f"{MS_RESULTS} [data-value='1']")
@@ -430,7 +436,7 @@ def test_multiselect_pick_hides_chosen_and_backspace_removes(page, playground_ur
 
 
 def test_multiselect_max_items_toasts_and_remove_stays_closed(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(MS_INPUT)
     for value in ("1", "2", "3", "4", "5"):
         page.click(f"{MS_RESULTS} [data-value='{value}']")
@@ -460,7 +466,7 @@ def test_multiselect_max_items_toasts_and_remove_stays_closed(page, playground_u
 
 
 def test_multiselect_unpicked_text_is_cleared_on_blur(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.fill(MS_INPUT, "Wid")
     expect(page.locator(MS_RESULTS)).to_be_visible()
     page.click("h2:has-text('gth-multiselect')")  # outside
@@ -475,7 +481,7 @@ def test_multiselect_unpicked_text_is_cleared_on_blur(page, playground_url):
 
 
 def test_combobox_click_reopens_after_escape(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(MS_INPUT)
     expect(page.locator(MS_RESULTS)).to_be_visible()
     page.keyboard.press("Escape")
@@ -486,7 +492,7 @@ def test_combobox_click_reopens_after_escape(page, playground_url):
 
 
 def test_tags_enter_comma_and_422_round_trip(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     expect(page.locator(TAG_CHIPS)).to_have_count(1)  # "urgent" pre-filled
     page.fill(TAG_INPUT, "blue")
     page.keyboard.press("Enter")
@@ -514,7 +520,7 @@ PART_PANEL = "#gth-field-part-panel"
 
 
 def test_record_picker_search_page_and_keyboard_pick(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(PART_TRIGGER)
     panel = page.locator(PART_PANEL)
     expect(panel).to_be_visible()
@@ -586,7 +592,7 @@ def test_record_picker_in_modal_esc_keeps_modal_and_422_keeps_pick(page, playgro
 
 
 def test_switch_focus_knob_is_brand_colored(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     switch = page.locator("#gth-field-alerts")
     switch.click()  # unchecks it and leaves it focused
     expect(switch).not_to_be_checked()
@@ -609,7 +615,7 @@ def test_infinite_scroll_box_does_not_grow_the_page(page, playground_url):
 
 
 def test_record_picker_search_then_click_fires_no_extra_request(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(PART_TRIGGER)
     panel = page.locator(PART_PANEL)
     expect(panel.locator("input[type=search]")).to_be_focused()  # panel ready
@@ -627,7 +633,7 @@ def test_record_picker_search_then_click_fires_no_extra_request(page, playground
 
 
 def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playground_url):
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(PART_TRIGGER)
     panel = page.locator(PART_PANEL)
     expect(panel.locator("[data-gth-pick]")).to_have_count(10)
@@ -656,7 +662,7 @@ def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_ur
 
 def test_record_picker_expand_shrink_and_dismiss(page, playground_url):
     page.set_viewport_size({"width": 1280, "height": 800})
-    page.goto(playground_url)
+    page.goto(f"{playground_url}/forms")
     page.click(PART_TRIGGER)
     panel = page.locator(PART_PANEL)
     search = panel.locator("input[type=search]")
@@ -997,3 +1003,58 @@ def test_tree_lazy_children_of_a_checked_parent_arrive_checked(page, playground_
     expect(parts).to_have_count(10)
     expect(asm.locator("[role=treeitem][aria-checked=true]")).to_have_count(10)
     expect(page.locator("#tree-reorder [data-gth-tree-values] input")).to_have_value("c:Cable")
+
+
+# ── Playground on layout="sidebar" ───────────────────────────────────────
+
+MAIN_NAV = "#gth-sidebar-nav"
+
+
+def test_playground_sidebar_trail_breadcrumbs_and_anchor_scroll(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/tables")
+    expect(page.locator(f"{MAIN_NAV} [aria-current=page]")).to_have_text("Data tables")
+    expect(page.locator(f"{MAIN_NAV} [data-gth-sidebar-group='Data']")).to_have_attribute(
+        "aria-expanded", "true")
+    crumbs = page.locator("main nav[aria-label=breadcrumb]").first
+    expect(crumbs.locator("a")).to_have_text(["Data"])
+
+    # An in-page anchor lands below the sticky navbar, not under it.
+    page.locator(f"{MAIN_NAV} [data-gth-sidebar-group='Forms']").click()
+    page.locator(f"{MAIN_NAV} a:has-text('Multiselect + tags')").click()
+    expect(page).to_have_url(re.compile("/forms#multiselect$"))
+    heading = page.locator("#multiselect h2")
+    navbar_bottom = page.locator("nav.gth-navbar").bounding_box()
+    expect(heading).to_be_in_viewport()
+    assert heading.bounding_box()["y"] >= navbar_bottom["y"] + navbar_bottom["height"]
+
+
+def test_playground_watchlist_live_badge(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/overlays")
+    badge = page.locator(f"{MAIN_NAV} a:has-text('Confirm delete') .gth-nav-badge")
+    items = page.locator("#watchlist-demo-list .list-group-item")
+    count = items.count()  # server state: other tests may have deleted some
+    if count == 0:
+        expect(badge.locator(".badge")).to_have_count(0)
+        return
+    expect(badge).to_have_text(str(count))
+    page.locator("#watchlist-demo-list").get_by_role("button", name="Remove").first.click()
+    page.locator(".gth-modal.show").get_by_role("button", name="Delete").click()
+    expect(items).to_have_count(count - 1)
+    if count - 1:
+        expect(badge).to_have_text(str(count - 1))
+    else:
+        expect(badge.locator(".badge")).to_have_count(0)
+
+
+def test_playground_palette_reaches_demo_anchors(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(playground_url)
+    page.locator("main h1").click()  # focus the page, away from any link
+    page.keyboard.press("Control+k")
+    page.keyboard.type("record pick")
+    first = page.locator("dialog[data-gth-command] [data-gth-command-option]").first
+    expect(first).to_contain_text("Forms › Record picker")
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(re.compile("/forms#record-picker$"))

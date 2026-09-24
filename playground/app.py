@@ -83,21 +83,77 @@ templates.env.loader = ChoiceLoader(
         FileSystemLoader(greentechhub_ui.components_path),
     ]
 )
+# The playground dogfoods layout="sidebar": one page per category, each
+# demo section an anchor the sidebar (and the command palette) links to.
+PLAYGROUND_NAV = [
+    {"label": "Layout", "url": "/layout", "icon": "layout-text-window", "children": [
+        {"label": "Page header", "url": "/layout#page-header"},
+        {"label": "Card", "url": "/layout#card"},
+        {"label": "Stat card", "url": "/layout#stat-card"},
+        {"label": "Empty state", "url": "/layout#empty-state"},
+        {"label": "Skeleton", "url": "/layout#skeleton"},
+        {"label": "Badge", "url": "/layout#badge"},
+        {"label": "Tabs", "url": "/layout#tabs"},
+    ]},
+    {"label": "Data", "url": "/data", "icon": "table", "children": [
+        {"label": "Table", "url": "/data#table"},
+        {"label": "Pagination", "url": "/data#pagination"},
+        {"label": "Load more", "url": "/data#load-more"},
+        {"label": "Data tables", "url": "/tables", "icon": "grid-3x3"},
+        {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
+    ]},
+    {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
+        {"label": "Form + validation", "url": "/forms#form"},
+        {"label": "Chips + switch", "url": "/forms#chips"},
+        {"label": "Multiselect + tags", "url": "/forms#multiselect"},
+        {"label": "Record picker", "url": "/forms#record-picker"},
+        {"label": "Busy button", "url": "/forms#busy-button"},
+    ]},
+    {"label": "Feedback", "url": "/feedback", "icon": "bell", "children": [
+        {"label": "Toast", "url": "/feedback#toast"},
+        {"label": "Flashes", "url": "/feedback#flashes"},
+    ]},
+    {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
+        {"label": "Modal", "url": "/overlays#modal"},
+        {"label": "Confirm delete", "url": "/overlays#confirm-delete",
+         "badge_url": "/nav-badges/watchlist", "badge_event": "watchlistChanged"},
+        {"label": "Modal host", "url": "/overlays#modal-host"},
+    ]},
+    {"label": "Navigation", "url": "/navigation", "icon": "signpost-split", "children": [
+        {"label": "Sidebar", "url": "/navigation#sidebar"},
+        {"label": "Breadcrumbs", "url": "/navigation#breadcrumbs"},
+        {"label": "Command palette", "url": "/navigation#command-palette"},
+    ]},
+    {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
+]
+
+# Title and subtitle per category page.
+PAGES = {
+    "layout": ("Layout", "Page structure: headers, cards, stat tiles, empty and loading states, "
+               "badges, tabs."),
+    "data": ("Data", "Tables and lists, plus the config-driven data tables and the tree on their "
+             "own pages."),
+    "forms": ("Forms", "Fields, validation, pickers and long-running actions."),
+    "feedback": ("Feedback", "Toasts over HX-Trigger, and server-side flashes."),
+    "overlays": ("Overlays", "Modals: static, htmx-loaded, confirm-delete, and server-rendered via "
+                 "the modal host."),
+    "navigation": ("Navigation", "The sidebar this page uses, breadcrumbs derived from it, and the "
+                   "command palette."),
+    "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
+}
+
 templates.env.globals.update(greentechhub_ui.shell_globals(
     service_name="Playground",
     show_logo=True,
+    layout="sidebar",
     nav_items=greentechhub_ui.navigation.build_nav_items(
-        custom_items=[
-            {"label": "Playground", "url": "/", "icon": "grid"},
-            {"label": "Tables", "url": "/tables", "icon": "table"},
-            {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
-        ],
+        custom_items=PLAYGROUND_NAV,
         # Demonstrates the built-in + consumer-registered merge docs/components.md
         # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
         # is empty in the real package today (no built-in exists yet) — this
         # override proves built_in_items render first, ahead of custom_items.
         built_in_items=[
-            {"label": "Home", "url": "/", "icon": "house"},
+            {"label": "Overview", "url": "/", "icon": "grid", "match": "exact"},
         ],
     ),
 ))
@@ -138,21 +194,67 @@ def _paginate_widgets(offset: int) -> dict:
     return {"items": page, "next_url": next_url}
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {
-        "tasks": TASKS,
-        "field_errors": {},
-        "budget_value": 250,
-        "flashes_demo": FLASHES_DEMO,
-        "extra_css": [EXTRA_CSS_DATA_URL],
-        "extra_js": [EXTRA_JS_DATA_URL],
-        "extra_head": [EXTRA_HEAD_DEMO],
-        "watchlist": WATCHLIST_DEMO,
-        **_paginate_widgets(0),
-        **_widget_rows(1),
-        **_multi_context(tags=["urgent"]),
+def _page(request: Request, name: str, **context):
+    """A category page: pages/<name>.html with its title and current_path
+    (for the sidebar's active trail and nav_breadcrumbs)."""
+    title, subtitle = PAGES.get(name, ("greentechhub-ui playground", ""))
+    return templates.TemplateResponse(request, f"pages/{name}.html", {
+        "current_path": request.url.path, "page_title": title, "page_subtitle": subtitle,
+        **context,
     })
+
+
+@app.get("/", response_class=HTMLResponse)
+async def overview(request: Request):
+    return _page(request, "overview", categories=PLAYGROUND_NAV)
+
+
+@app.get("/layout", response_class=HTMLResponse)
+async def layout_page(request: Request):
+    return _page(request, "layout")
+
+
+@app.get("/data", response_class=HTMLResponse)
+async def data_page(request: Request):
+    return _page(request, "data", tasks=TASKS, **_paginate_widgets(0), **_widget_rows(1))
+
+
+@app.get("/forms", response_class=HTMLResponse)
+async def forms_page(request: Request):
+    return _page(request, "forms", field_errors={}, budget_value=250,
+                 **_multi_context(tags=["urgent"]))
+
+
+@app.get("/feedback", response_class=HTMLResponse)
+async def feedback_page(request: Request):
+    return _page(request, "feedback", flashes_demo=FLASHES_DEMO)
+
+
+@app.get("/overlays", response_class=HTMLResponse)
+async def overlays_page(request: Request):
+    return _page(request, "overlays", watchlist=WATCHLIST_DEMO)
+
+
+@app.get("/navigation", response_class=HTMLResponse)
+async def navigation_page(request: Request):
+    return _page(request, "navigation")
+
+
+@app.get("/extensibility", response_class=HTMLResponse)
+async def extensibility_page(request: Request):
+    return _page(request, "extensibility", extra_css=[EXTRA_CSS_DATA_URL],
+                 extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
+
+
+_WATCHLIST_BADGE = templates.env.from_string(
+    '{% from "badge.html" import gth_badge %}{% if n %}{{ gth_badge(n, "neutral") }}{% endif %}'
+)
+
+
+@app.get("/nav-badges/watchlist", response_class=HTMLResponse)
+async def watchlist_badge():
+    """Live nav badge: the watchlist size, re-fetched on watchlistChanged."""
+    return HTMLResponse(_WATCHLIST_BADGE.render(n=len(WATCHLIST_DEMO)))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)
@@ -201,9 +303,11 @@ async def modal_demo_content():
 @app.delete("/watchlist-demo/{item_id}", response_class=HTMLResponse)
 async def watchlist_demo_delete(request: Request, item_id: int):
     WATCHLIST_DEMO[:] = [item for item in WATCHLIST_DEMO if item["id"] != item_id]
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request, "_watchlist_list.html", {"watchlist": WATCHLIST_DEMO}
     )
+    resp.headers["HX-Trigger"] = "watchlistChanged"  # refreshes the sidebar badge
+    return resp
 
 
 def _is_htmx_fragment(request: Request) -> bool:
@@ -256,7 +360,7 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
-               "category_options": CATEGORY_OPTIONS}
+               "category_options": CATEGORY_OPTIONS, "current_path": request.url.path}
     if _is_htmx_fragment(request):
         return templates.TemplateResponse(request, "_records_table.html", context)
     return templates.TemplateResponse(request, "tables.html", context)
@@ -415,6 +519,7 @@ def _resolve_parts(ids: list[str]) -> list[dict]:
 async def tree_page(request: Request):
     # (Not "tree.html": that name is gth_tree's own component file.)
     return templates.TemplateResponse(request, "tree_page.html", {
+        "current_path": request.url.path,
         "tree_nodes": _tree_nodes(), "reorder_nodes": _tree_nodes(), "errors": {}, "resolved": None,
     })
 

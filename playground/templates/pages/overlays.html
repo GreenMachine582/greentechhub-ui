@@ -1,0 +1,47 @@
+{% extends "pages/_base.html" %}
+{% from "modal.html" import gth_modal %}
+
+{% block page %}
+<section class="mb-5" id="modal">
+  <h2 class="h4">gth-modal</h2>
+  <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#demo-modal">
+    Open modal
+  </button>
+  {% call gth_modal("demo-modal", title="Static demo modal") %}
+  <p>This content is baked into the page — no HTMX involved.</p>
+  {% endcall %}
+
+  <button type="button" class="btn btn-outline-secondary ms-2"
+    hx-get="/modal-demo/content" hx-target="#htmx-modal-body" hx-swap="innerHTML"
+    data-bs-toggle="modal" data-bs-target="#htmx-modal">
+    Open HTMX-loaded modal
+  </button>
+  {% call gth_modal("htmx-modal", title="HTMX-loaded modal") %}
+  <div id="htmx-modal-body">Loading…</div>
+  {% endcall %}
+</section>
+
+<section class="mb-5" id="confirm-delete">
+  <h2 class="h4">gth-confirm-delete</h2>
+  <p class="text-secondary mb-2">
+    Removing a watched item is a destructive action (BottleBot's real motivating case). The sidebar's
+    <strong>Confirm delete</strong> count is a live nav badge: the delete response fires
+    <code>watchlistChanged</code>, which re-fetches it.
+  </p>
+  <div id="watchlist-demo-list">
+    {% include "_watchlist_list.html" %}
+  </div>
+</section>
+
+<section class="mb-5" id="modal-host">
+  <h2 class="h4">Server-rendered modal host (#gth-modal-host)</h2>
+  <p class="text-secondary">
+    The whole <code>gth_modal</code> comes from the server into <code>#gth-modal-host</code>;
+    <code>modal-host.js</code> shows it, and the form's success response closes it via
+    <code>toast(..., events=["closeModal"])</code>. Its form holds a <code>gth-combobox</code>, a
+    <code>gth-record-picker</code> and a <code>gth-segmented</code>.
+  </p>
+  <button type="button" class="btn btn-outline-secondary"
+    hx-get="/v07-demo/modal" hx-target="#gth-modal-host">Open server-rendered modal</button>
+</section>
+{% endblock %}

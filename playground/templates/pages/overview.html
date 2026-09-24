@@ -1,0 +1,28 @@
+{% extends "pages/_base.html" %}
+{% from "card.html" import gth_card %}
+
+{% block page %}
+<p class="text-secondary mb-4">
+  Living documentation: every shipped <code>gth-*</code> component, rendered with fixture data (no real database; see
+  <code>playground/app.py</code>). Use the sidebar, or press <kbd class="gth-kbd">Ctrl K</kbd> to jump anywhere.
+</p>
+<div class="row g-3" id="overview-categories">
+  {% for cat in categories %}
+  <div class="col-md-6 col-xl-4">
+    {# Only the icon markup is trusted; Markup ~ str escapes the label. #}
+    {% call gth_card(title=('<i class="bi bi-%s me-2" aria-hidden="true"></i>'|format(cat.icon))|safe ~ cat.label,
+        card_class="h-100") %}
+      {% if cat.children %}
+      <p class="text-secondary small mb-2">{{ cat.children|length }} demos</p>
+      <ul class="list-unstyled mb-3 small">
+        {% for child in cat.children %}<li><a href="{{ child.url }}">{{ child.label }}</a></li>{% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-secondary small">{{ cat.label }} demos on one page.</p>
+      {% endif %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ cat.url }}">Open {{ cat.label }}</a>
+    {% endcall %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

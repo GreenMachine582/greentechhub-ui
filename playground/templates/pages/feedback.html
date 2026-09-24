@@ -1,0 +1,22 @@
+{% extends "pages/_base.html" %}
+{% from "toast.html" import gth_toast_flashes %}
+
+{% block page %}
+<section class="mb-5" id="toast">
+  <h2 class="h4">gth-toast (HX-Trigger event)</h2>
+  <button type="button" class="btn btn-outline-secondary"
+    hx-post="/toast-demo" hx-swap="none">
+    Trigger a toast
+  </button>
+</section>
+
+<section class="mb-5" id="flashes">
+  <h2 class="h4">gth-toast (static flashes)</h2>
+  <p class="text-secondary">
+    The other delivery mode — a static <code>flashes</code> list, rendered inline here
+    rather than popping up (they'd normally live in the toast container, see
+    <code>docs/contract.md</code>).
+  </p>
+  {{ gth_toast_flashes(flashes_demo) }}
+</section>
+{% endblock %}
