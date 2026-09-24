@@ -861,3 +861,11 @@ def test_toast_flashes_rich_options():
     assert "btn-close-white" in solid_danger
     solid_warning = rendered.split("gth-toast-warning")[1].split("</button>")[0]
     assert "btn-close-white" not in solid_warning
+
+
+def test_back_to_top():
+    rendered = _render(
+        """{% from "back_to_top.html" import gth_back_to_top %}{{ gth_back_to_top(600) }}"""
+    )
+    assert_snapshot(rendered, "back_to_top")
+    assert 'data-threshold="600"' in rendered and " hidden>" in rendered

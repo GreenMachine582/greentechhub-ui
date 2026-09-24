@@ -138,3 +138,9 @@ def test_app_shell_command_palette_inclusion():
     assert "<dialog" in html and "data-gth-command-open" in html
     html = _env().get_template("app.html").render(**_context(**palette, layout="sidebar"))
     assert "<dialog" in html and "data-gth-command-open" in html
+
+
+def test_app_shell_back_to_top_only_when_configured():
+    assert "gth-back-to-top" not in _env().get_template("app.html").render(**_context())
+    html = _env().get_template("app.html").render(**_context(back_to_top_js_url="/a/js/b.js"))
+    assert "data-gth-back-to-top" in html and '<script src="/a/js/b.js"></script>' in html

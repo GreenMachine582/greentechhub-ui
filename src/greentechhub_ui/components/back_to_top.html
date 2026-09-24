@@ -1,0 +1,12 @@
+{% macro gth_back_to_top(threshold=400, label="Back to top") %}
+{# A fixed bottom-end button that appears once the page is scrolled past
+   `threshold` px and scrolls back to the top (instantly under
+   prefers-reduced-motion), moving focus to <main> so keyboard users land
+   there too. Behaviour in static/js/back-to-top.js (back_to_top_js_url);
+   app.html renders it when that global is set. While it's shown the toast
+   stack lifts above it. #}
+<button type="button" class="gth-back-to-top" data-gth-back-to-top data-threshold="{{ threshold|int }}"
+  aria-label="{{ label }}" title="{{ label }}" hidden>
+  <i class="bi bi-arrow-up" aria-hidden="true"></i>
+</button>
+{% endmacro %}

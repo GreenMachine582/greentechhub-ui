@@ -98,6 +98,11 @@
   <div class="toast-container position-fixed bottom-0 end-0 p-3" id="gth-toast-container"></div>
   {# Server-rendered modals are hx-get'd in here whole; modal-host.js shows them. #}
   <div id="gth-modal-host"></div>
+  {%- if back_to_top_js_url|default(none) %}
+  {% from "back_to_top.html" import gth_back_to_top %}
+  {{ gth_back_to_top() }}
+  <script src="{{ back_to_top_js_url }}"></script>
+  {%- endif %}
   {%- if command_palette_js_url|default(none) and (layout|default("navbar") == "sidebar" or show_command_palette|default(false)) %}
   {% from "command_palette.html" import gth_command_palette %}
   {{ gth_command_palette(nav_items, command_search_url|default(none)) }}

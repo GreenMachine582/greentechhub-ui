@@ -1141,3 +1141,36 @@ def test_toast_extra_events_refresh_the_nav_badge(page, playground_url):
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("watchlistChanged")
     page.wait_for_timeout(300)
     assert requests, "the extra HX-Trigger event re-fetched the live badge"
+
+
+# ── gth-back-to-top ──────────────────────────────────────────────────────
+
+
+def test_back_to_top_appears_scrolls_up_and_focuses_main(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 700})
+    page.emulate_media(reduced_motion="reduce")  # instant scroll: deterministic
+    page.goto(f"{playground_url}/forms")
+    button = page.locator("[data-gth-back-to-top]")
+    expect(button).to_be_hidden()
+    page.evaluate("window.scrollTo(0, 300)")
+    expect(button).to_be_hidden()  # under the 400px threshold
+    page.evaluate("window.scrollTo(0, 1200)")
+    expect(button).to_be_visible()
+    button.click()
+    page.wait_for_function("window.scrollY === 0")
+    expect(page.locator("main")).to_be_focused()
+    expect(button).to_be_hidden()
+
+
+def test_back_to_top_lifts_the_toast_stack(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 700})
+    page.goto(f"{playground_url}/feedback")
+    page.evaluate("document.body.style.minHeight = '3000px'; window.scrollTo(0, 1500)")
+    button = page.locator("[data-gth-back-to-top]")
+    expect(button).to_be_visible()
+    page.evaluate("""document.body.dispatchEvent(new CustomEvent('showToast',
+        {detail: {message: 'Over the button?', kind: 'info', duration: 0}}))""")
+    toast = page.locator(DYNAMIC_TOAST).last
+    expect(toast).to_be_visible()
+    t, b = toast.bounding_box(), button.bounding_box()
+    assert t["y"] + t["height"] <= b["y"], "the toast stack sits above the button"
