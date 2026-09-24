@@ -17,10 +17,10 @@ A shared, installable package (`greentechhub-ui`) providing the frontend every G
 | Area | Contents |
 |---|---|
 | Templates | Base app shell (`app.html`) — extendable, not prescriptive about page content |
-| Components (macros) | `gth-page-header`, `gth-card`, `gth-stat-card`, `gth-table`, `gth-form`, `gth-modal`, `gth-confirm-delete`, `gth-danger-modal`, `gth-toast`, `gth-pagination`, `gth-empty-state`, `gth-sidebar`, `gth-navbar` |
+| Components (macros) | Layout: `gth-page-header`, `gth-card`, `gth-stat-card`, `gth-empty-state`, `gth-skeleton`, `gth-badge`, `gth-tabs`. Data: `gth-table`, `gth-pagination`, `gth-data-table` (+ `TableState`), `gth-tree`. Forms: `gth-form`, `gth-combobox`, `gth-multiselect`, `gth-record-picker`, `gth-segmented`, `gth-chips`, `gth-switch`, `gth-busy-button`. Feedback/overlays: `gth-toast`, `gth-modal`, `gth-confirm-delete`. Navigation: `gth-navbar`, `gth-sidebar`, `gth-command-palette` — see [docs/components.md](docs/components.md) |
 | Static assets | Bundled internally — see [docs/theming.md](docs/theming.md) |
 | Theme | CSS custom properties for color/spacing/typography, light + dark mode, brand tokens from green-tech-hub.com's visual identity |
-| Navigation | A small Python helper (`navigation.py`) that renders a consistent nav/sidebar from a per-service list of `{label, url, icon, required_scope}` entries |
+| Navigation | A small Python helper (`navigation.py`) that renders a consistent navbar or sidebar from a per-service (optionally nested) list of `{label, url, icon, required_scope, children, badge…}` entries, and derives active state, breadcrumbs and the command palette's index from it |
 | Template context contract | The interface every consuming app must supply — see [docs/contract.md](docs/contract.md), the centrepiece design decision of this package |
 | Extension points | Documented hooks for consumers to add without forking — see [docs/extensibility.md](docs/extensibility.md) |
 

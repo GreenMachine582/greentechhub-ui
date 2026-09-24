@@ -28,7 +28,9 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
-| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user` |
+| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
+| `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
+| `gth-tree` | APG tree view: keyboard, lazy children, single or tri-state selection, detail pane (v0.8) |
 
 ## Shipped signatures (v0.1)
 
@@ -336,4 +338,89 @@ gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells v
    the same panel restyled, not a second Bootstrap modal, so it works inside
    one. At modal size Tab wraps inside it. An open picker takes Esc first,
    wherever focus is. #}
+```
+
+## Shipped signatures (v0.8)
+
+### Navigation model
+
+```python
+# navigation.py — NavItem gains optional keys; flat v0.4 lists are unchanged
+{"label": "Data", "icon": "table", "url": "/data",        # url optional on a group
+ "children": [...],                                          # a group
+ "badge": {"label": "3", "tone": "warn"},                    # static count (gth_badge tones)
+ "badge_url": "/nav-badges/health", "badge_event": "healthChanged",  # live count
+ "match": "exact"}                                           # default "prefix"
+
+greentechhub_ui.navigation.nav_trail(items, current_path) -> list        # ancestors → best match
+greentechhub_ui.navigation.mark_active(items, current_path) -> list      # copies with active/expanded
+greentechhub_ui.navigation.breadcrumbs_for(items, current_path) -> list  # gth_page_header format
+greentechhub_ui.navigation.flatten(items) -> list                        # {label, path, url, icon}
+# Matching: an exact path beats the longest prefix; "/" and match="exact" only match exactly; an
+# in-page anchor child (/forms#x) never beats its page. filter_by_scope recurses and drops emptied groups.
+
+greentechhub_ui.shell_globals(..., layout="navbar")
+# layout="sidebar" moves nav_items into gth_sidebar. Also installs the globals
+# nav_breadcrumbs(path), nav_mark_active, nav_flatten, and sidebar/tree/command-palette JS URLs.
+```
+
+### Sidebar layout
+
+```jinja
+{# sidebar.html — app.html renders it for layout="sidebar"; usable standalone #}
+gth_sidebar(nav_items, current_path=None, show_filter=True, label="Main", id="gth-sidebar-nav")
+gth_sidebar_rail_toggle()
+{# A <nav> of lists with disclosure buttons — the APG navigation pattern, NOT
+   role="tree". Groups open along the active trail (nav_mark_active); a group's
+   own url becomes an "Overview" first child. The filter hides non-matches and
+   opens the groups holding matches; clearing restores. From 992px the rail
+   toggle collapses it to icons (tooltips; badges as dots; groups open as
+   flyouts, closed by Esc / a click elsewhere), remembered in localStorage and
+   applied before first paint. Below 992px it's Bootstrap's offcanvas-lg drawer
+   (a link click closes it). sidebar.js also remembers which groups were
+   opened by hand. {% block sidebar_extra %} fills the footer. #}
+
+{# navbar.html #}
+gth_navbar(..., sidebar=False, show_search=False)
+{# sidebar=True: drawer button, brand, search, theme toggle — no items. In the
+   default mode an item with children renders as a dropdown. #}
+
+{# badge.html #}
+gth_nav_badge(item, badge_class="")
+{# A NavItem's badge (static) or badge_url (hx-get on load and on badge_event
+   from <body>; the endpoint returns a gth_badge, or nothing to hide it). #}
+```
+
+### Command palette
+
+```jinja
+{# command_palette.html — app.html includes it when command_palette_js_url is set
+   (always in layout="sidebar"; show_command_palette in the default layout) #}
+gth_command_palette(nav_items, search_url=None, placeholder="Jump to…", id="gth-command")
+gth_command_item(label, url, icon=None, hint=None)   {# a search_url result row #}
+{# A native <dialog> (showModal: top layer, backdrop, inert page, Esc). Nav
+   entries (nav_flatten) are embedded as JSON and filtered client-side, ranked
+   label-starts-with > label-contains > path-contains; search_url (?q=, 200ms
+   debounce, 2+ chars) adds server results. Ctrl/⌘+K or [data-gth-command-open]
+   opens it; ↑/↓, Enter goes, Esc/backdrop close and return focus. #}
+```
+
+### Tree
+
+```jinja
+{# tree.html — behaviour in static/js/tree.js (tree_js_url) #}
+gth_tree(id, nodes, label, select=None, name=None, lazy_url=None, detail_target=None, tree_class="")
+gth_tree_nodes(nodes, level, tree_id, select=None, lazy_url=None)   {# a lazy_url response #}
+{# nodes: [{"id", "label", "icon"?, "children"?, "has_children"? (lazy),
+   "expanded"?, "selected"?/"checked"?, "badge"?, "url"? (detail)}]
+   select="single": aria-selected, hidden `name` = the selected id.
+   select="multi": tri-state aria-checked; a node checks its whole subtree,
+   ancestors recompute to true/mixed/false, lazy children inherit a checked
+   parent; `name` gets the TOP-MOST checked ids, each standing for its subtree
+   (so unloaded children are covered).
+   lazy_url: GET <lazy_url>?parent=<id>&level=<n> on a node's first expand —
+   return gth_tree_nodes(children, level, tree_id, select, lazy_url).
+   detail_target: activating a node with a url loads it there.
+   Keyboard (APG): ↑/↓, → expand/first child, ← collapse/parent, Home/End,
+   Enter activate, Space select/check, letters jump. #}
 ```

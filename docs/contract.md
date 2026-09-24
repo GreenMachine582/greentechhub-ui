@@ -51,6 +51,9 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
+| `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
+| `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
+| `command_palette_js_url` | none — with it set, `gth-command-palette` is included in `layout="sidebar"`, or in the default layout when `show_command_palette` is true (v0.8) |
 
 The last three default to a public CDN today (so no existing consumer's rendered output changes) rather than a
 vendored path — see [static/VENDORED.md](../src/greentechhub_ui/static/VENDORED.md) and [TODO.md](../TODO.md)'s
@@ -58,5 +61,19 @@ v0.5/v0.6 entries for why, and when those defaults go away.
 
 `navbar_theme` (optional, default none) is passed straight to `gth_navbar`: unset, the navbar follows the color
 mode; `"dark"` pins it dark.
+
+**Layout and navigation globals (v0.8)** — all optional:
+
+| Global | Meaning |
+|---|---|
+| `layout` | `"navbar"` (default: exactly the v0.7 shell) or `"sidebar"` (nav_items move into `gth_sidebar`; a drawer below 992px) |
+| `current_path` | per-request: the path `gth_sidebar` marks active and `nav_breadcrumbs` resolves |
+| `nav_breadcrumbs(path)` | breadcrumbs for `gth_page_header`, derived from `nav_items` (installed by `shell_globals`) |
+| `nav_mark_active`, `nav_flatten` | helpers `gth_sidebar` / `gth-command-palette` call (installed by `shell_globals`) |
+| `show_command_palette` | include the palette (and a navbar search button) in the default layout |
+| `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
+
+A per-request context value overrides a global of the same name — e.g. one page can render `layout="sidebar"`
+with its own `nav_items` (the playground's `/layouts/sidebar`).
 
 `greentechhub_ui.shell_globals(service_name=..., nav_items=...)` returns every global above (plus `brand`/`nav_items`) pointing at the vendored copies under the `/gth-assets` / `/gth-static` mount prefixes — prefer it over setting them one by one.

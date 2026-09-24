@@ -69,6 +69,29 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] `gth_record_picker` third size — hand the pick off to the real list screen for full room (e.g. an "Open full page" link carrying `?pick_for=<field>&return=<url>`, the list screen offering a "Use this record" action that returns the pick)
 - [ ] Bump vendored htmx past 1.9.10: it shares one `requestCount` between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks on an element that is both (why `gth-busy-button` keys on `:disabled`). Checked 2026-09-24: the 1.9.11/1.9.12 changelogs don't mention a fix, so the 1.9.x line can't be assumed to fix it — needs a repro against 1.9.12 (or a 2.x migration plan) before bumping; update `VENDORED.md` hash/size when it lands
 
+### v0.8 — Navigation
+The playground outgrew one page of ~20 demo sections: it became the consumer with >6 nav items that the deferred
+`gth-sidebar` item was waiting for.
+
+- [x] Nested `nav_items` — optional `children` / `badge` / `badge_url` + `badge_event` / `match` keys (flat lists
+  unchanged); recursive scope filtering; `nav_trail` / `mark_active` / `breadcrumbs_for` / `flatten`;
+  `shell_globals(layout=...)` installs `nav_breadcrumbs(path)`, `nav_mark_active`, `nav_flatten`
+- [x] `gth_sidebar` + `app.html` `layout="sidebar"` — APG disclosure nav (not `role=tree`), groups open along the
+  active trail, filter box, icon rail with flyouts (≥992px, remembered), Bootstrap `offcanvas-lg` drawer below
+  that; `gth_navbar` sidebar mode, and nested items as dropdowns in the default layout. The default layout's
+  output is byte-identical to v0.7
+- [x] Live nav badges (`gth_nav_badge`) — static, or `badge_url` re-fetched on an HX-Trigger event
+- [x] `gth_command_palette` — Ctrl/⌘+K `<dialog>` over every nav item, optional server `search_url`
+- [x] `gth_tree` — APG tree view: keyboard, lazy children, single or tri-state selection (top-most checked nodes
+  submitted), detail pane
+- [x] Self-loading elements (lazy tree groups, live badges, infinite rows, lazy tabs) pin their own `hx-target` —
+  htmx inherits it, so inside a `gth_form` their responses landed in the form
+- [x] Playground split into category pages on the sidebar layout; breadcrumbs derived from the nav
+- [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
+- [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
+- [ ] Command-palette actions — not just navigation (e.g. "New task", "Toggle theme"), registered like nav items
+- [ ] Sidebar: pinned/favourite items and a user menu in the footer slot, once a consumer has auth
+
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
 - [ ] PyFinBot greenfield build shipped
@@ -77,7 +100,7 @@ Enough for BottleBot to swap its navbar and for GreenTechHub to trial the theme-
 - [ ] Semver policy held across at least one real breaking (major) release
 
 ### Post-v1.0 — Deferred
-- [ ] `gth-sidebar` — deferred: every current consumer fits a navbar; revisit when a consumer has >6 nav items (forces an `app.html` grid layout decision no one has asked for)
+- Nothing deferred right now — `gth-sidebar` shipped in v0.8.
 
 ## 🔄 Migration Tracking
 
