@@ -822,3 +822,18 @@ def test_self_loading_elements_pin_their_own_hx_target():
         if "gth-pagination-more" in tag:  # its button already targets "closest tr"
             continue
         assert 'hx-target="' in tag, tag
+
+
+def test_toast_flashes_escape_messages_and_map_kinds():
+    rendered = _render(
+        """{% from "toast.html" import gth_toast_flashes %}{{ gth_toast_flashes(flashes) }}""",
+        flashes=[
+            {"message": '<img src=x onerror="alert(1)">', "kind": "info"},
+            {"message": "x", "kind": "error"},
+            {"message": "y", "kind": "bogus"},
+        ],
+    )
+    assert "<img" not in rendered and "&lt;img" in rendered
+    assert "text-bg-info" in rendered and "text-bg-danger" in rendered
+    assert "text-bg-secondary" in rendered  # unknown kind → neutral, not success
+    assert "text-bg-success" not in rendered

@@ -398,6 +398,13 @@ body.gth-picker-modal-open {
   outline-offset: -2px;
 }
 
+/* Toasts: Bootstrap's dark mode inverts every .btn-close to white, which
+   vanishes on the light warning/info fills — keep it dark there. */
+.toast.text-bg-warning .btn-close,
+.toast.text-bg-info .btn-close {
+  filter: none;
+}
+
 /* gth-combobox: results panel floats over the content below the input,
    above a modal body (Bootstrap modals sit at z-index 1055). */
 .gth-combobox-results {

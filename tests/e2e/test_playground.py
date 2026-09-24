@@ -1058,3 +1058,31 @@ def test_playground_palette_reaches_demo_anchors(page, playground_url):
     expect(first).to_contain_text("Forms › Record picker")
     page.keyboard.press("Enter")
     expect(page).to_have_url(re.compile("/forms#record-picker$"))
+
+
+# ── gth-toast ────────────────────────────────────────────────────────────
+
+
+def _fire_toast(page, detail):
+    page.evaluate(
+        "d => document.body.dispatchEvent(new CustomEvent('showToast', {detail: d}))", detail)
+
+
+def test_toast_message_is_text_not_html(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    _fire_toast(page, {"message": '<img src=x onerror="window.__pwned=1">Hi', "kind": "info"})
+    toast = page.locator(DYNAMIC_TOAST).last
+    expect(toast).to_contain_text('<img src=x onerror="window.__pwned=1">Hi')
+    expect(toast.locator("img")).to_have_count(0)
+    assert page.evaluate("window.__pwned") is None
+
+
+def test_toast_warning_close_button_is_readable(page, playground_url):
+    page.goto(f"{playground_url}/feedback")  # dark mode: Bootstrap inverts .btn-close
+    for kind, dark_close in (("warning", True), ("info", True), ("danger", False)):
+        _fire_toast(page, {"message": kind, "kind": kind})
+        close = page.locator(f"{DYNAMIC_TOAST} .btn-close").last
+        expect(close).to_be_visible()
+        # The white close is an inverting filter; on a light fill it must be off.
+        inverted = close.evaluate("el => getComputedStyle(el).filter") not in ("none", "")
+        assert inverted is not dark_close, kind
