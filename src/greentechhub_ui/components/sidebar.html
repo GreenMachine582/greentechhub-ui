@@ -1,0 +1,79 @@
+{% from "badge.html" import gth_badge %}
+
+{% macro _sidebar_link(item, url, label, active, icon, top) -%}
+<a class="gth-sidebar-link{% if active %} active{% endif %}" href="{{ url|e }}"
+  {%- if active %} aria-current="page"{% endif %}{% if top %} data-gth-tip="{{ label|e }}"{% endif %}>
+  <i class="bi bi-{{ icon or ('dot' if not top else 'circle') }} gth-sidebar-icon" aria-hidden="true"></i>
+  <span class="gth-sidebar-label">{{ label }}</span>
+  {%- if item.badge %}<span class="gth-sidebar-badge">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif %}
+</a>
+{%- endmacro %}
+
+{% macro gth_sidebar(nav_items, current_path=None, show_filter=True, label="Main", id="gth-sidebar-nav") %}
+{# Left-hand navigation for app.html's layout="sidebar" (usable on its own
+   too). A <nav> of lists with disclosure buttons — the APG navigation
+   pattern, deliberately NOT role="tree" (that's gth_tree, for data).
+   nav_items are NavItems; one with `children` is a group: a toggle button
+   over its children, expanded when it holds the current page (via the
+   nav_mark_active global shell_globals() installs; without it, pass
+   items that already carry active/expanded flags). A group that also has a
+   url gets it as a first "Overview" child — a row is one control, never a
+   link and a toggle side by side. badge / badge_url+badge_event render
+   gth_badge counts (live ones re-fetch on the event). show_filter adds a
+   filter box. Behaviour (group memory, filter, icon rail + flyouts) is in
+   static/js/sidebar.js (sidebar_js_url). #}
+{% set items = nav_mark_active(nav_items, current_path) if nav_mark_active is defined else nav_items %}
+{% set ns = namespace(n=0) %}
+{% if show_filter %}
+<div class="gth-sidebar-filter px-2 pt-2">
+  <label class="visually-hidden" for="{{ id }}-filter">Filter {{ label|lower }} menu</label>
+  <input type="search" class="form-control form-control-sm" id="{{ id }}-filter" placeholder="Filter menu…"
+    autocomplete="off" data-gth-sidebar-filter aria-controls="{{ id }}">
+</div>
+{% endif %}
+<nav class="gth-sidebar-nav" id="{{ id }}" aria-label="{{ label }}" data-gth-sidebar>
+  <ul class="gth-sidebar-list list-unstyled mb-0">
+  {%- for item in items recursive %}
+    {% set top = loop.depth == 1 %}
+    {% if item.children %}
+    {% set ns.n = ns.n + 1 %}
+    {% set gid = id ~ "-group-" ~ ns.n %}
+    {% set open = item.expanded or item.active %}
+    <li class="gth-sidebar-item gth-sidebar-group" style="--gth-depth: {{ loop.depth0 }}">
+      <button type="button" class="gth-sidebar-link gth-sidebar-toggle" aria-expanded="{{ 'true' if open else 'false' }}"
+        aria-controls="{{ gid }}" data-gth-sidebar-group="{{ item.label|e }}"{% if top %} data-gth-tip="{{ item.label|e }}"{% endif %}>
+        <i class="bi bi-{{ item.icon or 'folder2' }} gth-sidebar-icon" aria-hidden="true"></i>
+        <span class="gth-sidebar-label">{{ item.label }}</span>
+        {%- if item.badge %}<span class="gth-sidebar-badge">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif %}
+        <i class="bi bi-chevron-down gth-sidebar-chevron" aria-hidden="true"></i>
+      </button>
+      <ul class="gth-sidebar-list list-unstyled mb-0" id="{{ gid }}"{% if not open %} hidden{% endif %} data-gth-sidebar-children
+        aria-label="{{ item.label|e }}">
+        {% if item.url %}
+        <li class="gth-sidebar-item" style="--gth-depth: {{ loop.depth }}">
+          {{ _sidebar_link({}, item.url, "Overview", item.active, "grid", false) }}
+        </li>
+        {% endif %}
+        {{ loop(item.children) }}
+      </ul>
+    </li>
+    {% else %}
+    <li class="gth-sidebar-item" style="--gth-depth: {{ loop.depth0 }}">
+      {{ _sidebar_link(item, item.url, item.label, item.active, item.icon, top) }}
+    </li>
+    {% endif %}
+  {%- endfor %}
+  </ul>
+</nav>
+{% endmacro %}
+
+{% macro gth_sidebar_rail_toggle() %}
+{# Collapses the sidebar to an icon rail (≥992px only; the drawer below
+   that is always full width). The choice persists
+   (localStorage["gth-sidebar-mode"], applied before first paint by
+   app.html). #}
+<button type="button" class="btn btn-sm btn-link text-body-secondary d-none d-lg-inline-flex align-items-center gap-1 gth-sidebar-rail-toggle"
+  data-gth-sidebar-rail aria-pressed="false" aria-label="Collapse sidebar" title="Collapse sidebar">
+  <i class="bi bi-chevron-double-left" aria-hidden="true"></i>
+</button>
+{% endmacro %}

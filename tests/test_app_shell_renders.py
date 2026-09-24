@@ -113,3 +113,19 @@ def test_app_shell_navbar_follows_color_mode_unless_pinned():
     html = _env().get_template("app.html").render(**_context(navbar_theme="dark"))
     pinned = 'navbar-expand-md bg-dark border-bottom gth-navbar" data-bs-theme="dark">'
     assert pinned in html
+
+
+def test_app_shell_sidebar_layout():
+    html = _env().get_template("app.html").render(**_context(
+        layout="sidebar", sidebar_js_url="/a/js/sidebar.js",
+    ))
+    assert 'id="gth-sidebar"' in html and "offcanvas-lg" in html
+    assert '<main class="gth-main">' in html
+    assert '<script src="/a/js/sidebar.js"></script>' in html
+    assert "gth-sidebar-mode" in html  # rail anti-FOUC
+
+
+def test_app_shell_navbar_layout_ignores_sidebar_bits():
+    html = _env().get_template("app.html").render(**_context(sidebar_js_url="/a/js/sidebar.js"))
+    assert "gth-sidebar" not in html and "sidebar.js" not in html
+    assert '<main class="container py-4">' in html

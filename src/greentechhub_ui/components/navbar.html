@@ -1,11 +1,44 @@
 {% from "theme_toggle.html" import gth_theme_toggle %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None) %}
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
    both logo variants render and theme.css shows the one that suits the
-   navbar's background. #}
+   navbar's background.
+   sidebar=True (app.html's layout="sidebar"): the nav items live in
+   gth_sidebar instead, so the bar holds a drawer button (below 992px), the
+   brand, the command-palette search button (show_search) and the theme
+   toggle. In the default navbar mode an item with `children` becomes a
+   dropdown (one level; deeper children are listed flat inside it). #}
+{% if sidebar %}
+<nav class="navbar {{ 'bg-dark' if navbar_theme == 'dark' else 'bg-body-tertiary' }} border-bottom sticky-top gth-navbar gth-navbar-sidebar"
+  {%- if navbar_theme %} data-bs-theme="{{ navbar_theme }}"{% endif %}>
+  <div class="container-fluid">
+    <button type="button" class="btn btn-link text-body d-lg-none px-2 me-1 gth-sidebar-open" data-bs-toggle="offcanvas"
+      data-bs-target="#gth-sidebar" aria-controls="gth-sidebar" aria-label="Open menu">
+      <i class="bi bi-list fs-4" aria-hidden="true"></i>
+    </button>
+    <a class="navbar-brand fw-bold gth-navbar-brand me-auto" href="/">
+      {% if brand.logo_url and brand.logo_light_url %}
+      <img src="{{ brand.logo_url }}" alt="" height="24" class="me-2 gth-logo-on-dark">
+      <img src="{{ brand.logo_light_url }}" alt="" height="24" class="me-2 gth-logo-on-light">
+      {%- elif brand.logo_url %}<img src="{{ brand.logo_url }}" alt="" height="24" class="me-2">{% endif -%}
+      {{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}
+    </a>
+    <div class="d-flex align-items-center gap-2">
+      {% if show_search %}
+      <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 gth-command-open"
+        data-gth-command-open aria-keyshortcuts="Control+K Meta+K" aria-haspopup="dialog">
+        <i class="bi bi-search" aria-hidden="true"></i><span class="d-none d-md-inline">Search</span>
+        <kbd class="d-none d-md-inline gth-kbd">Ctrl K</kbd>
+      </button>
+      {% endif %}
+      {% if show_theme_toggle %}{{ gth_theme_toggle() }}{% endif %}
+    </div>
+  </div>
+</nav>
+{% else -%}
 <nav class="navbar navbar-expand-md {{ 'bg-dark' if navbar_theme == 'dark' else 'bg-body-tertiary' }} border-bottom gth-navbar"
   {%- if navbar_theme %} data-bs-theme="{{ navbar_theme }}"{% endif %}>
   <div class="container">
@@ -23,6 +56,23 @@
     <div class="collapse navbar-collapse" id="gthNavMain">
       <ul class="navbar-nav ms-auto">
         {% for item in nav_items %}
+        {%- if item.children %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {% if item.icon %}<i class="bi bi-{{ item.icon }} me-1" aria-hidden="true"></i>{% endif -%}
+            {{ item.label }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if item.url %}<li><a class="dropdown-item" href="{{ item.url }}">{{ item.label }}</a></li><li><hr class="dropdown-divider"></li>{% endif %}
+            {% for child in item.children recursive %}
+            {% if child.url %}<li><a class="dropdown-item{% if current_path and child.url == current_path %} active{% endif %}" href="{{ child.url }}"
+              {%- if current_path and child.url == current_path %} aria-current="page"{% endif %}>
+              {%- if child.icon %}<i class="bi bi-{{ child.icon }} me-1" aria-hidden="true"></i>{% endif %}{{ child.label }}</a></li>{% endif %}
+            {% if child.children %}{{ loop(child.children) }}{% endif %}
+            {% endfor %}
+          </ul>
+        </li>
+        {% else %}
         <li class="nav-item">
           <a class="nav-link{% if current_path and item.url == current_path %} active{% endif %}"
              href="{{ item.url }}"{% if current_path and item.url == current_path %} aria-current="page"{% endif %}>
@@ -30,6 +80,7 @@
             {{ item.label }}
           </a>
         </li>
+        {%- endif %}
         {% endfor %}
         {% if show_theme_toggle %}
         <li class="nav-item d-flex align-items-center ms-md-2">
@@ -40,4 +91,5 @@
     </div>
   </div>
 </nav>
+{%- endif %}
 {% endmacro %}

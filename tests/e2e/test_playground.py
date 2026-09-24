@@ -720,3 +720,108 @@ def test_record_picker_modal_size_inside_bootstrap_modal(page, playground_url):
     row.click()
     expect(page.locator("#gth-field-record-trigger")).to_have_text(label)
     expect(page.locator("[data-gth-record-picker-backdrop][data-for=gth-field-record-panel]")).to_be_hidden()
+
+
+# ── gth-sidebar (layout="sidebar") ───────────────────────────────────────
+
+SB = "#gth-sidebar-nav"
+
+
+def _group(page, label):
+    return page.locator(f"[data-gth-sidebar-group='{label}']")
+
+
+def test_sidebar_active_trail_and_remembered_groups(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar/archive/2024")
+    active = page.locator(f"{SB} [aria-current=page]")
+    expect(active).to_have_text("2024")
+    expect(_group(page, "Inventory")).to_have_attribute("aria-expanded", "true")
+    expect(_group(page, "Archive")).to_have_attribute("aria-expanded", "true")
+    expect(_group(page, "Reports")).to_have_attribute("aria-expanded", "false")
+
+    _group(page, "Reports").click()
+    expect(page.locator(f"{SB} a:has-text('Monthly')")).to_be_visible()
+    page.locator(f"{SB} a:has-text('Settings')").click()
+    expect(page.locator("#sidebar-demo-path")).to_have_text("/layouts/sidebar/settings")
+    # Reports was opened by hand: remembered on the next page.
+    expect(_group(page, "Reports")).to_have_attribute("aria-expanded", "true")
+
+    # Breadcrumbs derived from the nav tree (url-less groups aren't links).
+    page.goto(f"{playground_url}/layouts/sidebar/reports/monthly")
+    crumbs = page.locator("nav[aria-label=breadcrumb]")
+    expect(crumbs.locator("a")).to_have_text(["Reports"])
+    expect(crumbs.locator("[aria-current=page]")).to_have_text("Monthly")
+
+
+def test_sidebar_filter_hides_expands_and_restores(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar")
+    page.evaluate("localStorage.removeItem('gth-sidebar-open')")
+    page.reload()
+    flt = page.locator("[data-gth-sidebar-filter]")
+    flt.fill("mon")
+    expect(page.locator(f"{SB} a:has-text('Monthly')")).to_be_visible()
+    expect(page.locator(f"{SB} a:has-text('Settings')")).to_be_hidden()
+    expect(_group(page, "Reports")).to_have_attribute("aria-expanded", "true")
+    flt.fill("zzz")
+    expect(page.locator(f"{SB} [data-gth-sidebar-empty]")).to_be_visible()
+    flt.fill("")
+    expect(page.locator(f"{SB} a:has-text('Settings')")).to_be_visible()
+    expect(_group(page, "Reports")).to_have_attribute("aria-expanded", "false")  # restored
+    expect(page.locator(f"{SB} [data-gth-sidebar-empty]")).to_be_hidden()
+
+
+def test_sidebar_rail_persists_and_flyout(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar/parts")
+    sidebar = page.locator("#gth-sidebar")
+    full_width = sidebar.bounding_box()["width"]
+    rail = page.locator("[data-gth-sidebar-rail]")
+    rail.click()
+    expect(rail).to_have_attribute("aria-pressed", "true")
+    page.wait_for_timeout(250)  # width transition
+    assert sidebar.bounding_box()["width"] < full_width / 2
+    page.reload()
+    expect(page.locator("html")).to_have_attribute("data-gth-sidebar", "rail")
+    expect(rail).to_have_attribute("aria-label", "Expand sidebar")
+
+    reports = _group(page, "Reports")
+    reports.click()
+    flyout = page.locator(f"{SB} li.gth-flyout-open > ul")
+    expect(flyout).to_be_visible()
+    expect(flyout.locator("a:has-text('Monthly')")).to_be_visible()
+    # Above the page's content, not behind it.
+    box = flyout.bounding_box()
+    x, y = box["x"] + 30, box["y"] + 15
+    top = page.evaluate(f"document.elementFromPoint({x}, {y}).closest('ul')?.id")
+    assert top == flyout.get_attribute("id")
+    page.keyboard.press("Escape")
+    expect(flyout).to_be_hidden()
+    expect(reports).to_be_focused()
+    # The Inventory group (open on this page) doesn't show as a flyout.
+    expect(page.locator(f"{SB} a:has-text('Suppliers')")).to_be_hidden()
+
+    page.locator("[data-gth-sidebar-rail]").click()  # back to full
+    expect(page.locator(f"{SB} a:has-text('Suppliers')")).to_be_visible()
+
+
+def test_sidebar_drawer_on_mobile(page, playground_url):
+    page.set_viewport_size({"width": 375, "height": 740})
+    page.goto(f"{playground_url}/layouts/sidebar")
+    drawer = page.locator("#gth-sidebar")
+    expect(drawer).to_be_hidden()
+    expect(page.locator("[data-gth-sidebar-rail]")).to_be_hidden()
+    page.click(".gth-sidebar-open")
+    expect(drawer).to_be_visible()
+    expect(drawer).to_have_class(re.compile("(^| )show( |$)"))  # done animating; Bootstrap
+    expect(drawer).not_to_have_class(re.compile("showing"))   # ignores keys until then
+    page.keyboard.press("Escape")
+    expect(drawer).to_be_hidden()
+    expect(page.locator(".gth-sidebar-open")).to_be_focused()
+
+    page.click(".gth-sidebar-open")
+    expect(drawer).not_to_have_class(re.compile("showing"))
+    page.locator(f"{SB} a:has-text('Settings')").click()
+    expect(page.locator("#sidebar-demo-path")).to_have_text("/layouts/sidebar/settings")
+    expect(page.locator("#gth-sidebar")).to_be_hidden()

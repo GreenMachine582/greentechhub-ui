@@ -6,6 +6,7 @@ data — no real database. See docs/testing.md. Run directly:
 """
 
 import asyncio
+from functools import partial
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -258,6 +259,39 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
     if _is_htmx_fragment(request):
         return templates.TemplateResponse(request, "_records_table.html", context)
     return templates.TemplateResponse(request, "tables.html", context)
+
+
+# gth_sidebar demo — a page rendered in layout="sidebar" with its own nested
+# nav, overriding the navbar-layout globals just for this request.
+SIDEBAR_DEMO_NAV = [
+    {"label": "Dashboard", "url": "/layouts/sidebar", "icon": "speedometer2", "match": "exact"},
+    {"label": "Inventory", "icon": "box-seam", "children": [
+        {"label": "Parts", "url": "/layouts/sidebar/parts", "icon": "cpu",
+         "badge": {"label": "120", "tone": "neutral"}},
+        {"label": "Suppliers", "url": "/layouts/sidebar/suppliers", "icon": "truck"},
+        {"label": "Archive", "icon": "archive", "children": [
+            {"label": "2025", "url": "/layouts/sidebar/archive/2025"},
+            {"label": "2024", "url": "/layouts/sidebar/archive/2024"},
+        ]},
+    ]},
+    {"label": "Reports", "url": "/layouts/sidebar/reports", "icon": "bar-chart", "children": [
+        {"label": "Monthly", "url": "/layouts/sidebar/reports/monthly"},
+        {"label": "Health", "url": "/layouts/sidebar/reports/health",
+         "badge": {"label": "3", "tone": "warn"}},
+    ]},
+    {"label": "Settings", "url": "/layouts/sidebar/settings", "icon": "gear"},
+]
+
+
+@app.get("/layouts/sidebar", response_class=HTMLResponse)
+@app.get("/layouts/sidebar/{rest:path}", response_class=HTMLResponse)
+async def sidebar_demo(request: Request, rest: str = ""):
+    return templates.TemplateResponse(request, "sidebar_demo.html", {
+        "layout": "sidebar",
+        "nav_items": SIDEBAR_DEMO_NAV,
+        "current_path": request.url.path,
+        "nav_breadcrumbs": partial(greentechhub_ui.navigation.breadcrumbs_for, SIDEBAR_DEMO_NAV),
+    })
 
 
 @app.get("/v07-demo/widget-rows", response_class=HTMLResponse)

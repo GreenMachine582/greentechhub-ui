@@ -1,0 +1,20 @@
+{% extends "app.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "card.html" import gth_card %}
+
+{% block title %}Sidebar layout{% endblock %}
+
+{% block content %}
+{% set crumbs = nav_breadcrumbs(current_path) %}
+{{ gth_page_header(crumbs[-1].label if crumbs else "Sidebar layout",
+    subtitle="app.html with layout=\"sidebar\": nested groups, badges, a filter, an icon rail (≥992px) and a drawer below that.",
+    breadcrumbs=crumbs if crumbs|length > 1 else none) }}
+{% call gth_card(title="You are here") %}
+  <p class="mb-2"><code id="sidebar-demo-path">{{ current_path }}</code></p>
+  <p class="text-secondary mb-0">
+    Try the <strong>filter</strong>, open and close groups (they're remembered across pages), collapse to the
+    <strong>icon rail</strong> with the button at the bottom of the sidebar (its groups open as flyouts), or narrow
+    the window below 992px for the <strong>drawer</strong>. <a href="/">Back to the playground</a>.
+  </p>
+{% endcall %}
+{% endblock %}

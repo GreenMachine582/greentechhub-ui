@@ -649,3 +649,63 @@ def test_record_picker_opens_at_modal_size_without_toggle():
     assert 'data-gth-record-picker-size="modal"' in rendered
     assert "data-gth-record-picker-size aria" not in rendered  # no toggle button
     assert "data-gth-record-picker-close" in rendered
+
+
+_SIDEBAR_NAV = [
+    {"label": "Home", "url": "/", "icon": "house"},
+    {"label": "Data", "icon": "database", "children": [
+        {"label": "Tables", "url": "/tables", "badge": {"label": "3", "tone": "warn"}},
+        {"label": "Archive", "children": [{"label": "2024", "url": "/archive/2024"}]},
+    ]},
+    {"label": "Reports", "url": "/reports",
+     "children": [{"label": "Monthly", "url": "/reports/m"}]},
+]
+
+
+def test_sidebar_marks_active_trail():
+    from greentechhub_ui.navigation import mark_active
+
+    rendered = _render(
+        """{% from "sidebar.html" import gth_sidebar, gth_sidebar_rail_toggle %}
+        {{ gth_sidebar(items) }}{{ gth_sidebar_rail_toggle() }}""",
+        items=mark_active(_SIDEBAR_NAV, "/archive/2024"),
+    )
+    assert_snapshot(rendered, "sidebar")
+    assert rendered.count('aria-current="page"') == 1
+    data_toggle = rendered.split('data-gth-sidebar-group="Data"')[0].rsplit("<button", 1)[1]
+    assert 'aria-expanded="true"' in data_toggle
+    # Reports isn't on the trail, so its list starts hidden, and its own url
+    # becomes an "Overview" first child.
+    assert 'hidden data-gth-sidebar-children\n        aria-label="Reports"' in rendered
+    assert "Overview" in rendered
+
+
+def test_sidebar_without_mark_active_renders_plain():
+    rendered = _render(
+        """{% from "sidebar.html" import gth_sidebar %}
+        {{ gth_sidebar(items, show_filter=False) }}""",
+        items=_SIDEBAR_NAV,
+    )
+    assert "aria-current" not in rendered and "data-gth-sidebar-filter" not in rendered
+
+
+def test_navbar_sidebar_mode():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(items, brand, sidebar=True, show_search=True, show_theme_toggle=True) }}""",
+        items=_SIDEBAR_NAV, brand=brand_context(service_name="Playground"),
+    )
+    assert_snapshot(rendered, "navbar_sidebar_mode")
+    assert "Tables" not in rendered  # the items live in the sidebar
+    assert 'data-bs-target="#gth-sidebar"' in rendered and "data-gth-command-open" in rendered
+
+
+def test_navbar_dropdown_for_nested_items():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(items, brand, "/archive/2024") }}""",
+        items=_SIDEBAR_NAV, brand=brand_context(service_name="Playground"),
+    )
+    assert_snapshot(rendered, "navbar_dropdown")
+    assert rendered.count('class="nav-item dropdown"') == 2
+    assert 'class="dropdown-item active" href="/archive/2024"' in rendered

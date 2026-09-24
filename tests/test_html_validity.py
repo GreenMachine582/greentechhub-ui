@@ -57,6 +57,9 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "record_picker_with_value_and_errors",
         "record_picker_row",
         "record_picker_modal_fixed",
+        "sidebar",
+        "navbar_sidebar_mode",
+        "navbar_dropdown",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):
@@ -66,4 +69,12 @@ def test_macro_output_is_well_formed(snapshot_name):
 
 def test_app_shell_is_well_formed_document():
     html = _env().get_template("app.html").render(**_context())
+    html5lib.HTMLParser(strict=True).parse(html)
+
+
+def test_app_shell_sidebar_layout_is_well_formed_document():
+    html = _env().get_template("app.html").render(**_context(
+        layout="sidebar", sidebar_js_url="/a/js/sidebar.js",
+        nav_items=[{"label": "Data", "children": [{"label": "Tables", "url": "/t"}]}],
+    ))
     html5lib.HTMLParser(strict=True).parse(html)
