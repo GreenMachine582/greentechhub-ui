@@ -19,6 +19,7 @@ prefixes, it doesn't own the app.
 from functools import partial
 
 from greentechhub_ui import navigation
+from greentechhub_ui._paths import ASSETS_PREFIX, THEME_PREFIX
 from greentechhub_ui.theme import brand_context
 
 
@@ -26,8 +27,8 @@ def shell_globals(
     *,
     service_name: str,
     nav_items: list,
-    assets_prefix: str = "/gth-assets",
-    theme_prefix: str = "/gth-static",
+    assets_prefix: str = ASSETS_PREFIX,
+    theme_prefix: str = THEME_PREFIX,
     theme_toggle: bool = True,
     show_logo: bool = False,
     navbar_theme: str | None = None,

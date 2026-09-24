@@ -1,0 +1,24 @@
+{#- page.html — an optional base for ordinary pages: app.html plus a
+    gth_page_header built from page_title / page_subtitle, with breadcrumbs
+    derived from the nav (nav_breadcrumbs(current_path), installed by
+    shell_globals) when there's a trail to show. Put the page body in
+    {% block page %}; {% block header_actions %} fills the header's action
+    slot. current_path comes per request (greentechhub_fastapi.templating.
+    ui_context, or gth-django's context processor). -#}
+{% extends "app.html" %}
+{% from "page_header.html" import gth_page_header %}
+
+{% block title %}{{ page_title|default("") }}{% endblock %}
+
+{% block content %}
+{%- set crumbs = nav_breadcrumbs(current_path) if nav_breadcrumbs is defined and current_path is defined else [] %}
+{%- set actions %}{% block header_actions %}{% endblock %}{% endset %}
+{%- if actions|trim %}
+{% call gth_page_header(page_title|default(""), subtitle=page_subtitle|default(none),
+    breadcrumbs=crumbs if crumbs|length > 1 else none, header_class="mb-4") %}{{ actions }}{% endcall %}
+{%- else %}
+{{ gth_page_header(page_title|default(""), subtitle=page_subtitle|default(none),
+    breadcrumbs=crumbs if crumbs|length > 1 else none, header_class="mb-4") }}
+{%- endif %}
+{% block page %}{% endblock %}
+{% endblock %}

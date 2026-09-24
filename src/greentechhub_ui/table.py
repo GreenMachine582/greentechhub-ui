@@ -29,6 +29,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from urllib.parse import urlencode
 
+from greentechhub_ui.htmx import hx_target
+
 MODES = ("none", "load_more", "infinite", "pages")
 
 # Sentinel for url() overrides: "leave this parameter as the state has it".
@@ -241,6 +243,13 @@ class TableState:
         """Base for gth_table_filter's form: page 1, without the filter
         params (the form's own inputs supply them)."""
         return self.url(page=None, **{name: None for name in self.filter_params})
+
+    def is_own_swap(self, headers: Mapping[str, str]) -> bool:
+        """This request is one of this table's own controls re-requesting it
+        (sort, filter, pager: HX-Target is the table's id) — e.g. a record
+        picker's panel endpoint returns just the table then, and the filter
+        bar + table on the panel's first load."""
+        return hx_target(headers) == self.id
 
     @property
     def size_url(self) -> str:

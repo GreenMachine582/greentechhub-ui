@@ -26,6 +26,23 @@ A shared, installable package (`greentechhub-ui`) providing the frontend every G
 
 Bootstrap 5 and HTMX power the components internally but are **not public API** — consumers only ever call `gth-*` macros. See [docs/architecture.md](docs/architecture.md) for why that boundary matters.
 
+## 🚀 Quick start
+
+```python
+import greentechhub_ui
+from fastapi.templating import Jinja2Templates
+from greentechhub_fastapi.templating import mount_static_dirs, ui_context
+
+templates = Jinja2Templates(directory="templates", context_processors=[ui_context])
+greentechhub_ui.install(templates.env, service_name="MyService",
+                        nav_items=greentechhub_ui.navigation.build_nav_items([...]))
+mount_static_dirs(app, greentechhub_ui.static_dirs())
+```
+
+Pages then `{% extends "app.html" %}` (or `"page.html"`). Django wires the same helpers into its Jinja2 backend —
+see [docs/contract.md](docs/contract.md#setup-fastapi-and-django). `greentechhub-ui` itself depends on `jinja2`
+only.
+
 ## 📚 Docs
 
 | Doc | Covers |

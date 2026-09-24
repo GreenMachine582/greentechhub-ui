@@ -470,3 +470,25 @@ footer (summary, page size, pager) stay put, and only the table scrolls. That re
 returning `gth_table_filter` + `gth_data_table` as the panel body's direct children (anything else still
 scrolls as a whole). Near the end of a page the picker scrolls the page — adding room inside `<main>` if
 needed, removed on close — so the whole panel fits below its field.
+
+## Shipped signatures (v0.9) — wiring helpers
+
+Framework-neutral (jinja2 + stdlib only); see [docs/contract.md](contract.md#setup-fastapi-and-django) for the
+FastAPI and Django halves side by side.
+
+```python
+greentechhub_ui.template_dirs() -> list[Path]                     # app.html + component dirs
+greentechhub_ui.static_dirs(assets_prefix="/gth-assets", theme_prefix="/gth-static") -> dict[str, Path]
+greentechhub_ui.install(env, **shell_globals_kwargs) -> env        # loaders after the app's; idempotent
+greentechhub_ui.render_macro(env, template, macro, *args, **kwargs) -> str   # env globals in scope
+greentechhub_ui.htmx.is_htmx(headers) / wants_fragment(headers) / hx_target(headers)
+greentechhub_ui.htmx.trigger(*events, **detail_events) -> str    # HX-Trigger for bare events
+TableState.is_own_swap(headers) -> bool                           # HX-Target is this table
+```
+
+```jinja
+{# templates/page.html — optional page base #}
+{% extends "page.html" %}   {# context: page_title, page_subtitle?, current_path #}
+{% block header_actions %}<button class="btn btn-sm btn-primary">New</button>{% endblock %}
+{% block page %}…{% endblock %}
+```

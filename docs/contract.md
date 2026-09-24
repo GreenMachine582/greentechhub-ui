@@ -33,6 +33,35 @@ sets directly as template defaults rather than through a Python function argumen
 
 Worth calling out explicitly because it's not obvious from "just use Jinja2 macros" — the contract discipline is what actually makes it portable. Concrete wiring for both frameworks is in [docs/architecture.md](architecture.md#integration-pattern).
 
+## Setup (FastAPI and Django)
+
+`greentechhub-ui` depends on `jinja2` alone — never on a web framework — so the wiring is split: gth-ui provides
+framework-neutral helpers, each framework adapter the small framework-specific half.
+
+| Need | gth-ui (any framework) | FastAPI (`greentechhub-fastapi`) | Django |
+|---|---|---|---|
+| Templates loadable | `greentechhub_ui.install(env, **shell_globals kwargs)` — adds gth-ui's loaders *after* the app's own and installs `shell_globals()` | `install(templates.env, service_name=…, nav_items=…)` on `Jinja2Templates` | `install()` inside the Jinja2 backend's `environment` callable; or `template_dirs()` in `TEMPLATES[...]["DIRS"]` |
+| Static files served | `static_dirs()` — `{"/gth-assets": static_path, "/gth-static": theme_path}`, the same prefixes `shell_globals()` renders URLs for | `mount_static_dirs(app, greentechhub_ui.static_dirs())` | `STATICFILES_DIRS = [(p.strip("/"), d) for p, d in static_dirs().items()]` |
+| `current_path` per request | — | `Jinja2Templates(..., context_processors=[ui_context])` | gth-django's context processor (see its `docs/context.md`) |
+| htmx: fragment or page? | `greentechhub_ui.htmx.wants_fragment(request.headers)`, `hx_target(...)`, `TableState.is_own_swap(...)` | same (Starlette headers are a Mapping) | same (`request.headers`) |
+| htmx: 204 with `HX-Trigger` | `toast(...)` / `htmx.trigger(...)` build the header value | `hx_response(greentechhub_ui.toast("Saved"))` | `HttpResponse(status=204, headers={"HX-Trigger": toast(...)})` |
+| One macro for an endpoint | `render_macro(env, "badge.html", "gth_badge", "3", "warn")` | same | same (the backend's `env`) |
+
+```python
+# FastAPI
+templates = Jinja2Templates(directory="templates", context_processors=[ui_context])
+greentechhub_ui.install(templates.env, service_name="PyFinBot", nav_items=build_nav_items([...]))
+mount_static_dirs(app, greentechhub_ui.static_dirs())
+
+# Django — settings.TEMPLATES[...]["OPTIONS"]["environment"] = "myproject.jinja2.environment"
+def environment(**options):
+    return greentechhub_ui.install(Environment(**options), service_name="GreenTechHub", nav_items=[...])
+```
+
+`templates/page.html` is an optional base for ordinary pages: `app.html` plus a `gth_page_header` from
+`page_title` / `page_subtitle`, breadcrumbs derived from the nav, `{% block page %}` for the body and
+`{% block header_actions %}` for the header's action slot.
+
 ## Static asset globals
 
 `app.html` never hardcodes an asset path — it resolves each one through a Jinja global, falling back to a
