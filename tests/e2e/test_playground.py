@@ -592,3 +592,16 @@ def test_switch_focus_knob_is_brand_colored(page, playground_url):
     expect(switch).to_be_focused()
     knob = switch.evaluate("el => getComputedStyle(el).getPropertyValue('--bs-form-switch-bg')")
     assert "1FBE1E" in knob and "86b7fe" not in knob
+
+
+def test_infinite_scroll_box_does_not_grow_the_page(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/tables?mode=infinite&scroll=1")
+    rows = page.locator(RECORD_ROWS)
+    box = page.locator("#records-scroll")
+    doc_height = page.evaluate("document.documentElement.scrollHeight")
+    for expected in (20, 30, 40):
+        box.evaluate("el => el.scrollTop = el.scrollHeight")
+        expect(rows).to_have_count(expected)
+        _htmx_idle(page)
+        assert page.evaluate("document.documentElement.scrollHeight") == doc_height

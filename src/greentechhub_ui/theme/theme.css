@@ -208,6 +208,14 @@ th[aria-sort] .gth-table-sort .bi {
 .gth-data-table.htmx-request .gth-table {
   opacity: 0.55;
 }
+/* position: relative makes the wrapper the containing block for anything
+   absolutely positioned inside the table — notably the infinite row's
+   visually-hidden-focusable "Load more" fallback (position: absolute while
+   unfocused). Without it that button escaped the scroll box's clip and
+   stretched the *page* by every appended row's height. */
+.gth-table-wrapper {
+  position: relative;
+}
 .gth-table-scroll {
   max-height: var(--gth-table-max-height, none);
   overflow-y: auto;
