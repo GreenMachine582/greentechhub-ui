@@ -55,6 +55,8 @@ only.
 | [docs/testing.md](docs/testing.md) | 🧪 `/playground` demo app + testing strategy |
 | [docs/versioning.md](docs/versioning.md) | 🏷️ Semver policy & distribution |
 | [docs/extensibility.md](docs/extensibility.md) | 🧩 Extension points/hooks for consumers |
+| [CHANGELOG.md](CHANGELOG.md) | 📝 Release notes per version (also on the [Releases page](https://github.com/GreenMachine582/greentechhub-ui/releases)) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 🔀 Branches, PRs, conventional titles, how a release is cut |
 
 ## 🗺️ Status & Roadmap
 
