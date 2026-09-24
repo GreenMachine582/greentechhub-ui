@@ -748,3 +748,54 @@ def test_command_palette_without_nav_flatten_is_empty_list():
     )
     assert "data-gth-command-data>[]</script>" in rendered
     assert "data-gth-command-remote" not in rendered
+
+
+_TREE = [
+    {"id": "c:1", "label": "Sensors", "icon": "collection", "badge": {"label": "2"},
+     "expanded": True,
+     "children": [
+         {"id": "p:1", "label": "Probe <A>", "url": "/d?id=p:1&x=1", "selected": True},
+         {"id": "a:1", "label": "Assembly", "has_children": True},
+     ]},
+    {"id": "c:2", "label": "Motors", "children": [{"id": "p:2", "label": "Stepper"}]},
+]
+
+
+def test_tree_single_with_lazy_and_detail():
+    rendered = _render(
+        """{% from "tree.html" import gth_tree %}
+        {{ gth_tree("t", nodes, "Catalogue", select="single", name="node",
+            lazy_url="/nodes?tree=t", detail_target="#detail") }}""",
+        nodes=_TREE,
+    )
+    assert_snapshot(rendered, "tree_single")
+    # a:1 is at level 2, so its lazy children are level 3.
+    assert 'hx-get="/nodes?tree=t&amp;parent=a%3A1&amp;level=3"' in rendered
+    assert 'hx-target="this"' in rendered
+    assert "Probe &lt;A&gt;" in rendered
+    assert rendered.count('tabindex="0"') == 1
+
+
+def test_tree_multi_marks_checked_and_multiselectable():
+    nodes = [{**_TREE[1], "checked": True, "children": [{"id": "p:2", "label": "Stepper",
+                                                          "checked": True}]}]
+    rendered = _render(
+        """{% from "tree.html" import gth_tree %}
+        {{ gth_tree("m", nodes, "Pick", select="multi", name="nodes") }}""",
+        nodes=nodes,
+    )
+    assert_snapshot(rendered, "tree_multi")
+    assert 'aria-multiselectable="true"' in rendered
+    assert rendered.count('aria-checked="true"') == 2
+    assert "aria-selected" not in rendered
+
+
+def test_tree_nodes_partial_levels():
+    rendered = _render(
+        """{% from "tree.html" import gth_tree_nodes %}
+        <ul role="group">{{ gth_tree_nodes(nodes, 3, "t", "multi") }}</ul>""",
+        nodes=[{"id": "p:9", "label": "Leaf"}, {"id": "p:10", "label": "Leaf 2"}],
+    )
+    assert rendered.count('aria-level="3"') == 2
+    assert 'aria-setsize="2" aria-posinset="2"' in rendered
+    assert 'tabindex="0"' not in rendered  # only the tree's first top-level node

@@ -62,6 +62,7 @@ def shell_globals(
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
+        "tree_js_url": f"{assets_prefix}/js/tree.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
         "layout": layout,

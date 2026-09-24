@@ -110,6 +110,9 @@
   {% if modal_host_js_url|default(none) %}<script src="{{ modal_host_js_url }}"></script>{% endif %}
   {% if combobox_js_url|default(none) %}<script src="{{ combobox_js_url }}"></script>{% endif %}
   {% if record_picker_js_url|default(none) %}<script src="{{ record_picker_js_url }}"></script>{% endif %}
+  {%- if tree_js_url|default(none) %}
+  <script src="{{ tree_js_url }}"></script>
+  {%- endif %}
   {%- if sidebar_js_url|default(none) and layout|default("navbar") == "sidebar" %}
   <script src="{{ sidebar_js_url }}"></script>
   {%- endif %}

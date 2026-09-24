@@ -90,6 +90,7 @@ templates.env.globals.update(greentechhub_ui.shell_globals(
         custom_items=[
             {"label": "Playground", "url": "/", "icon": "grid"},
             {"label": "Tables", "url": "/tables", "icon": "table"},
+            {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
         ],
         # Demonstrates the built-in + consumer-registered merge docs/components.md
         # promises (see docs/components.md#shipped-signatures-v04). DEFAULT_NAV_ITEMS
@@ -337,6 +338,126 @@ async def sidebar_search(q: str = ""):
     q = q.strip().lower()
     rows = [r for r in RECORDS if q and q in r["name"].lower()][:8]
     return HTMLResponse(_COMMAND_ITEMS.render(rows=rows))
+
+
+# ── gth_tree demo: category › assembly › part, from RECORDS ───────────────
+
+ASSEMBLIES = ("Alpha", "Bravo", "Delta", "Echo", "Kilo", "Nova")
+TREE_CONFIG = {  # tree id → select mode (the lazy endpoint renders with it)
+    "explorer": "single",
+    "reorder": "multi",
+}
+
+
+def _assembly(record: dict) -> str:
+    return record["name"].split()[0]
+
+
+def _parts_of(category: str, assembly: str) -> list[dict]:
+    return [r for r in RECORDS if r["category"] == category and _assembly(r) == assembly]
+
+
+def _part_node(record: dict, *, checked: bool = False, selected: bool = False) -> dict:
+    return {"id": f"p:{record['id']}", "label": record["name"], "icon": "cpu",
+            "url": f"/tree/detail?id=p:{record['id']}", "checked": checked, "selected": selected}
+
+
+def _tree_nodes(checked: set[str] = frozenset()) -> list[dict]:
+    """Categories and their assemblies; an assembly's parts are lazy unless
+    one of them is checked (a re-rendered form), which needs them in place."""
+    nodes = []
+    for category in RECORD_CATEGORIES:
+        cat_id = f"c:{category}"
+        cat_checked = cat_id in checked
+        count = sum(r["category"] == category for r in RECORDS)
+        cat_node = {"id": cat_id, "label": category, "icon": "collection",
+                    "url": f"/tree/detail?id={cat_id}", "badge": {"label": str(count)},
+                    "checked": cat_checked, "children": []}
+        for assembly in ASSEMBLIES:
+            parts = _parts_of(category, assembly)
+            if not parts:
+                continue
+            asm_id = f"a:{category}:{assembly}"
+            asm_checked = cat_checked or asm_id in checked
+            node = {"id": asm_id, "label": f"{assembly} assembly", "icon": "boxes",
+                    "url": f"/tree/detail?id={asm_id}", "checked": asm_checked}
+            if any(f"p:{p['id']}" in checked for p in parts):
+                node["children"] = [_part_node(p, checked=asm_checked or f"p:{p['id']}" in checked)
+                                    for p in parts]
+                node["expanded"] = True
+                cat_node["expanded"] = True
+            else:
+                node["has_children"] = True
+            cat_node["children"].append(node)
+        nodes.append(cat_node)
+    return nodes
+
+
+def _resolve_parts(ids: list[str]) -> list[dict]:
+    """Top-most checked ids → the parts they stand for."""
+    picked = {}
+    for node_id in ids:
+        kind, _, key = node_id.partition(":")
+        if kind == "c":
+            rows = [r for r in RECORDS if r["category"] == key]
+        elif kind == "a":
+            category, _, assembly = key.partition(":")
+            rows = _parts_of(category, assembly)
+        elif kind == "p" and key.isdigit() and 0 < int(key) <= len(RECORDS):
+            rows = [RECORDS[int(key) - 1]]
+        else:
+            rows = []
+        picked.update({r["id"]: r for r in rows})
+    return sorted(picked.values(), key=lambda r: r["id"])
+
+
+@app.get("/tree", response_class=HTMLResponse)
+async def tree_page(request: Request):
+    # (Not "tree.html": that name is gth_tree's own component file.)
+    return templates.TemplateResponse(request, "tree_page.html", {
+        "tree_nodes": _tree_nodes(), "reorder_nodes": _tree_nodes(), "errors": {}, "resolved": None,
+    })
+
+
+@app.get("/tree/nodes", response_class=HTMLResponse)
+async def tree_nodes(request: Request, tree: str, parent: str, level: int = 3):
+    """gth_tree lazy_url endpoint: one assembly's parts."""
+    select = TREE_CONFIG.get(tree)
+    kind, _, key = parent.partition(":")
+    category, _, assembly = key.partition(":")
+    if select is None or kind != "a":
+        return HTMLResponse("", status_code=404)
+    nodes = [_part_node(p) for p in _parts_of(category, assembly)]
+    return templates.TemplateResponse(request, "_tree_nodes.html", {
+        "nodes": nodes, "level": level, "tree_id": tree, "select": select,
+        "lazy_url": f"/tree/nodes?tree={tree}",
+    })
+
+
+@app.get("/tree/detail", response_class=HTMLResponse)
+async def tree_detail(request: Request, id: str):
+    kind, _, key = id.partition(":")
+    rows = _resolve_parts([id])
+    if not rows:
+        return HTMLResponse("", status_code=404)
+    context = {"kind": kind, "rows": rows, "title": {
+        "c": key, "a": key.replace(":", " › ") + " assembly", "p": rows[0]["name"],
+    }.get(kind, key)}
+    return templates.TemplateResponse(request, "_tree_detail.html", context)
+
+
+@app.post("/tree/reorder", response_class=HTMLResponse)
+async def tree_reorder(request: Request):
+    form = await request.form()
+    ids = form.getlist("nodes")
+    parts = _resolve_parts(ids)
+    context = {"reorder_nodes": _tree_nodes(set(ids)), "errors": {}, "resolved": None}
+    if not parts:
+        context["errors"] = {"nodes": ["Tick at least one category, assembly or part."]}
+        return templates.TemplateResponse(request, "_tree_reorder_form.html", context,
+                                          status_code=422)
+    context["resolved"] = {"ids": ids, "count": len(parts)}
+    return templates.TemplateResponse(request, "_tree_reorder_form.html", context)
 
 
 @app.get("/v07-demo/widget-rows", response_class=HTMLResponse)

@@ -1,0 +1,25 @@
+{% from "card.html" import gth_card %}
+{% from "stat_card.html" import gth_stat_card %}
+{% from "badge.html" import gth_badge %}
+{% from "table.html" import gth_table, gth_table_body %}
+<div data-tree-detail="{{ kind }}">
+{% if kind == "p" %}
+  {% set r = rows[0] %}
+  {% call gth_card(title=r.name) %}
+    <p class="mb-3">{{ gth_badge(r.category, "info", icon="tag") }} {{ gth_badge("#" ~ r.id, "neutral", pill=False) }}</p>
+    <div class="row g-2">
+      <div class="col-6">{{ gth_stat_card("In stock", r.stock, value_tone="bad" if r.stock < 30 else "neutral") }}</div>
+      <div class="col-6">{{ gth_stat_card("Unit price", "$%.2f"|format(r.price)) }}</div>
+    </div>
+    <p class="mb-0 mt-3 small"><a href="/tables?mode=pages&amp;q={{ r.name|urlencode }}">Open in the data table</a></p>
+  {% endcall %}
+{% else %}
+  <h3 class="h5">{{ title }}</h3>
+  <p class="text-secondary small">{{ rows|length }} parts · {{ rows|sum(attribute="stock") }} in stock</p>
+  {% call gth_table(headers=["Part", "Category", "Stock", "Price"], table_class="table-sm") %}
+    {% call(r) gth_table_body(rows=rows, colspan=4) %}
+    <tr><td>{{ r.name }}</td><td>{{ r.category }}</td><td>{{ r.stock }}</td><td>${{ "%.2f"|format(r.price) }}</td></tr>
+    {% endcall %}
+  {% endcall %}
+{% endif %}
+</div>

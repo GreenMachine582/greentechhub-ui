@@ -894,3 +894,106 @@ def test_command_palette_button_escape_and_server_results(page, playground_url):
     expect(page.locator(f"{CMD} [data-gth-command-empty]")).to_be_visible()
     page.mouse.click(5, 5)  # the backdrop closes it
     expect(page.locator(CMD)).to_be_hidden()
+
+
+# ── gth-tree ─────────────────────────────────────────────────────────────
+
+
+def _node(page, tree, node_id):
+    return page.locator(f"#{tree} [data-gth-node='{node_id}']")
+
+
+def test_tree_keyboard_lazy_once_and_detail_pane(page, playground_url):
+    page.goto(f"{playground_url}/tree")
+    requests = []
+    page.on("request", lambda r: requests.append(r.url) if "/tree/nodes" in r.url else None)
+    sensor = _node(page, "explorer", "c:Sensor")
+    sensor.focus()
+    expect(sensor).to_have_attribute("tabindex", "0")
+    page.keyboard.press("ArrowRight")  # expand
+    expect(sensor).to_have_attribute("aria-expanded", "true")
+    page.keyboard.press("ArrowRight")  # into the first child
+    alpha = _node(page, "explorer", "a:Sensor:Alpha")
+    expect(alpha).to_be_focused()
+    page.keyboard.press("ArrowRight")  # expand → lazy load
+    part = _node(page, "explorer", "p:12")
+    expect(part).to_be_visible()
+    page.keyboard.press("ArrowDown")
+    expect(part).to_be_focused()
+    expect(page.locator("#explorer [role=treeitem][tabindex='0']")).to_have_count(1)
+    page.keyboard.press("Enter")  # select + detail
+    expect(part).to_have_attribute("aria-selected", "true")
+    expect(page.locator("#tree-detail [data-tree-detail=p]")).to_contain_text("Alpha part 012")
+    expect(page.locator("[data-gth-tree-wrap] input[name=node]")).to_have_value("p:12")
+
+    page.keyboard.press("ArrowLeft")  # leaf → parent
+    expect(alpha).to_be_focused()
+    page.keyboard.press("ArrowLeft")  # collapse
+    expect(alpha).to_have_attribute("aria-expanded", "false")
+    page.keyboard.press("ArrowRight")  # re-expand: no second request
+    expect(part).to_be_visible()
+    assert len(requests) == 1
+
+    page.keyboard.press("Home")
+    expect(sensor).to_be_focused()
+    page.keyboard.press("m")  # type-ahead
+    expect(_node(page, "explorer", "c:Motor")).to_be_focused()
+    page.keyboard.press("End")
+    expect(_node(page, "explorer", "c:Board")).to_be_focused()
+
+
+def test_tree_tri_state_and_form_round_trip(page, playground_url):
+    page.goto(f"{playground_url}/tree")
+    motor = _node(page, "reorder", "c:Motor")
+    bravo = _node(page, "reorder", "a:Motor:Bravo")
+    motor.locator("> .gth-tree-row .gth-tree-twisty").click()
+    bravo.locator("> .gth-tree-row .gth-tree-twisty").click()
+    p1 = _node(page, "reorder", "p:1")
+    expect(p1).to_be_visible()
+
+    p1.locator("> .gth-tree-row").click()  # one part → ancestors mixed
+    expect(p1).to_have_attribute("aria-checked", "true")
+    expect(bravo).to_have_attribute("aria-checked", "mixed")
+    expect(motor).to_have_attribute("aria-checked", "mixed")
+    values = page.locator("#tree-reorder [data-gth-tree-values] input")
+    expect(values).to_have_count(1)
+
+    bravo.focus()
+    page.keyboard.press(" ")  # check the whole assembly
+    expect(bravo).to_have_attribute("aria-checked", "true")
+    expect(bravo.locator("[role=treeitem][aria-checked=false]")).to_have_count(0)
+    expect(values).to_have_count(1)  # top-most only: the assembly
+    expect(values.first).to_have_value("a:Motor:Bravo")
+
+    # Check every Motor assembly → the category becomes checked, one value.
+    for item in motor.locator("> [role=group] > [role=treeitem]").all():
+        if item.get_attribute("aria-checked") != "true":
+            item.locator("> .gth-tree-row").click()
+    expect(motor).to_have_attribute("aria-checked", "true")
+    expect(values).to_have_count(1)
+    expect(values.first).to_have_value("c:Motor")
+
+    page.click("#tree-reorder button[type=submit]")
+    expect(page.locator("#tree-reorder-result")).to_contain_text("30 parts")
+    expect(page.locator("#tree-reorder-result")).to_contain_text("c:Motor")
+    expect(_node(page, "reorder", "c:Motor")).to_have_attribute("aria-checked", "true")
+
+    # Uncheck everything → 422 with the error, tree still interactive.
+    _node(page, "reorder", "c:Motor").locator("> .gth-tree-row").click()
+    page.click("#tree-reorder button[type=submit]")
+    expect(page.locator("#tree-reorder-error")).to_contain_text("Tick at least one")
+    _node(page, "reorder", "c:Board").locator("> .gth-tree-row").click()
+    expect(page.locator("#tree-reorder [data-gth-tree-values] input")).to_have_value("c:Board")
+
+
+def test_tree_lazy_children_of_a_checked_parent_arrive_checked(page, playground_url):
+    page.goto(f"{playground_url}/tree")
+    cable = _node(page, "reorder", "c:Cable")
+    cable.locator("> .gth-tree-row").click()  # check before anything is loaded
+    cable.locator("> .gth-tree-row .gth-tree-twisty").click()
+    asm = cable.locator("> [role=group] > [role=treeitem]").first
+    asm.locator("> .gth-tree-row .gth-tree-twisty").click()
+    parts = asm.locator("> [role=group] > [role=treeitem]")
+    expect(parts).to_have_count(10)
+    expect(asm.locator("[role=treeitem][aria-checked=true]")).to_have_count(10)
+    expect(page.locator("#tree-reorder [data-gth-tree-values] input")).to_have_value("c:Cable")

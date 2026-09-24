@@ -1,0 +1,72 @@
+{% from "badge.html" import gth_badge %}
+{% from "skeleton.html" import gth_skeleton %}
+
+{% macro gth_tree(id, nodes, label, select=None, name=None, lazy_url=None, detail_target=None, tree_class="") %}
+{# A tree view for hierarchical data — the WAI-APG tree pattern
+   (role="tree"/"treeitem"/"group", roving tabindex), NOT navigation (that's
+   gth_sidebar). Behaviour in static/js/tree.js (tree_js_url).
+   nodes: [{"id", "label", "icon"?, "children"? (list), "has_children"?
+   (children loaded on first expand from lazy_url), "expanded"?,
+   "selected"? / "checked"?, "badge"? ({label, tone}), "url"? (detail)}].
+   select: None | "single" (one node; hidden `name` input) | "multi"
+   (tri-state checkboxes — checking a node checks everything under it,
+   parents show checked/mixed; `name` gets the TOP-MOST checked nodes, each
+   standing for its whole subtree, which also covers children not loaded
+   yet).
+   lazy_url: GET <lazy_url>?parent=<id>&level=<n> for a has_children node's
+   first expand; the endpoint returns gth_tree_nodes(children, level, id,
+   select, lazy_url) — pass the same tree id/select/lazy_url back.
+   detail_target: a selector; activating a node with a `url` (click, Enter)
+   loads it there (htmx) and marks it selected.
+   Keyboard: ↑/↓ move, → expand/first child, ← collapse/parent, Home/End,
+   Enter activate, Space select/check, type a letter to jump. #}
+<div class="gth-tree-wrap {{ tree_class }}" data-gth-tree-wrap>
+  <ul class="gth-tree list-unstyled mb-0" id="{{ id }}" role="tree" aria-label="{{ label }}" data-gth-tree
+    {%- if select == "multi" %} aria-multiselectable="true"{% endif %}
+    {%- if select %} data-gth-tree-select="{{ select }}"{% endif %}
+    {%- if name %} data-gth-tree-name="{{ name|e }}"{% endif %}
+    {%- if detail_target %} data-gth-tree-detail="{{ detail_target|e }}"{% endif %}>
+    {{ gth_tree_nodes(nodes, 1, id, select, lazy_url) }}
+  </ul>
+  {% if name %}<div data-gth-tree-values></div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro gth_tree_nodes(nodes, level, tree_id, select=None, lazy_url=None) %}
+{# Tree items at `level` (1 = top) — gth_tree's body, and what a lazy_url
+   endpoint returns for one node's children. #}
+{%- for node in nodes recursive %}
+{% set lvl = level + loop.depth0 %}
+{% set has_kids = node.children or node.has_children %}
+<li class="gth-tree-item" role="treeitem" id="{{ tree_id }}-node-{{ node.id|string|urlencode|replace('%', '_') }}"
+  data-gth-node="{{ node.id|e }}" data-label="{{ node.label|e }}" aria-level="{{ lvl }}"
+  aria-setsize="{{ loop.length }}" aria-posinset="{{ loop.index }}" tabindex="{{ '0' if lvl == 1 and loop.first else '-1' }}"
+  {%- if has_kids %} aria-expanded="{{ 'true' if node.expanded and node.children else 'false' }}"{% endif %}
+  {%- if select == "single" %} aria-selected="{{ 'true' if node.selected else 'false' }}"{% endif %}
+  {%- if select == "multi" %} aria-checked="{{ 'true' if node.checked else 'false' }}"{% endif %}
+  {%- if node.url %} data-gth-node-url="{{ node.url|e }}"{% endif %}>
+  <div class="gth-tree-row" style="--gth-tree-level: {{ lvl }}">
+    <span class="gth-tree-twisty" aria-hidden="true">{% if has_kids %}<i class="bi bi-chevron-right"></i>{% endif %}</span>
+    {%- if select == "multi" %}<span class="gth-tree-check" aria-hidden="true"></span>{% endif %}
+    {%- if node.icon %}<i class="bi bi-{{ node.icon }} gth-tree-icon" aria-hidden="true"></i>{% endif %}
+    <span class="gth-tree-label">{{ node.label|e }}</span>
+    {%- if node.badge %}{{ gth_badge(node.badge.label, node.badge.get("tone", "neutral")) }}{% endif %}
+  </div>
+  {%- if node.children %}
+  <ul class="list-unstyled mb-0" role="group"{% if not node.expanded %} hidden{% endif %}>
+    {{ loop(node.children) }}
+  </ul>
+  {%- elif node.has_children and lazy_url %}
+  {#- Built raw, escaped once: correct with autoescape on or off. hx-target
+      is explicit: htmx inherits it, and a tree inside e.g. a gth_form
+      with hx-target="this" would otherwise swap the parts into the form. #}
+  {% set lazy = lazy_url ~ ('&' if '?' in lazy_url else '?') ~ 'parent=' ~ (node.id|string|urlencode) ~ '&level=' ~ (lvl + 1) %}
+  <ul class="list-unstyled mb-0" role="group" hidden data-gth-tree-lazy
+    hx-get="{{ lazy|e }}"
+    hx-trigger="gth-tree-expand once" hx-target="this" hx-swap="innerHTML">
+    <li class="gth-tree-loading" role="none" style="--gth-tree-level: {{ lvl + 1 }}">{{ gth_skeleton(1) }}<span class="visually-hidden">Loading…</span></li>
+  </ul>
+  {%- endif %}
+</li>
+{%- endfor %}
+{% endmacro %}

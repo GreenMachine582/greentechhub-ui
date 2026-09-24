@@ -187,3 +187,28 @@ def test_record_picker_ids_are_per_picker():
     assert 'id="picker-modal"' in modal.text
     bogus = _run(_get("/v07-demo/record-picker", params={"for": "<x>"}, headers=HX))
     assert 'id="picker-page"' in bogus.text
+
+
+def test_tree_lazy_nodes_and_unknown_tree():
+    r = _run(_get("/tree/nodes", params={"tree": "reorder", "parent": "a:Motor:Bravo", "level": 3}))
+    assert r.status_code == 200
+    assert r.text.count('role="treeitem"') == 10
+    assert 'aria-level="3"' in r.text and 'aria-checked="false"' in r.text
+    unknown = _run(_get("/tree/nodes", params={"tree": "x", "parent": "a:Motor:Bravo"}))
+    assert unknown.status_code == 404
+
+
+def test_tree_reorder_resolves_top_most_ids_and_422s_when_empty():
+    ok = _run(_post("/tree/reorder", data={"nodes": ["c:Motor", "p:12"]}))
+    assert ok.status_code == 200 and "31 parts" in ok.text  # 30 motors + one sensor part
+    empty = _run(_post("/tree/reorder", data={}))
+    assert empty.status_code == 422 and "Tick at least one" in empty.text
+
+
+def test_tree_reorder_rerender_keeps_checked_part_in_place():
+    r = _run(_post("/tree/reorder", data={"nodes": ["p:1"]}))
+    # p:1's assembly is rendered expanded with its parts inline (not lazy),
+    # so the checked part is there to show.
+    assert 'data-gth-node="p:1"' in r.text
+    part = r.text.split('data-gth-node="p:1"')[1].split(">")[0]
+    assert 'aria-checked="true"' in part

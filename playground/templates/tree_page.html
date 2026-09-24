@@ -1,0 +1,36 @@
+{% extends "app.html" %}
+{% from "page_header.html" import gth_page_header %}
+{% from "tree.html" import gth_tree %}
+{% from "empty_state.html" import gth_empty_state %}
+
+{% block title %}Tree{% endblock %}
+
+{% block content %}
+{{ gth_page_header("gth-tree", subtitle="An APG tree view: keyboard (↑ ↓ → ← Home End, letters), parts lazy-loaded on first expand, single or tri-state selection, and a detail pane.") }}
+
+<section class="mb-5" id="tree-explorer">
+  <h2 class="h4">Tree + detail pane</h2>
+  <p class="text-secondary">Single select; activating a node (click or Enter) loads its detail beside the tree.</p>
+  <div class="row g-3">
+    <div class="col-md-5">
+      <div class="border rounded p-2" style="max-height: 28rem; overflow-y: auto">
+        {{ gth_tree("explorer", tree_nodes, "Parts catalogue", select="single", name="node",
+            lazy_url="/tree/nodes?tree=explorer", detail_target="#tree-detail") }}
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div id="tree-detail" aria-live="polite">{{ gth_empty_state("Pick a category, assembly or part.", icon="diagram-3") }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5" id="tree-multi">
+  <h2 class="h4">Tri-state selection in a form</h2>
+  <p class="text-secondary">
+    Tick a category, assembly or part (Space on the keyboard). Parents show checked or mixed; the form submits the
+    top-most ticked nodes, each standing for everything under it — even parts not loaded yet. Submit with nothing ticked
+    for the 422 round-trip.
+  </p>
+  {% include "_tree_reorder_form.html" %}
+</section>
+{% endblock %}

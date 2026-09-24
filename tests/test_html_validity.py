@@ -61,6 +61,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "navbar_sidebar_mode",
         "navbar_dropdown",
         "command_palette",
+        "tree_single",
+        "tree_multi",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

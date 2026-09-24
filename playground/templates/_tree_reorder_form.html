@@ -1,0 +1,16 @@
+{% from "form.html" import gth_form %}
+{% from "tree.html" import gth_tree %}
+{% call gth_form("/tree/reorder", form_attrs={"hx-post": "/tree/reorder", "hx-target": "this", "hx-swap": "outerHTML", "id": "tree-reorder"}) %}
+  <div class="border rounded p-2 mb-2{% if errors.get('nodes') %} border-danger{% endif %}" style="max-height: 22rem; overflow-y: auto">
+    {{ gth_tree("reorder", reorder_nodes, "Parts to reorder", select="multi", name="nodes",
+        lazy_url="/tree/nodes?tree=reorder") }}
+  </div>
+  {% if errors.get("nodes") %}<div class="text-danger small mb-2" id="tree-reorder-error">{{ errors.nodes[0] }}</div>{% endif %}
+  <div class="d-flex align-items-center gap-2">
+    <button type="submit" class="btn btn-primary">Reorder</button>
+    {% if resolved %}
+    <span class="small text-secondary" id="tree-reorder-result">{{ resolved.count }} parts from
+      <code>{{ resolved.ids|join(", ") }}</code></span>
+    {% endif %}
+  </div>
+{% endcall %}

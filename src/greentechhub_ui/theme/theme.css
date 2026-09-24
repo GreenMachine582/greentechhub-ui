@@ -685,3 +685,96 @@ body.gth-picker-modal-open {
   padding: 0.75rem 0.6rem;
   color: var(--bs-secondary-color);
 }
+
+/* ── gth-tree (v0.8) — APG tree view ─────────────────────────────────── */
+.gth-tree {
+  --gth-tree-indent: 1.25rem;
+}
+.gth-tree-item:focus {
+  outline: 0;  /* the row shows focus, not the whole subtree */
+}
+.gth-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  padding-left: calc(0.25rem + (var(--gth-tree-level, 1) - 1) * var(--gth-tree-indent));
+  border-radius: 0.375rem;
+  cursor: pointer;
+  user-select: none;
+}
+.gth-tree-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+.gth-tree-item:focus-visible > .gth-tree-row {
+  outline: 2px solid var(--gth-color-primary);
+  outline-offset: -2px;
+}
+.gth-tree-item[aria-selected="true"] > .gth-tree-row {
+  color: var(--gth-brand-fg);
+  background-color: var(--gth-brand-subtle-bg);
+  font-weight: 600;
+}
+.gth-tree-twisty {
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  width: 1rem;
+}
+.gth-tree-twisty .bi {
+  font-size: 0.75em;
+  transition: transform 0.15s;
+}
+.gth-tree-item[aria-expanded="true"] > .gth-tree-row .gth-tree-twisty .bi {
+  transform: rotate(90deg);
+}
+.gth-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gth-tree-row .badge {
+  margin-left: auto;
+}
+/* Tri-state checkbox, drawn in CSS (checked ✓, mixed —). */
+.gth-tree-check {
+  position: relative;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+}
+.gth-tree-item[aria-checked="true"] > .gth-tree-row .gth-tree-check,
+.gth-tree-item[aria-checked="mixed"] > .gth-tree-row .gth-tree-check {
+  border-color: var(--gth-color-primary-dark);
+  background-color: var(--gth-color-primary-dark);
+}
+.gth-tree-item[aria-checked="true"] > .gth-tree-row .gth-tree-check::after {
+  content: "";
+  position: absolute;
+  top: 0.12rem;
+  left: 0.3rem;
+  width: 0.3rem;
+  height: 0.55rem;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.gth-tree-item[aria-checked="mixed"] > .gth-tree-row .gth-tree-check::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0.2rem;
+  right: 0.2rem;
+  border-top: 2px solid #fff;
+}
+.gth-tree-loading {
+  padding: 0.35rem 0.5rem;
+  padding-left: calc(1.5rem + (var(--gth-tree-level, 1) - 1) * var(--gth-tree-indent));
+}
+.gth-tree-loading .gth-skeleton .placeholder {
+  margin-bottom: 0 !important;
+}
