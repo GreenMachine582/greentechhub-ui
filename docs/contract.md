@@ -52,6 +52,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
+| `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
 | `command_palette_js_url` | none — with it set, `gth-command-palette` is included in `layout="sidebar"`, or in the default layout when `show_command_palette` is true (v0.8) |
 

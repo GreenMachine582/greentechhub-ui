@@ -13,7 +13,8 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-form` | Form wrapper with consistent label/validation-error layout |
 | `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
-| `gth-toast` | Renders `flashes` from the [template context contract](contract.md) as accessible toast notifications |
+| `gth-toast` | Toasts over `HX-Trigger` (`greentechhub_ui.toast()`) and server-side `flashes` in one markup: kinds, title, icon, action link, duration/sticky, surface or solid (v0.8 look) |
+| `gth-back-to-top` | Floating "back to top" button past a scroll threshold (v0.8) |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
@@ -424,3 +425,48 @@ gth_tree_nodes(nodes, level, tree_id, select=None, lazy_url=None)   {# a lazy_ur
    Keyboard (APG): ↑/↓, → expand/first child, ← collapse/parent, Home/End,
    Enter activate, Space select/check, letters jump. #}
 ```
+
+### Toasts (v0.8)
+
+```python
+# toast.py
+greentechhub_ui.toast(message, kind="success", *, title=None, icon=None, action=None,
+                      duration=5000, variant="surface", html=False, events=()) -> str
+# kind: success | info | warning | danger | neutral (aliases warn, error; unknown → neutral).
+# action: {"label", "url"} (http(s)/relative only — javascript: etc. are dropped).
+# duration: ms; 0 = stays until closed. variant: "surface" (default — theme background,
+# kind-coloured accent + icon; readable in both colour modes) or "solid" (coloured fill,
+# contrast-matched close). Options at their defaults are omitted from the payload, so
+# toast("Saved") is still just {"showToast": {"message", "kind"}}.
+# The message is TEXT. html=True renders it as HTML — only for markup the server itself
+# produced and escaped (a template render), NEVER for anything holding user input.
+```
+
+```jinja
+{# toast.html — the same markup, server-side, for a `flashes` list #}
+gth_toast_flashes(flashes)
+{# Each flash: {message, kind, title?, icon?, action?, variant?, html?} — dict or object
+   (greentechhub_core FlashMessage renders identically). Rendered visible, no auto-hide. #}
+```
+
+Warning/danger toasts are `role="alert"` (assertive); the rest `role="status"` (polite). An auto-hiding
+toast shows a countdown bar that pauses while hovered or focused, in step with Bootstrap's own timer.
+Before v0.8 the message was injected as HTML (`innerHTML`) — a toast built from user input could inject
+markup; it's text now.
+
+### Back to top (v0.8)
+
+```jinja
+{# back_to_top.html — app.html renders it when back_to_top_js_url is set (shell_globals sets it) #}
+gth_back_to_top(threshold=400, label="Back to top")
+{# Appears past `threshold` px of scroll; scrolls to the top (instantly under
+   prefers-reduced-motion) and moves focus to <main>. The toast stack lifts above it. #}
+```
+
+### Record picker panel layout (v0.8)
+
+The panel is layered at both sizes: its header, the endpoint's `gth_table_filter` and the data table's
+footer (summary, page size, pager) stay put, and only the table scrolls. That relies on the endpoint
+returning `gth_table_filter` + `gth_data_table` as the panel body's direct children (anything else still
+scrolls as a whole). Near the end of a page the picker scrolls the page — adding room inside `<main>` if
+needed, removed on close — so the whole panel fits below its field.

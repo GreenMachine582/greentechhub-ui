@@ -91,6 +91,18 @@ The playground outgrew one page of ~20 demo sections: it became the consumer wit
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
 - [ ] Command-palette actions — not just navigation (e.g. "New task", "Toggle theme"), registered like nav items
 - [ ] Sidebar: pinned/favourite items and a user menu in the footer slot, once a consumer has auth
+- [x] Toasts: text by default (the old `innerHTML` let a toast built from user input inject markup), `info`/
+  `neutral` kinds, a close button that's readable on every kind; richer `toast()` — title, icon, action link,
+  duration/sticky, `surface`/`solid` variants, countdown bar, `html=True` for server-made markup only; every
+  option demoed on the playground's Feedback page
+- [x] `gth_back_to_top` — appears past a scroll threshold, returns to the top and focuses `<main>`
+- [x] Record picker: layered panel (search + pager fixed, only the table scrolls) at both sizes; near the page
+  end it scrolls the page — adding room if needed — so the whole panel fits
+- [x] Standalone sidebar demo links back to the playground
+- [x] Navbar logo 24px → 48px via the `--gth-logo-height` token; `--gth-navbar-height` derives from it
+- [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
+  a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
+  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
