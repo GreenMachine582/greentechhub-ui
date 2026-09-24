@@ -271,6 +271,11 @@ th[aria-sort] .gth-table-sort .bi {
   border-color: var(--gth-color-primary);
   box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
 }
+/* Bootstrap swaps the unchecked knob to a #86b7fe (blue) circle on focus;
+   same SVG, brand primary. Checked keeps Bootstrap's white knob. */
+.gth-switch .form-check-input:focus:not(:checked) {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231FBE1E'/%3e%3c/svg%3e");
+}
 
 /* gth-multiselect — a form-control-looking box holding chips + a bare
    input; the box takes the focus ring its input would have had. */

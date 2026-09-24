@@ -537,3 +537,13 @@ def test_record_picker_in_modal_esc_keeps_modal_and_422_keeps_pick(page, playgro
     page.click(f"{COMBO_RESULTS} [data-value='3']")
     page.click("#gth-modal-host button[type=submit]")
     expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved Widget #3 (S) for Alpha part 006")
+
+
+def test_switch_focus_knob_is_brand_colored(page, playground_url):
+    page.goto(playground_url)
+    switch = page.locator("#gth-field-alerts")
+    switch.click()  # unchecks it and leaves it focused
+    expect(switch).not_to_be_checked()
+    expect(switch).to_be_focused()
+    knob = switch.evaluate("el => getComputedStyle(el).getPropertyValue('--bs-form-switch-bg')")
+    assert "1FBE1E" in knob and "86b7fe" not in knob
