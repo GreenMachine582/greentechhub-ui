@@ -2,7 +2,7 @@
         
 
 <form class="gth-table-filter mb-3" role="search" hx-get="/parts"
-  hx-trigger="input delay:300ms, change, submit" hx-sync="this:replace" hx-target="#parts" hx-swap="outerHTML" hx-indicator="#parts">
+  hx-trigger="input delay:300ms, change[target.type!='search'], submit" hx-sync="this:replace" hx-target="#parts" hx-swap="outerHTML" hx-indicator="#parts">
   <div class="d-flex flex-wrap align-items-center gap-2">
     
     <div class="input-group flex-grow-1 w-auto gth-table-search">

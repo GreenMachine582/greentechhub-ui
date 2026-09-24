@@ -176,11 +176,13 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    slot (e.g. gth_segmented / gth_chips) re-requests the table from page 1.
    Every control's name must be in the TableState's filter_params.
    (No `changed` modifier: htmx compares the triggering element's .value,
-   which a <form> doesn't have. hx-sync="this:replace" drops the
-   superseded duplicate a blur's `change` can cause.)
+   which a <form> doesn't have. The search box's own `change` is filtered
+   out: typing is already covered by the debounced `input`, and the
+   `change` a search box fires on blur — e.g. the mousedown of a click on
+   a row — would re-render the table under that click.)
    search_param=None drops the search box (slot controls only). #}
 <form class="gth-table-filter {{ filter_class }}" role="search" hx-get="{{ state.filter_url|e }}"
-  hx-trigger="input delay:300ms, change, submit" hx-sync="this:replace" {{ _swap_attrs(state) }}>
+  hx-trigger="input delay:300ms, change[target.type!='search'], submit" hx-sync="this:replace" {{ _swap_attrs(state) }}>
   <div class="d-flex flex-wrap align-items-center gap-2">
     {% if search_param %}
     <div class="input-group flex-grow-1 w-auto gth-table-search">

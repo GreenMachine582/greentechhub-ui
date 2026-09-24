@@ -605,3 +605,40 @@ def test_infinite_scroll_box_does_not_grow_the_page(page, playground_url):
         expect(rows).to_have_count(expected)
         _htmx_idle(page)
         assert page.evaluate("document.documentElement.scrollHeight") == doc_height
+
+
+def test_record_picker_search_then_click_fires_no_extra_request(page, playground_url):
+    page.goto(playground_url)
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    panel.locator("input[type=search]").fill("part 01")
+    expect(panel.locator(".gth-table-summary")).to_contain_text("1–10 of 10")  # search landed
+    _htmx_idle(page)
+    requests = []
+    page.on("request", lambda r: requests.append(r.url) if "record-picker" in r.url else None)
+    row = panel.locator("[data-gth-pick]").nth(2)
+    label = row.get_attribute("data-label")
+    row.click()  # blurs the search box: its `change` must not re-request the table
+    expect(page.locator(PART_TRIGGER)).to_have_text(label)
+    page.wait_for_timeout(300)
+    assert requests == []
+
+
+def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playground_url):
+    page.goto(playground_url)
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    expect(panel.locator("[data-gth-pick]")).to_have_count(10)
+    _htmx_idle(page)
+    row = panel.locator("[data-gth-pick]").nth(3)
+    label = row.get_attribute("data-label")
+    box = row.bounding_box()
+    page.mouse.move(box["x"] + 20, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    # A swap lands between press and release (as a debounced search would).
+    page.evaluate("""() => htmx.ajax('GET', '/v07-demo/record-picker?for=page&page=2',
+                                      {target: '#picker-page', swap: 'outerHTML'})""")
+    expect(panel.locator(".gth-table-summary")).to_contain_text("11–20 of 120")
+    page.mouse.up()
+    expect(page.locator(PART_TRIGGER)).to_have_text(label)  # the pressed row, not page 2's
+    expect(panel).to_be_hidden()

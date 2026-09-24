@@ -136,6 +136,38 @@
     close(picker, true);
   }
 
+  // A row pressed a moment before an htmx swap (e.g. a debounced search
+  // landing) is gone by the time the button is released: the browser then
+  // fires no click at all, or one on whatever replaced the row — possibly a
+  // sort button. So remember the pressed row; on release, if it was
+  // swapped out, pick it, and swallow any click that follows (capture
+  // phase, so htmx on the new element never sees it).
+  var pressed = null;
+  var swallowClick = false;
+  document.addEventListener("mousedown", function (evt) {
+    var row = evt.target.closest && evt.target.closest("[data-gth-pick]");
+    var owner = row && ownerOf(row);
+    pressed = owner ? { picker: owner, row: row } : null;
+    swallowClick = false;
+  }, true);
+  document.addEventListener("mouseup", function (evt) {
+    var p = pressed;
+    pressed = null;
+    if (!p || document.contains(p.row) || openPicker !== p.picker) return;
+    if (!panelOf(p.picker).contains(evt.target)) return;
+    swallowClick = true;
+    // Any click follows in the same task; don't let the flag outlive it and
+    // eat a later (e.g. keyboard-triggered) click.
+    setTimeout(function () { swallowClick = false; }, 0);
+    pick(p.picker, p.row);  // reads data-value/-label off the detached row
+  }, true);
+  document.addEventListener("click", function (evt) {
+    if (!swallowClick) return;
+    swallowClick = false;
+    evt.preventDefault();
+    evt.stopPropagation();
+  }, true);
+
   document.addEventListener("click", function (evt) {
     var t = evt.target;
     var trig = t.closest && t.closest("[data-gth-record-picker-trigger]");
