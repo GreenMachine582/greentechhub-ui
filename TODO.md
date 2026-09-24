@@ -104,6 +104,23 @@ The playground outgrew one page of ~20 demo sections: it became the consumer wit
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
+### v0.9 — Shared setup helpers (playground sanity pass)
+The playground, BottleBot and PyFinBot each hand-wrote the same wiring. It moved into the gth repos without making
+gth-ui depend on a web framework (runtime deps stay `jinja2` only — a test imports it with fastapi/starlette/django
+blocked):
+
+- [x] gth-ui, framework-neutral: `install(env, **shell_globals kwargs)`, `template_dirs()`, `static_dirs()` (one
+  source of truth with `shell_globals`' prefixes), `render_macro()`, `htmx.is_htmx / wants_fragment / hx_target /
+  trigger`, `TableState.is_own_swap()`, optional `templates/page.html` — Django path covered by a test through
+  `django.template.backends.jinja2`'s `environment` option
+- [x] greentechhub-fastapi v0.8.0 (no gth-ui import): `htmx.hx_response`, `templating.ui_context` (current_path),
+  `templating.mount_static_dirs`
+- [x] greentechhub-django docs: `current_path` in the planned context processor; Jinja2-backend wiring with the
+  gth-ui helpers
+- [x] Playground adopts all of it; demo state resettable (`POST /demo/reset`); `/v07-demo/*` → `/demo/*`
+- Kept in the playground on purpose (demo-specific): fixtures, the parts-tree builders, `_query_records` (in-memory
+  filter/sort — real consumers query a database), `_validate_budget`, page metadata/nav
+
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
 - [ ] PyFinBot greenfield build shipped
@@ -123,10 +140,18 @@ Per-service retrofit progress.
 - [x] Replace hand-rolled navbar with `gth-navbar`
 - [x] Migrate remaining components one at a time (done: `deal.html`'s metric tiles → `gth-stat-card`; dashboard's deals table + both its empty states → `gth-table`/`gth-table_body`/`gth-empty-state`; watchlist pagination → `gth-pagination`; health tables (`_scrape_runs_table.html`, `_notification_log_table.html`) and criteria tables → `gth-table`/`gth-table_body`; other cards — done 2026-09-22, `deal.html`'s main product card and `_watchlist_product_card.html` → `gth-card`)
 - [ ] Adopt `shell_globals()` in `web/templating.py` and `toast(..., events=)` where handlers set several HX-Trigger events (v0.7)
+- [ ] Adopt the v0.9 setup: `greentechhub_ui.install()` (replaces the hand-built `ChoiceLoader` + globals),
+  `mount_static_dirs(app, greentechhub_ui.static_dirs())`, `Jinja2Templates(context_processors=[ui_context])` —
+  **fixes the navbar never marking the active page** (BottleBot never passes `current_path`) — and
+  `hx_response(toast(...))` for the six hand-built 204 + HX-Trigger responses in `routes/scrape.py` /
+  `routes/watchlist.py`
 - [ ] Decide on the v0.7 navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
 - [ ] Build directly on `gth-table`, `gth-form`, `gth-modal`, `gth-toast` from the start (greenfield, no retrofit needed)
+- [ ] Adopt the v0.9 setup: `greentechhub_ui.install()` in `web/templating.py`, `mount_static_dirs` in
+  `pyfinbot.py`, `ui_context` (the navbar never marks the active page today — no `current_path`), and replace
+  `web/htmx.py`'s `hx_response` with `greentechhub_fastapi.htmx.hx_response(greentechhub_ui.toast(...))`
 
 ### GreenTechHub
 - [x] Wire Django's Jinja2 backend to validate the [template context contract](docs/contract.md) — `tests/test_contract_django.py` (optional `django` extra, `pytest.importorskip`) renders `app.html` through `django.template.backends.jinja2.Jinja2` pointed at `greentechhub_ui.templates_path`/`components_path` with the same minimal contract context `test_app_shell_renders.py` uses for FastAPI, proving the macros are genuinely framework-agnostic. This validates the contract itself, not a real GreenTechHub page — porting real pages is still separate work, below
