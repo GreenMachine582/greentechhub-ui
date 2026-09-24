@@ -24,7 +24,7 @@
 
 
 <tr class="gth-pagination gth-table-load-more gth-table-infinite"
-  hx-get="/parts?page=2&amp;partial=rows" hx-trigger="intersect once root:#parts-scroll" hx-swap="outerHTML">
+  hx-get="/parts?page=2&amp;partial=rows" hx-trigger="intersect once root:#parts-scroll" hx-target="this" hx-swap="outerHTML">
   <td colspan="2" class="py-2">
     <span class="placeholder-glow d-block" aria-hidden="true"><span class="placeholder col-12"></span></span>
     <button type="button" class="btn btn-sm btn-outline-secondary visually-hidden-focusable gth-pagination-more"

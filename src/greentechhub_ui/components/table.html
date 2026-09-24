@@ -32,7 +32,7 @@
 {% if next_url %}
 {% if infinite %}
 <tr class="gth-pagination gth-table-load-more gth-table-infinite"
-  hx-get="{{ next_url|e }}" hx-trigger="intersect once{% if root %} root:{{ root|e }}{% endif %}" hx-swap="outerHTML">
+  hx-get="{{ next_url|e }}" hx-trigger="intersect once{% if root %} root:{{ root|e }}{% endif %}" hx-target="this" hx-swap="outerHTML">
   <td colspan="{{ colspan }}" class="py-2">
     <span class="placeholder-glow d-block" aria-hidden="true"><span class="placeholder col-12"></span></span>
     <button type="button" class="btn btn-sm btn-outline-secondary visually-hidden-focusable gth-pagination-more"

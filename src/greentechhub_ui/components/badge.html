@@ -23,5 +23,5 @@
     with neither. -#}
 {%- if item.badge %}<span class="gth-nav-badge {{ badge_class }}">{{ gth_badge(item.badge.label, item.badge.get("tone", "neutral")) }}</span>{% endif -%}
 {%- if item.badge_url %}<span class="gth-nav-badge {{ badge_class }}" hx-get="{{ item.badge_url|e }}"
-  hx-trigger="load{% if item.badge_event %}, {{ item.badge_event|e }} from:body{% endif %}" hx-swap="innerHTML"></span>{% endif -%}
+  hx-trigger="load{% if item.badge_event %}, {{ item.badge_event|e }} from:body{% endif %}" hx-target="this" hx-swap="innerHTML"></span>{% endif -%}
 {%- endmacro %}

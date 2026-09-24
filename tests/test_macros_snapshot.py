@@ -799,3 +799,26 @@ def test_tree_nodes_partial_levels():
     assert rendered.count('aria-level="3"') == 2
     assert 'aria-setsize="2" aria-posinset="2"' in rendered
     assert 'tabindex="0"' not in rendered  # only the tree's first top-level node
+
+
+def test_self_loading_elements_pin_their_own_hx_target():
+    """htmx inherits hx-target: inside e.g. a gth_form with hx-target="this",
+    an element that loads itself must say where its response goes, or it
+    lands in the form (found with gth_tree's lazy groups)."""
+    rendered = _render(
+        """{% from "badge.html" import gth_nav_badge %}
+        {% from "table.html" import gth_table_load_more %}
+        {% from "tabs.html" import gth_tabs %}
+        {% from "tree.html" import gth_tree %}
+        {{ gth_nav_badge({"badge_url": "/b"}) }}
+        <table><tbody>{{ gth_table_load_more("/rows?page=2", infinite=True) }}</tbody></table>
+        {{ gth_tabs("t", [{"key": "a", "label": "A", "url": "/a"},
+                          {"key": "b", "label": "B", "url": "/b"}]) }}
+        {{ gth_tree("tr", [{"id": 1, "label": "x", "has_children": True}], "T", lazy_url="/n") }}"""
+    )
+    import re as _re
+
+    for tag in _re.findall(r"<[a-z]+[^>]*\bhx-get=[^>]*>", rendered):
+        if "gth-pagination-more" in tag:  # its button already targets "closest tr"
+            continue
+        assert 'hx-target="' in tag, tag

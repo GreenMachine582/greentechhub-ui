@@ -28,7 +28,7 @@
   {% set is_active = tab.key == active %}
   <div class="tab-pane fade{% if is_active %} show active{% endif %}" id="{{ id }}-pane-{{ tab.key }}" role="tabpanel"
     aria-labelledby="{{ id }}-tab-{{ tab.key }}" tabindex="0"
-    {%- if tab.url %} hx-get="{{ tab.url|e }}" hx-trigger="{{ 'load' if is_active else 'shown.bs.tab from:#' ~ id ~ '-tab-' ~ tab.key ~ ' once' }}"{% endif %}>
+    {%- if tab.url %} hx-get="{{ tab.url|e }}" hx-trigger="{{ 'load' if is_active else 'shown.bs.tab from:#' ~ id ~ '-tab-' ~ tab.key ~ ' once' }}" hx-target="this"{% endif %}>
     {%- if tab.url %}{{ gth_skeleton(3) }}{% elif caller is defined %}{{ caller(tab.key) }}{% endif -%}
   </div>
   {% endfor %}
