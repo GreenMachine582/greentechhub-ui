@@ -337,7 +337,41 @@ th[aria-sort] .gth-table-sort .bi {
   position: fixed;
   z-index: 1060;  /* above a Bootstrap modal (1055), like .gth-combobox-results */
   width: min(var(--gth-picker-width, 40rem), calc(100vw - 1rem));
+  overflow: hidden;
+}
+/* Layered panel, both sizes: header, search and the table footer (summary,
+   page size, pager) stay put; only the table scrolls. Expects the panel
+   endpoint's usual gth_table_filter + gth_data_table; anything else still
+   scrolls as a whole (the body's own overflow). */
+.gth-record-picker-panel > .card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   overflow-y: auto;
+}
+[data-gth-record-picker-body] > .gth-table-filter {
+  flex: none;
+}
+[data-gth-record-picker-body] > .gth-data-table {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+[data-gth-record-picker-body] > .gth-data-table > .gth-table-wrapper {
+  flex: 1 1 auto;
+  min-height: 4.5rem;
+  overflow: auto;
+}
+[data-gth-record-picker-body] > .gth-data-table > .gth-table-footer {
+  flex: none;
+}
+[data-gth-record-picker-body] .gth-table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bs-card-bg, var(--bs-body-bg));
 }
 .gth-record-picker-header {
   position: sticky;
@@ -368,7 +402,6 @@ th[aria-sort] .gth-table-sort .bi {
 }
 .gth-record-picker-panel--modal > .card-body {
   flex: 1 1 auto;
-  overflow-y: auto;
 }
 @media (max-width: 575.98px) {
   .gth-record-picker-panel--modal {
@@ -403,7 +436,7 @@ body.gth-picker-modal-open {
   position: fixed;
   right: 1rem;
   bottom: 1rem;
-  z-index: 1080;
+  z-index: 1030;  /* page chrome: under modals, pickers and toasts */
   display: inline-flex;
   align-items: center;
   justify-content: center;

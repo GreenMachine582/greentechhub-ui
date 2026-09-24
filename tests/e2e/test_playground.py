@@ -1174,3 +1174,67 @@ def test_back_to_top_lifts_the_toast_stack(page, playground_url):
     expect(toast).to_be_visible()
     t, b = toast.bounding_box(), button.bounding_box()
     assert t["y"] + t["height"] <= b["y"], "the toast stack sits above the button"
+
+
+def test_record_picker_near_page_end_makes_room_for_the_whole_panel(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/forms")
+    trigger = page.locator(PART_TRIGGER)
+    top = trigger.evaluate("e => e.getBoundingClientRect().top + scrollY")
+    page.evaluate("y => window.scrollTo(0, y)", top - 800 + 330)  # 330px from the bottom
+    doc_height = page.evaluate("document.documentElement.scrollHeight")
+    trigger.click()
+    panel = page.locator(PART_PANEL)
+    expect(panel.locator("[data-gth-pick]")).to_have_count(10)
+    _htmx_idle(page)
+    rect = panel.evaluate("e => e.getBoundingClientRect().toJSON()")
+    assert rect["bottom"] <= page.evaluate("innerHeight"), "the whole panel is on screen"
+    pager = panel.locator(".gth-table-pager").evaluate("e => e.getBoundingClientRect().toJSON()")
+    assert pager["bottom"] <= rect["bottom"], "the pager is inside the panel's visible area"
+    # The trigger stays visible below the sticky navbar.
+    nav_bottom = page.locator("nav.gth-navbar").evaluate("e => e.getBoundingClientRect().bottom")
+    assert trigger.evaluate("e => e.getBoundingClientRect().top") >= nav_bottom
+
+    page.keyboard.press("Escape")
+    expect(panel).to_be_hidden()
+    expect(page.locator("[data-gth-picker-spacer]")).to_have_count(0)
+    assert page.evaluate("document.documentElement.scrollHeight") == doc_height
+
+
+def test_record_picker_modal_size_scrolls_only_the_table(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/forms")
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    expect(panel.locator("input[type=search]")).to_be_focused()
+    panel.locator("[data-gth-record-picker-size]").click()
+    _htmx_idle(page)
+    panel.locator(".gth-table-size").select_option("50")
+    expect(panel.locator("[data-gth-pick]")).to_have_count(50)
+    _htmx_idle(page)
+    search = panel.locator("input[type=search]")
+    pager = panel.locator(".gth-table-pager")
+    before = (search.bounding_box(), pager.bounding_box())
+    scroller = panel.locator(".gth-data-table > .gth-table-wrapper")
+    assert scroller.evaluate("e => e.scrollHeight > e.clientHeight"), "the table overflows"
+    scroller.evaluate("e => e.scrollTop = e.scrollHeight")
+    page.wait_for_timeout(100)
+    assert (search.bounding_box(), pager.bounding_box()) == before
+    assert page.evaluate("""() => { const p = document.querySelector('#gth-field-part-panel');
+        const pr = p.getBoundingClientRect();
+        const g = p.querySelector('.gth-table-pager').getBoundingClientRect();
+        return g.bottom <= pr.bottom && g.top >= pr.top; }""")
+
+
+def test_record_picker_room_keeps_the_sidebar_column(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/forms")
+    trigger = page.locator(PART_TRIGGER)
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    trigger.click()
+    expect(page.locator(f"{PART_PANEL} [data-gth-pick]")).to_have_count(10)
+    _htmx_idle(page)
+    assert page.locator("main [data-gth-picker-spacer]").count() == 1
+    sidebar = page.locator("#gth-sidebar").bounding_box()
+    assert sidebar["y"] + sidebar["height"] >= page.evaluate("innerHeight") - 1, \
+        "the sticky sidebar still reaches the bottom of the viewport"

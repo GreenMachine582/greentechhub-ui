@@ -98,17 +98,74 @@
     if (modal) {
       ["top", "bottom", "left", "right", "maxHeight"].forEach(function (p) { panel.style[p] = ""; });
     } else {
-      position(picker);
+      position(picker, true);
     }
   }
-  function position(picker) {
+  // Height the panel wants with nothing capping it.
+  function naturalHeight(panel) {
+    var cap = panel.style.maxHeight;
+    panel.style.maxHeight = "none";
+    var h = panel.offsetHeight;
+    panel.style.maxHeight = cap;
+    return h;
+  }
+  // Bottom of any sticky/fixed top bar (the sidebar layout's navbar), which
+  // the trigger must stay below when the page scrolls to make room.
+  function topInset() {
+    var bar = document.querySelector(".gth-navbar.sticky-top, .navbar.fixed-top");
+    return bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+  }
+  // A spacer at the end of <main> (inside the layout, so a sticky sidebar
+  // keeps its column), letting a picker near the page end scroll the page
+  // far enough to show its whole panel. Removed on close.
+  function spacer() {
+    var s = document.querySelector("[data-gth-picker-spacer]");
+    if (!s) {
+      s = document.createElement("div");
+      s.setAttribute("data-gth-picker-spacer", "");
+      s.setAttribute("aria-hidden", "true");
+      s.style.height = "0px";
+      (document.querySelector("main") || document.body).appendChild(s);
+    }
+    return s;
+  }
+  function removeSpacer() {
+    var s = document.querySelector("[data-gth-picker-spacer]");
+    if (s) s.remove();
+  }
+  // Panel size outside a modal: if the panel doesn't fit below the trigger,
+  // scroll the page (growing it with the spacer when already at the end) so
+  // it does — keeping the trigger itself below any sticky top bar.
+  function makeRoom(picker, gap, margin) {
+    var panel = panelOf(picker);
+    var r = trigger(picker).getBoundingClientRect();
+    var need = naturalHeight(panel) - (window.innerHeight - r.bottom - gap - margin);
+    if (need <= 0) return;
+    need = Math.min(need, Math.max(0, r.top - topInset() - margin));
+    if (need <= 0) return;
+    var doc = document.documentElement;
+    var spare = doc.scrollHeight - (window.scrollY + window.innerHeight);
+    if (need > spare) {
+      var s = spacer();
+      s.style.height = (parseFloat(s.style.height) + need - spare) + "px";
+    }
+    // Instant: Bootstrap's reboot makes :root scroll-behavior smooth, and a
+    // smooth scroll would keep sliding the panel after it's placed.
+    window.scrollBy({ top: need, behavior: "instant" });
+  }
+
+  function position(picker, room) {
     var panel = panelOf(picker);
     if (isModal(picker)) return;  // CSS centres it
-    var r = trigger(picker).getBoundingClientRect();
     var gap = 4, margin = 8;
+    var inModal = !!picker.closest(".modal");
+    if (room && !inModal) makeRoom(picker, gap, margin);
+    var r = trigger(picker).getBoundingClientRect();
     var below = window.innerHeight - r.bottom - gap - margin;
     var above = r.top - gap - margin;
-    var placeAbove = below < 240 && above > below;
+    // Outside a modal the page makes room below (makeRoom); inside one the
+    // modal's own scrolling decides, so flip above when that's roomier.
+    var placeAbove = inModal && below < 240 && above > below;
     panel.style.maxHeight = Math.max(160, placeAbove ? above : below) + "px";
     if (placeAbove) {
       panel.style.top = "";
@@ -161,6 +218,7 @@
     }
   }
   function close(picker, restoreFocus) {
+    removeSpacer();
     panelOf(picker).classList.add("d-none");
     if (backdropOf(picker)) backdropOf(picker).classList.add("d-none");
     document.body.classList.remove("gth-picker-modal-open");
@@ -324,7 +382,7 @@
       var first = rows(picker)[0];
       if (first) first.focus();
     }
-    if (openPicker === picker) position(picker);
+    if (openPicker === picker) position(picker, true);  // new content: make room
   });
 
   document.body.addEventListener("htmx:afterSettle", function (evt) {
