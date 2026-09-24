@@ -1,22 +1,55 @@
 {% extends "pages/_base.html" %}
 {% from "toast.html" import gth_toast_flashes %}
 
+{% macro _preset(name, label, style="btn-outline-secondary") -%}
+<button type="button" class="btn btn-sm {{ style }}" hx-post="/toast-demo?preset={{ name }}" hx-swap="none"
+  data-toast-preset="{{ name }}">{{ label }}</button>
+{%- endmacro %}
+
 {% block page %}
 <section class="mb-5" id="toast">
   <h2 class="h4">gth-toast (HX-Trigger event)</h2>
-  <button type="button" class="btn btn-outline-secondary"
-    hx-post="/toast-demo" hx-swap="none">
-    Trigger a toast
-  </button>
+  <p class="text-secondary">
+    A response sets <code>HX-Trigger: greentechhub_ui.toast(...)</code>; <code>toast.js</code> shows it. Messages are
+    text unless the server passes <code>html=True</code> for markup it produced itself.
+  </p>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button type="button" class="btn btn-sm btn-outline-secondary" hx-post="/toast-demo" hx-swap="none">
+      Trigger a toast
+    </button>
+  </div>
+
+  <h3 class="h6 text-secondary text-uppercase small">Kinds (surface — the default)</h3>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {{ _preset("success", "Success") }}{{ _preset("info", "Info") }}{{ _preset("warning", "Warning") }}
+    {{ _preset("danger", "Danger") }}{{ _preset("neutral", "Neutral") }}
+  </div>
+
+  <h3 class="h6 text-secondary text-uppercase small">Solid variant</h3>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {{ _preset("solid-success", "Success", "btn-success") }}{{ _preset("solid-info", "Info", "btn-info") }}
+    {{ _preset("solid-warning", "Warning", "btn-warning") }}{{ _preset("solid-danger", "Danger", "btn-danger") }}
+    {{ _preset("solid-neutral", "Neutral", "btn-secondary") }}
+  </div>
+
+  <h3 class="h6 text-secondary text-uppercase small">Options</h3>
+  <div class="d-flex flex-wrap gap-2">
+    {{ _preset("title", "With title") }}{{ _preset("action", "With action link") }}
+    {{ _preset("sticky", "Sticky (duration=0)") }}{{ _preset("quick", "Quick (1.5s)") }}
+    {{ _preset("icon", "Custom icon") }}{{ _preset("long", "Long message") }}
+    {{ _preset("html", "Trusted HTML") }}{{ _preset("events", "With extra events") }}
+  </div>
 </section>
 
 <section class="mb-5" id="flashes">
   <h2 class="h4">gth-toast (static flashes)</h2>
   <p class="text-secondary">
-    The other delivery mode — a static <code>flashes</code> list, rendered inline here
-    rather than popping up (they'd normally live in the toast container, see
-    <code>docs/contract.md</code>).
+    The other delivery mode — a server-side <code>flashes</code> list in the same markup, rendered inline here
+    (they'd normally live in the toast container, see <code>docs/contract.md</code>). Same options: title, icon,
+    action, variant.
   </p>
-  {{ gth_toast_flashes(flashes_demo) }}
+  <div class="d-flex flex-column gap-2" id="flashes-demo">
+    {{ gth_toast_flashes(flashes_demo) }}
+  </div>
 </section>
 {% endblock %}

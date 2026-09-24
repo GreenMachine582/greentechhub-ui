@@ -834,6 +834,30 @@ def test_toast_flashes_escape_messages_and_map_kinds():
         ],
     )
     assert "<img" not in rendered and "&lt;img" in rendered
-    assert "text-bg-info" in rendered and "text-bg-danger" in rendered
-    assert "text-bg-secondary" in rendered  # unknown kind → neutral, not success
-    assert "text-bg-success" not in rendered
+    assert "gth-toast-info" in rendered and "gth-toast-danger" in rendered  # error → danger
+    assert "gth-toast-neutral" in rendered  # unknown kind → neutral, not success
+    assert "gth-toast-success" not in rendered
+
+
+def test_toast_flashes_rich_options():
+    rendered = _render(
+        """{% from "toast.html" import gth_toast_flashes %}{{ gth_toast_flashes(flashes) }}""",
+        flashes=[
+            {"message": "Ready", "kind": "info", "title": "Export <done>", "icon": "download",
+             "action": {"label": "Get it", "url": "/f?a=1&b=2"}},
+            {"message": "Declined", "kind": "danger", "variant": "solid"},
+            {"message": "<b>trusted</b>", "kind": "success", "html": True},
+            {"message": "x", "kind": "warning", "variant": "solid",
+             "action": {"label": "Bad", "url": " JavaScript:alert(1)"}},
+        ],
+    )
+    assert_snapshot(rendered, "toast_flashes_rich")
+    assert 'role="status" aria-live="polite"' in rendered  # info
+    assert 'role="alert" aria-live="assertive"' in rendered  # danger/warning
+    assert "Export &lt;done&gt;" in rendered and 'href="/f?a=1&amp;b=2"' in rendered
+    assert "<b>trusted</b>" in rendered
+    assert "javascript" not in rendered.lower()  # the unsafe action is dropped
+    solid_danger = rendered.split("gth-toast-danger")[1].split("</button>")[0]
+    assert "btn-close-white" in solid_danger
+    solid_warning = rendered.split("gth-toast-warning")[1].split("</button>")[0]
+    assert "btn-close-white" not in solid_warning

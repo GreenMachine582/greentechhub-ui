@@ -1080,9 +1080,64 @@ def test_toast_message_is_text_not_html(page, playground_url):
 def test_toast_warning_close_button_is_readable(page, playground_url):
     page.goto(f"{playground_url}/feedback")  # dark mode: Bootstrap inverts .btn-close
     for kind, dark_close in (("warning", True), ("info", True), ("danger", False)):
-        _fire_toast(page, {"message": kind, "kind": kind})
+        _fire_toast(page, {"message": kind, "kind": kind, "variant": "solid"})
         close = page.locator(f"{DYNAMIC_TOAST} .btn-close").last
         expect(close).to_be_visible()
         # The white close is an inverting filter; on a light fill it must be off.
         inverted = close.evaluate("el => getComputedStyle(el).filter") not in ("none", "")
         assert inverted is not dark_close, kind
+
+
+def _preset(page, name):
+    page.click(f"[data-toast-preset='{name}']")
+    return page.locator(DYNAMIC_TOAST).last
+
+
+def test_toast_presets_render_every_option(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    for kind in ("success", "info", "warning", "danger", "neutral"):
+        toast = _preset(page, kind)
+        expect(toast).to_have_class(re.compile(f"gth-toast-{kind} gth-toast-surface"))
+        urgent = kind in ("warning", "danger")
+        expect(toast).to_have_attribute("role", "alert" if urgent else "status")
+        expect(toast).to_have_attribute("aria-live", "assertive" if urgent else "polite")
+        expect(toast.locator(".gth-toast-progress")).to_have_count(1)
+
+    toast = _preset(page, "title")
+    expect(toast.locator(".gth-toast-title")).to_have_text("Deploy finished")
+    toast = _preset(page, "action")
+    expect(toast.locator("a.gth-toast-action")).to_have_attribute("href", "/feedback#toast")
+    toast = _preset(page, "icon")
+    expect(toast.locator(".gth-toast-icon")).to_have_class(re.compile("bi-rocket-takeoff"))
+    toast = _preset(page, "html")
+    expect(toast.locator(".gth-toast-message strong")).to_have_text("Trusted markup")
+    toast = _preset(page, "solid-warning")
+    expect(toast).to_have_class(re.compile("text-bg-warning"))
+
+
+def test_toast_sticky_stays_and_quick_leaves(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    sticky = _preset(page, "sticky")
+    expect(sticky.locator(".gth-toast-progress")).to_have_count(0)
+    quick = _preset(page, "quick")
+    expect(quick).to_be_visible()
+    page.mouse.move(5, 5)  # not hovering either: hovering pauses auto-hide
+    expect(page.locator(f"{DYNAMIC_TOAST}:has-text('Gone in 1.5 seconds')")).to_have_count(
+        0, timeout=4000)
+    page.wait_for_timeout(5500)  # past the default duration too
+    expect(page.locator(f"{DYNAMIC_TOAST}:has-text('stays until you close it')")).to_be_visible()
+    page.locator(f"{DYNAMIC_TOAST}:has-text('stays until you close it') .btn-close").click()
+    gone = page.locator("#gth-toast-container :has-text('stays until you close it')")
+    expect(gone).to_have_count(0)
+
+
+def test_toast_extra_events_refresh_the_nav_badge(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/feedback")
+    requests = []
+    page.on("request",
+            lambda r: requests.append(r.url) if "/nav-badges/watchlist" in r.url else None)
+    _preset(page, "events")
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("watchlistChanged")
+    page.wait_for_timeout(300)
+    assert requests, "the extra HX-Trigger event re-fetched the live badge"

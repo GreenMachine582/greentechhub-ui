@@ -56,7 +56,46 @@ PAGINATION_PAGE_SIZE = 5
 FLASHES_DEMO = [
     {"message": "This is a success flash message.", "kind": "success"},
     {"message": "This is a warning flash message.", "kind": "warning"},
+    {"message": "Your export is ready.", "kind": "info", "title": "Export finished",
+     "action": {"label": "Download CSV", "url": "/feedback#flashes"}},
+    {"message": "The sync failed: the supplier API timed out.", "kind": "danger",
+     "variant": "solid"},
+    {"message": "A flash rendered from a FlashMessage-shaped dict, neutral kind.",
+     "kind": "neutral"},
 ]
+
+# gth-toast demo presets: every option toast() offers. Keyed by an
+# allow-listed name so the endpoint never echoes request input into a toast.
+TOAST_PRESETS = {
+    "success": dict(message="Saved successfully.", kind="success"),
+    "info": dict(message="Sync scheduled for 02:00.", kind="info"),
+    "warning": dict(message="Stock is running low on 3 parts.", kind="warning"),
+    "danger": dict(message="Payment failed — the card was declined.", kind="danger"),
+    "neutral": dict(message="3 new comments on your draft.", kind="neutral"),
+    "title": dict(message="v0.8.0 is live on staging.", kind="success", title="Deploy finished"),
+    "action": dict(message="A newer draft of this page exists.", kind="info", title="New version",
+                   action={"label": "Review changes", "url": "/feedback#toast"}),
+    "sticky": dict(message="This one stays until you close it.", kind="warning",
+                   title="Needs attention", duration=0),
+    "quick": dict(message="Gone in 1.5 seconds.", kind="neutral", duration=1500),
+    "icon": dict(message="Custom icon via icon=\"rocket-takeoff\".", kind="info",
+                 icon="rocket-takeoff"),
+    "long": dict(message=("A long message wraps inside the toast instead of stretching it: "
+                          "supplier ACME-4471 returned 12 partial shipments across three "
+                          "warehouses, two of which still need a signed delivery note."),
+                 kind="info", title="Partial shipment"),
+    "html": dict(message=('<strong>Trusted markup</strong> produced by the server, with a '
+                          '<a href="/forms">link</a> — html=True, never for user input.'),
+                 kind="success", html=True),
+    "solid-success": dict(message="Solid success.", kind="success", variant="solid"),
+    "solid-info": dict(message="Solid info.", kind="info", variant="solid"),
+    "solid-warning": dict(message="Solid warning — the close button stays dark.", kind="warning",
+                          variant="solid"),
+    "solid-danger": dict(message="Solid danger.", kind="danger", variant="solid"),
+    "solid-neutral": dict(message="Solid neutral.", kind="neutral", variant="solid"),
+    "events": dict(message="Also fired watchlistChanged: the sidebar's Confirm delete badge "
+                           "re-fetched.", kind="info", events=["watchlistChanged"]),
+}
 
 WATCHLIST_DEMO = [
     {"id": 1, "name": "Widget A"},
@@ -289,9 +328,15 @@ async def form_demo(request: Request, budget: float = Form(...)):
 
 
 @app.post("/toast-demo")
-async def toast_demo():
+async def toast_demo(preset: str | None = None):
+    if preset is None:
+        options = dict(message="Demo toast triggered!", kind="success")
+    elif preset in TOAST_PRESETS:
+        options = TOAST_PRESETS[preset]
+    else:
+        return HTMLResponse("Unknown preset", status_code=404)
     resp = HTMLResponse("", status_code=204)
-    resp.headers["HX-Trigger"] = greentechhub_ui.toast("Demo toast triggered!", "success")
+    resp.headers["HX-Trigger"] = greentechhub_ui.toast(**options)
     return resp
 
 

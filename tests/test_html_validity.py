@@ -36,6 +36,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "form_field_with_errors",
         "toast_flashes_empty",
         "toast_flashes_with_items",
+        "toast_flashes_rich",
         "busy_button",
         "combobox_empty",
         "combobox_with_value_and_errors",

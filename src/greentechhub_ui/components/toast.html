@@ -1,15 +1,33 @@
 {% macro gth_toast_flashes(flashes) %}
-{#- The message is escaped (text), even where autoescape is off. kind:
-    success | info | warning | danger | neutral (aliases warn, error;
-    anything else renders neutral). Light fills get the dark close button. -#}
+{#- Server-side flashes in the same markup toast.js builds for HX-Trigger
+    toasts (rendered visible, no auto-hide). Each flash: {message, kind,
+    title?, icon?, action? {label, url}, variant? ("surface" | "solid"),
+    html?} — a dict or an object (greentechhub_core FlashMessage renders
+    identically; missing attributes are fine). The message is escaped text
+    unless html is true (server-produced markup only, never user input).
+    kind: success | info | warning | danger | neutral (aliases warn, error;
+    anything else renders neutral). -#}
 {% set kinds = {"success": "success", "info": "info", "warning": "warning", "warn": "warning",
-                "danger": "danger", "error": "danger", "neutral": "secondary"} %}
+                "danger": "danger", "error": "danger", "neutral": "neutral"} %}
+{% set bs = {"success": "success", "info": "info", "warning": "warning", "danger": "danger", "neutral": "secondary"} %}
+{% set icons = {"success": "check-circle-fill", "info": "info-circle-fill", "warning": "exclamation-triangle-fill",
+                "danger": "x-octagon-fill", "neutral": "bell-fill"} %}
 {% for f in flashes %}
-{% set kind = kinds.get(f.kind|default("success"), "secondary") %}
-<div class="toast align-items-center text-bg-{{ kind }} border-0 show gth-toast" role="alert" aria-live="assertive" aria-atomic="true">
-  <div class="d-flex">
-    <div class="toast-body">{{ f.message|e }}</div>
-    <button type="button" class="btn-close{% if kind not in ('warning', 'info') %} btn-close-white{% endif %} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+{% set kind = kinds.get(f.kind|default("success"), "neutral") %}
+{% set variant = "solid" if f.variant|default(none) == "solid" else "surface" %}
+{% set urgent = kind in ("warning", "danger") %}
+<div class="toast show gth-toast gth-toast-{{ kind }} gth-toast-{{ variant }}{% if variant == 'solid' %} text-bg-{{ bs[kind] }}{% endif %}"
+  role="{{ 'alert' if urgent else 'status' }}" aria-live="{{ 'assertive' if urgent else 'polite' }}" aria-atomic="true">
+  <div class="gth-toast-inner">
+    <i class="bi bi-{{ f.icon|default(none) or icons[kind] }} gth-toast-icon" aria-hidden="true"></i>
+    <div class="gth-toast-content">
+      {%- if f.title|default(none) %}<div class="gth-toast-title">{{ f.title|e }}</div>{% endif %}
+      <div class="gth-toast-message">{% if f.html|default(false) %}{{ f.message|safe }}{% else %}{{ f.message|e }}{% endif %}</div>
+      {%- set action = f.action|default(none) %}
+      {%- if action and action.url and not (action.url|trim|lower).startswith("javascript:") %}<a class="gth-toast-action" href="{{ action.url|e }}">{{ action.label|default("Open")|e }}</a>{% endif %}
+    </div>
+    <button type="button" class="btn-close gth-toast-close{% if variant == 'solid' and kind not in ('warning', 'info') %} btn-close-white{% endif %}"
+      data-bs-dismiss="toast" aria-label="Close"></button>
   </div>
 </div>
 {% endfor %}

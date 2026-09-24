@@ -398,8 +398,118 @@ body.gth-picker-modal-open {
   outline-offset: -2px;
 }
 
-/* Toasts: Bootstrap's dark mode inverts every .btn-close to white, which
-   vanishes on the light warning/info fills — keep it dark there. */
+/* ── gth-toast ────────────────────────────────────────────────────────
+   "surface" (default): the theme's own background with a kind-coloured
+   accent bar and icon — readable, close button included, on every kind in
+   both colour modes. "solid": a text-bg-* fill. Built by toast.js for
+   HX-Trigger toasts and by gth_toast_flashes server-side. */
+.gth-toast {
+  --bs-toast-spacing: 0.6rem;  /* tighter stack than Bootstrap's 1.5rem */
+  --gth-toast-accent: var(--bs-secondary-color);
+  --gth-toast-icon: var(--bs-secondary-color);
+  width: min(24rem, calc(100vw - 2rem));
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.6rem;
+  box-shadow: var(--bs-box-shadow);
+}
+.gth-toast-success { --gth-toast-accent: var(--bs-success); --gth-toast-icon: var(--bs-success-text-emphasis); }
+.gth-toast-info { --gth-toast-accent: var(--bs-info); --gth-toast-icon: var(--bs-info-text-emphasis); }
+.gth-toast-warning { --gth-toast-accent: var(--bs-warning); --gth-toast-icon: var(--bs-warning-text-emphasis); }
+.gth-toast-danger { --gth-toast-accent: var(--bs-danger); --gth-toast-icon: var(--bs-danger-text-emphasis); }
+.gth-toast-surface {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+  border-left: 4px solid var(--gth-toast-accent);
+}
+.gth-toast-solid {
+  border: 0;
+  --gth-toast-icon: currentColor;
+}
+.gth-toast-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 0.9rem;
+}
+.gth-toast-icon {
+  flex-shrink: 0;
+  color: var(--gth-toast-icon);
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+.gth-toast-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gth-toast-title {
+  margin-bottom: 0.1rem;
+  font-weight: 600;
+}
+.gth-toast-message {
+  overflow-wrap: anywhere;
+}
+.gth-toast-action {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--gth-toast-icon);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.gth-toast-solid .gth-toast-action {
+  color: inherit;
+}
+.gth-toast-close {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 0.75rem;
+}
+.gth-toast-progress {
+  height: 3px;
+  background-color: color-mix(in srgb, var(--gth-toast-accent) 20%, transparent);
+}
+.gth-toast-progress > span {
+  display: block;
+  height: 100%;
+  background-color: var(--gth-toast-accent);
+  transform-origin: left;
+  animation: gth-toast-countdown linear forwards;
+}
+.gth-toast-solid .gth-toast-progress {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+.gth-toast-solid .gth-toast-progress > span {
+  background-color: currentColor;
+  opacity: 0.6;
+}
+/* Bootstrap pauses the hide timer while the toast is hovered or focused. */
+.gth-toast:hover .gth-toast-progress > span,
+.gth-toast:focus-within .gth-toast-progress > span {
+  animation-play-state: paused;
+}
+@keyframes gth-toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.gth-toast.fade {
+  transition: opacity 0.15s linear, transform 0.2s ease-out;
+}
+.gth-toast.fade:not(.show) {
+  transform: translateY(0.5rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gth-toast.fade,
+  .gth-toast.fade:not(.show) {
+    transform: none;
+    transition: none;
+  }
+  .gth-toast-progress > span {
+    animation: none;
+    transform: scaleX(0.5);
+  }
+}
+/* Bootstrap's dark mode inverts every .btn-close to white, which vanishes on
+   the light warning/info fills — keep it dark there (solid variant). */
 .toast.text-bg-warning .btn-close,
 .toast.text-bg-info .btn-close {
   filter: none;
