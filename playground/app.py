@@ -414,6 +414,7 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
 # gth_sidebar demo — a page rendered in layout="sidebar" with its own nested
 # nav, overriding the navbar-layout globals just for this request.
 SIDEBAR_DEMO_NAV = [
+    {"label": "Back to playground", "url": "/", "icon": "arrow-left", "match": "exact"},
     {"label": "Dashboard", "url": "/layouts/sidebar", "icon": "speedometer2", "match": "exact"},
     {"label": "Inventory", "icon": "box-seam", "children": [
         {"label": "Parts", "url": "/layouts/sidebar/parts", "icon": "cpu",

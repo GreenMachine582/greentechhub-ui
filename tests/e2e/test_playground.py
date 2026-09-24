@@ -861,7 +861,8 @@ def test_command_palette_keyboard_navigation(page, playground_url):
     dialog = page.locator(CMD)
     expect(dialog).to_be_visible()
     expect(dialog.locator("[data-gth-command-input]")).to_be_focused()
-    expect(dialog.locator("[data-gth-command-pages] [data-gth-command-option]")).to_have_count(9)
+    # Every navigable demo-nav entry, the "Back to playground" link included.
+    expect(dialog.locator("[data-gth-command-pages] [data-gth-command-option]")).to_have_count(10)
 
     page.keyboard.type("month")
     first = dialog.locator("[data-gth-command-option]").first
@@ -1238,3 +1239,11 @@ def test_record_picker_room_keeps_the_sidebar_column(page, playground_url):
     sidebar = page.locator("#gth-sidebar").bounding_box()
     assert sidebar["y"] + sidebar["height"] >= page.evaluate("innerHeight") - 1, \
         "the sticky sidebar still reaches the bottom of the viewport"
+
+
+def test_sidebar_demo_links_back_to_the_playground(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar/parts")
+    page.locator(f"{SB} a:has-text('Back to playground')").click()
+    expect(page).to_have_url(re.compile(r"/$"))
+    expect(page.locator("main h1")).to_have_text("greentechhub-ui playground")
