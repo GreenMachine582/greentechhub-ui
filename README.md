@@ -58,7 +58,7 @@ only.
 
 ## 🗺️ Status & Roadmap
 
-v0.1–v0.4 are largely shipped — theme, navigation, core content/form/toast components, dark mode, a `/playground` demo app, and Playwright tests running in CI, with BottleBot's retrofit underway. The phased rollout (v0.1 → v1.0) is tracked as a living checklist in [TODO.md](TODO.md).
+Shipped versions and their notes: [CHANGELOG.md](CHANGELOG.md) and the [Releases page](https://github.com/GreenMachine582/greentechhub-ui/releases) (both written by release-please from conventional commits). Open work: [TODO.md](TODO.md). Branches, PRs and how a release is cut: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📄 License
 
