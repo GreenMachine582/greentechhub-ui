@@ -83,6 +83,14 @@
         </li>
         {%- endif %}
         {% endfor %}
+        {%- if show_search %}
+        <li class="nav-item d-flex align-items-center ms-md-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 gth-command-open"
+            data-gth-command-open aria-keyshortcuts="Control+K Meta+K" aria-haspopup="dialog">
+            <i class="bi bi-search" aria-hidden="true"></i><span class="d-md-none">Search</span><kbd class="d-none d-md-inline gth-kbd">Ctrl K</kbd>
+          </button>
+        </li>
+        {%- endif %}
         {% if show_theme_toggle %}
         <li class="nav-item d-flex align-items-center ms-md-2">
           {{ gth_theme_toggle() }}

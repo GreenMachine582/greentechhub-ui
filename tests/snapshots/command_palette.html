@@ -1,0 +1,32 @@
+
+        
+
+
+<dialog class="gth-command" id="gth-command" aria-label="Go to page" data-gth-command data-gth-command-url="/search?x=1">
+  <div class="gth-command-search">
+    <i class="bi bi-search text-secondary" aria-hidden="true"></i>
+    <input type="text" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="gth-command-list"
+      aria-label="Jump to…" placeholder="Jump to…" autocomplete="off" spellcheck="false" data-gth-command-input>
+    <kbd class="gth-kbd">Esc</kbd>
+  </div>
+  <div class="gth-command-list" id="gth-command-list" role="listbox" aria-label="Results">
+    <div role="group" aria-labelledby="gth-command-pages" data-gth-command-pages>
+      <div class="gth-command-heading" id="gth-command-pages" role="presentation">Pages</div>
+      <div data-gth-command-page-items></div>
+    </div>
+    
+    <div role="group" aria-labelledby="gth-command-results" data-gth-command-remote hidden>
+      <div class="gth-command-heading" id="gth-command-results" role="presentation">Results</div>
+      <div data-gth-command-remote-items></div>
+    </div>
+    
+    <p class="gth-command-empty mb-0" data-gth-command-empty hidden>No matches</p>
+  </div>
+  <script type="application/json" data-gth-command-data>[{"icon": "house", "label": "Home", "path": "Home", "url": "/"}, {"icon": null, "label": "Tables", "path": "Data \u203a Tables", "url": "/tables"}, {"icon": null, "label": "2024", "path": "Data \u203a Archive \u203a 2024", "url": "/archive/2024"}, {"icon": null, "label": "Reports", "path": "Reports", "url": "/reports"}, {"icon": null, "label": "Monthly", "path": "Reports \u203a Monthly", "url": "/reports/m"}]</script>
+</dialog>
+
+        
+<a class="gth-command-item" role="option" aria-selected="false" href="/p?id=1&amp;x=2" data-gth-command-option>
+  <i class="bi bi-cpu" aria-hidden="true"></i>
+  <span class="gth-command-label">Bolt &lt;M6&gt;</span><span class="gth-command-hint">Sensor</span>
+</a>

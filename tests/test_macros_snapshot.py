@@ -722,3 +722,29 @@ def test_nav_badge_static_live_and_none():
     assert "text-warning-emphasis" in rendered and ">3</span>" in rendered
     assert 'hx-get="/b?a=1&amp;c=2"' in rendered
     assert 'hx-trigger="load, healthChanged from:body"' in rendered
+
+
+def test_command_palette_markup():
+    from greentechhub_ui.navigation import flatten
+
+    env = _env()
+    env.globals["nav_flatten"] = flatten  # an env global, as shell_globals installs it
+    rendered = env.from_string(
+        """{% from "command_palette.html" import gth_command_palette, gth_command_item %}
+        {{ gth_command_palette(items, search_url="/search?x=1") }}
+        {{ gth_command_item("Bolt <M6>", "/p?id=1&x=2", "cpu", "Sensor") }}"""
+    ).render(items=_SIDEBAR_NAV)
+    assert_snapshot(rendered, "command_palette")
+    # Embedded JSON is script-safe, and entries carry their group path.
+    assert r"Data \u203a Tables" in rendered  # tojson escapes non-ASCII
+    assert "Bolt &lt;M6&gt;" in rendered and 'href="/p?id=1&amp;x=2"' in rendered
+
+
+def test_command_palette_without_nav_flatten_is_empty_list():
+    rendered = _render(
+        """{% from "command_palette.html" import gth_command_palette %}
+        {{ gth_command_palette(items) }}""",
+        items=_SIDEBAR_NAV,
+    )
+    assert "data-gth-command-data>[]</script>" in rendered
+    assert "data-gth-command-remote" not in rendered

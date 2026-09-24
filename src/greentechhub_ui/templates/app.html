@@ -77,7 +77,8 @@
     <div class="container-fluid py-4 px-lg-4">
   {%- else %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
-      show_theme_toggle|default(false), navbar_theme|default(none)) }}
+      show_theme_toggle|default(false), navbar_theme|default(none),
+      show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false))) }}
 
   <main class="container py-4">
   {%- endif %}
@@ -97,6 +98,11 @@
   <div class="toast-container position-fixed bottom-0 end-0 p-3" id="gth-toast-container"></div>
   {# Server-rendered modals are hx-get'd in here whole; modal-host.js shows them. #}
   <div id="gth-modal-host"></div>
+  {%- if command_palette_js_url|default(none) and (layout|default("navbar") == "sidebar" or show_command_palette|default(false)) %}
+  {% from "command_palette.html" import gth_command_palette %}
+  {{ gth_command_palette(nav_items, command_search_url|default(none)) }}
+  <script src="{{ command_palette_js_url }}"></script>
+  {%- endif %}
 
   <script src="{{ bootstrap_js_url|default('https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js') }}"></script>
   {% if toast_js_url|default(none) %}<script src="{{ toast_js_url }}"></script>{% endif %}

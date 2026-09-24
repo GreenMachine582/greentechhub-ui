@@ -320,7 +320,23 @@ async def sidebar_demo(request: Request, rest: str = ""):
         "nav_items": SIDEBAR_DEMO_NAV,
         "current_path": request.url.path,
         "nav_breadcrumbs": partial(greentechhub_ui.navigation.breadcrumbs_for, SIDEBAR_DEMO_NAV),
+        "command_search_url": "/layouts/sidebar-search",
     })
+
+
+_COMMAND_ITEMS = templates.env.from_string(
+    '{% from "command_palette.html" import gth_command_item %}'
+    '{% for r in rows %}{{ gth_command_item(r.name, "/layouts/sidebar/parts?id=" ~ r.id, "cpu",'
+    ' r.category ~ " · $" ~ "%.2f"|format(r.price)) }}{% endfor %}'
+)
+
+
+@app.get("/layouts/sidebar-search", response_class=HTMLResponse)
+async def sidebar_search(q: str = ""):
+    """gth_command_palette search_url demo: parts matching q."""
+    q = q.strip().lower()
+    rows = [r for r in RECORDS if q and q in r["name"].lower()][:8]
+    return HTMLResponse(_COMMAND_ITEMS.render(rows=rows))
 
 
 @app.get("/v07-demo/widget-rows", response_class=HTMLResponse)

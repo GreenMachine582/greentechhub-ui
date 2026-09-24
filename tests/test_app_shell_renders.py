@@ -129,3 +129,12 @@ def test_app_shell_navbar_layout_ignores_sidebar_bits():
     html = _env().get_template("app.html").render(**_context(sidebar_js_url="/a/js/sidebar.js"))
     assert "gth-sidebar" not in html and "sidebar.js" not in html
     assert '<main class="container py-4">' in html
+
+
+def test_app_shell_command_palette_inclusion():
+    palette = {"command_palette_js_url": "/a/js/command-palette.js"}
+    assert "gth-command" not in _env().get_template("app.html").render(**_context(**palette))
+    html = _env().get_template("app.html").render(**_context(**palette, show_command_palette=True))
+    assert "<dialog" in html and "data-gth-command-open" in html
+    html = _env().get_template("app.html").render(**_context(**palette, layout="sidebar"))
+    assert "<dialog" in html and "data-gth-command-open" in html

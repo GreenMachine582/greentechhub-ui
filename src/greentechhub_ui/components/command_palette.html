@@ -1,0 +1,43 @@
+{% macro gth_command_palette(nav_items, search_url=None, placeholder="Jump to…", id="gth-command") %}
+{# Ctrl/⌘+K quick navigation over every nav item — a native <dialog>
+   (showModal: top layer, backdrop, the page inert behind it, Esc closes).
+   The flattened nav (nav_flatten global, installed by shell_globals) is
+   embedded as JSON and filtered client-side; `search_url`, if given, is
+   also queried (?q=, debounced) for server results rendered with
+   gth_command_item. ↑/↓ move, Enter goes, Esc closes and returns focus.
+   app.html includes it (command_palette_js_url) in the sidebar layout, or
+   in the navbar layout with show_command_palette. #}
+{% set entries = nav_flatten(nav_items) if nav_flatten is defined else [] %}
+<dialog class="gth-command" id="{{ id }}" aria-label="Go to page" data-gth-command
+  {%- if search_url %} data-gth-command-url="{{ search_url|e }}"{% endif %}>
+  <div class="gth-command-search">
+    <i class="bi bi-search text-secondary" aria-hidden="true"></i>
+    <input type="text" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="{{ id }}-list"
+      aria-label="{{ placeholder }}" placeholder="{{ placeholder }}" autocomplete="off" spellcheck="false" data-gth-command-input>
+    <kbd class="gth-kbd">Esc</kbd>
+  </div>
+  <div class="gth-command-list" id="{{ id }}-list" role="listbox" aria-label="Results">
+    <div role="group" aria-labelledby="{{ id }}-pages" data-gth-command-pages>
+      <div class="gth-command-heading" id="{{ id }}-pages" role="presentation">Pages</div>
+      <div data-gth-command-page-items></div>
+    </div>
+    {% if search_url %}
+    <div role="group" aria-labelledby="{{ id }}-results" data-gth-command-remote hidden>
+      <div class="gth-command-heading" id="{{ id }}-results" role="presentation">Results</div>
+      <div data-gth-command-remote-items></div>
+    </div>
+    {% endif %}
+    <p class="gth-command-empty mb-0" data-gth-command-empty hidden>No matches</p>
+  </div>
+  <script type="application/json" data-gth-command-data>{{ entries|tojson }}</script>
+</dialog>
+{% endmacro %}
+
+{% macro gth_command_item(label, url, icon=None, hint=None) -%}
+{# One server-side result row for a gth_command_palette search_url. #}
+<a class="gth-command-item" role="option" aria-selected="false" href="{{ url|e }}" data-gth-command-option>
+  <i class="bi bi-{{ icon or 'file-earmark' }}" aria-hidden="true"></i>
+  <span class="gth-command-label">{{ label|e }}</span>
+  {%- if hint %}<span class="gth-command-hint">{{ hint|e }}</span>{% endif %}
+</a>
+{%- endmacro %}

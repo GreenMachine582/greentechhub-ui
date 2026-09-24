@@ -61,11 +61,13 @@ def shell_globals(
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
+        "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
         "layout": layout,
         "nav_breadcrumbs": partial(navigation.breadcrumbs_for, nav_items),
         "nav_mark_active": navigation.mark_active,
+        "nav_flatten": navigation.flatten,
     }
     if theme_toggle:
         globals_["theme_toggle_js_url"] = f"{assets_prefix}/js/theme-toggle.js"

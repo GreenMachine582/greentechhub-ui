@@ -840,3 +840,57 @@ def test_sidebar_live_badge_refreshes_on_event(page, playground_url):
     expect(badge.locator(".badge")).to_have_count(0)  # zero: hidden
     page.click("#health-reset")
     expect(badge).to_have_text("3")
+
+
+# ── gth-command-palette ──────────────────────────────────────────────────
+
+CMD = "dialog[data-gth-command]"
+
+
+def test_command_palette_keyboard_navigation(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar")
+    page.locator("body").click()
+    page.keyboard.press("Control+k")
+    dialog = page.locator(CMD)
+    expect(dialog).to_be_visible()
+    expect(dialog.locator("[data-gth-command-input]")).to_be_focused()
+    expect(dialog.locator("[data-gth-command-pages] [data-gth-command-option]")).to_have_count(9)
+
+    page.keyboard.type("month")
+    first = dialog.locator("[data-gth-command-option]").first
+    expect(first).to_contain_text("Monthly")
+    expect(first).to_contain_text("Reports › Monthly")
+    expect(first).to_have_attribute("aria-selected", "true")
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(re.compile("/layouts/sidebar/reports/monthly$"))
+    expect(page.locator(CMD)).to_be_hidden()
+
+
+def test_command_palette_button_escape_and_server_results(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/layouts/sidebar")
+    button = page.locator("[data-gth-command-open]")
+    button.click()
+    dialog = page.locator(CMD)
+    expect(dialog).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(dialog).to_be_hidden()
+    expect(button).to_be_focused()
+
+    button.click()
+    page.keyboard.type("kilo part 01")
+    results = dialog.locator("[data-gth-command-remote] [data-gth-command-option]")
+    expect(results.first).to_contain_text("Kilo part 010")
+    expect(dialog.locator("[data-gth-command-pages]")).to_be_hidden()  # no page matches
+    expect(results.first).to_have_attribute("aria-selected", "true")
+    page.keyboard.press("ArrowDown")
+    expect(results.nth(1)).to_have_attribute("aria-selected", "true")
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(re.compile(r"/layouts/sidebar/parts\?id="))
+
+    page.locator("[data-gth-command-open]").click()
+    page.keyboard.type("zzzz")
+    expect(page.locator(f"{CMD} [data-gth-command-empty]")).to_be_visible()
+    page.mouse.click(5, 5)  # the backdrop closes it
+    expect(page.locator(CMD)).to_be_hidden()
