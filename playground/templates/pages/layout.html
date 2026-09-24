@@ -1,4 +1,4 @@
-{% extends "pages/_base.html" %}
+{% extends "page.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
 {% from "stat_card.html" import gth_stat_card %}
@@ -79,8 +79,8 @@
   <h2 class="h4">gth-tabs</h2>
   {% call(key) gth_tabs("demo-tabs", [
       {"key": "overview", "label": "Overview", "icon": "info-circle"},
-      {"key": "activity", "label": "Activity (lazy)", "icon": "clock-history", "url": "/v07-demo/tab/activity"},
-      {"key": "settings", "label": "Settings (lazy)", "icon": "gear", "url": "/v07-demo/tab/settings"},
+      {"key": "activity", "label": "Activity (lazy)", "icon": "clock-history", "url": "/demo/tab/activity"},
+      {"key": "settings", "label": "Settings (lazy)", "icon": "gear", "url": "/demo/tab/settings"},
     ]) %}
     {% if key == "overview" %}<p class="mb-0">A static pane rendered from the <code>{% raw %}{% call(key) %}{% endraw %}</code> body.</p>{% endif %}
   {% endcall %}

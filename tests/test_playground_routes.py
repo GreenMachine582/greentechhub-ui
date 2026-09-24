@@ -103,7 +103,7 @@ def test_form_demo_above_max_returns_422():
     assert response.status_code == 422
     assert "Must be less than or equal to 1000" in response.text
 
-def test_pages_render_v07_demos_with_vendored_assets():
+def test_pages_render_demos_with_vendored_assets():
     overlays = _run(_get("/overlays")).text
     assert 'id="gth-modal-host"' in overlays
     assert '<script src="/gth-assets/js/modal-host.js"></script>' in overlays
@@ -123,23 +123,23 @@ def test_playground_runs_in_the_sidebar_layout():
 
 
 def test_widget_rows_load_more_pages_through_and_stops():
-    first = _run(_get("/v07-demo/widget-rows", params={"page": 1}))
+    first = _run(_get("/demo/widget-rows", params={"page": 1}))
     assert "Widget #1<" in first.text and "page=2" in first.text
-    last = _run(_get("/v07-demo/widget-rows", params={"page": 4}))
+    last = _run(_get("/demo/widget-rows", params={"page": 4}))
     assert "Widget #16<" in last.text and "gth-table-load-more" not in last.text
 
 
 def test_widget_options_filter_and_empty_state():
-    response = _run(_get("/v07-demo/widgets", params={"q": "#1"}))
+    response = _run(_get("/demo/widgets", params={"q": "#1"}))
     assert 'data-label="Widget #1"' in response.text and 'data-value="1"' in response.text
     assert "Widget #2<" not in response.text
-    empty = _run(_get("/v07-demo/widgets", params={"q": "zzz"}))
+    empty = _run(_get("/demo/widgets", params={"q": "zzz"}))
     assert "No matching widgets" in empty.text
 
 
 def test_modal_submit_without_pick_rerenders_form_with_422():
     data = {"widget": "", "widget_search": "Wid", "size": "L"}
-    response = _run(_post("/v07-demo/modal", data=data))
+    response = _run(_post("/demo/modal", data=data))
     assert response.status_code == 422
     assert response.text.lstrip().startswith("<form")
     assert "Pick a widget from the list." in response.text
@@ -147,7 +147,7 @@ def test_modal_submit_without_pick_rerenders_form_with_422():
 
 
 def test_modal_submit_closes_modal_via_hx_trigger():
-    response = _run(_post("/v07-demo/modal", data={"widget": "3", "size": "L"}))
+    response = _run(_post("/demo/modal", data={"widget": "3", "size": "L"}))
     assert response.status_code == 204
     trigger = json.loads(response.headers["HX-Trigger"])
     assert trigger["closeModal"] is True
@@ -194,20 +194,20 @@ def test_tables_unknown_mode_falls_back_to_pages():
 
 
 def test_record_picker_panel_first_load_has_filter_then_swaps_do_not():
-    first = _run(_get("/v07-demo/record-picker", params={"for": "page"}, headers=HX))
+    first = _run(_get("/demo/record-picker", params={"for": "page"}, headers=HX))
     assert "gth-table-filter" in first.text and 'id="picker-page"' in first.text
     assert first.text.count("data-gth-pick") == 10
 
-    swap = _run(_get("/v07-demo/record-picker", params={"for": "page", "page": 2},
+    swap = _run(_get("/demo/record-picker", params={"for": "page", "page": 2},
                      headers={**HX, "HX-Target": "picker-page"}))
     assert "gth-table-filter" not in swap.text
     assert "11–20 of 120" in swap.text
 
 
 def test_record_picker_ids_are_per_picker():
-    modal = _run(_get("/v07-demo/record-picker", params={"for": "modal"}, headers=HX))
+    modal = _run(_get("/demo/record-picker", params={"for": "modal"}, headers=HX))
     assert 'id="picker-modal"' in modal.text
-    bogus = _run(_get("/v07-demo/record-picker", params={"for": "<x>"}, headers=HX))
+    bogus = _run(_get("/demo/record-picker", params={"for": "<x>"}, headers=HX))
     assert 'id="picker-page"' in bogus.text
 
 
@@ -234,3 +234,25 @@ def test_tree_reorder_rerender_keeps_checked_part_in_place():
     assert 'data-gth-node="p:1"' in r.text
     part = r.text.split('data-gth-node="p:1"')[1].split(">")[0]
     assert 'aria-checked="true"' in part
+
+
+def test_demo_reset_restores_state_and_refreshes_views():
+    from playground.app import HEALTH_ISSUES, WATCHLIST_DEMO
+
+    WATCHLIST_DEMO.clear()
+    HEALTH_ISSUES["open"] = 0
+    assert _run(_get("/nav-badges/watchlist")).text == ""  # zero hides the badge
+    response = _run(_post("/demo/reset"))
+    assert response.status_code == 204 and response.text == ""
+    trigger = json.loads(response.headers["HX-Trigger"])
+    assert {"watchlistChanged", "healthChanged", "watchlistReset"} <= set(trigger)
+    assert [item["name"] for item in WATCHLIST_DEMO] == ["Widget A", "Widget B", "Widget C"]
+    assert HEALTH_ISSUES["open"] == 3
+    assert ">3</span>" in _run(_get("/nav-badges/watchlist")).text
+    assert "Widget A" in _run(_get("/demo/watchlist")).text
+
+
+def test_playground_pages_get_current_path_from_the_context_processor():
+    # No route passes current_path any more: greentechhub_fastapi's ui_context does.
+    html = _run(_get("/tree")).text
+    assert 'aria-current="page"' in html and '<a href="/data">Data</a>' in html

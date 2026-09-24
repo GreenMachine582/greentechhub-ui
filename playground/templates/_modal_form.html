@@ -2,10 +2,10 @@
 {% from "combobox.html" import gth_combobox %}
 {% from "segmented.html" import gth_segmented %}
 {% from "record_picker.html" import gth_record_picker %}
-{% call gth_form("/v07-demo/modal", form_attrs={"hx-post": "/v07-demo/modal", "hx-target": "this", "hx-swap": "outerHTML"}) %}
-  {{ gth_combobox("widget", "Widget", "/v07-demo/widgets", value=widget_value, value_label=widget_label,
+{% call gth_form("/demo/modal", form_attrs={"hx-post": "/demo/modal", "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  {{ gth_combobox("widget", "Widget", "/demo/widgets", value=widget_value, value_label=widget_label,
       errors=errors.get("widget"), placeholder="Search widgets…") }}
-  {{ gth_record_picker("record", "Part (optional)", "/v07-demo/record-picker?for=modal",
+  {{ gth_record_picker("record", "Part (optional)", "/demo/record-picker?for=modal",
       value=record_value, value_label=record_label, placeholder="Choose a part…",
       help_text="Opens a searchable, sortable, paged table.") }}
   {{ gth_segmented("size", [

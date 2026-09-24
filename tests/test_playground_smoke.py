@@ -30,7 +30,7 @@ def test_every_template_compiles():
                  "pages/extensibility.html", "_tasks_tbody.html", "_pagination_list.html",
                  "_form_demo.html",
                  "tables.html", "_records_table.html", "_multi_form.html",
-                 "_record_picker_panel.html", "_v07_form.html"]:
+                 "_record_picker_panel.html", "_modal_form.html"]:
         templates.env.get_template(name)
 
 

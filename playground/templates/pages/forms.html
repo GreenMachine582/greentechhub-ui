@@ -1,4 +1,4 @@
-{% extends "pages/_base.html" %}
+{% extends "page.html" %}
 {% from "busy_button.html" import gth_busy_button %}
 {% from "chips.html" import gth_chips, gth_switch %}
 {% from "record_picker.html" import gth_record_picker %}
@@ -15,7 +15,7 @@
 
 <section class="mb-5" id="chips">
   <h2 class="h4">gth-chips + gth-switch</h2>
-  <form id="chips-demo" hx-post="/v07-demo/chips" hx-target="#chips-demo-result" hx-trigger="change">
+  <form id="chips-demo" hx-post="/demo/chips" hx-target="#chips-demo-result" hx-trigger="change">
     {{ gth_chips("tags", [
         {"value": "sensor", "label": "Sensors"},
         {"value": "motor", "label": "Motors", "icon": "gear-wide"},
@@ -35,9 +35,9 @@
 
 <section class="mb-5" id="record-picker">
   <h2 class="h4">gth-record-picker</h2>
-  <form id="record-demo" class="gth-form" hx-post="/v07-demo/record-pick" hx-target="#record-demo-result"
+  <form id="record-demo" class="gth-form" hx-post="/demo/record-pick" hx-target="#record-demo-result"
     hx-trigger="change">
-    {{ gth_record_picker("part", "Part", "/v07-demo/record-picker?for=page", placeholder="Choose a part…",
+    {{ gth_record_picker("part", "Part", "/demo/record-picker?for=page", placeholder="Choose a part…",
         help_text="Click to search 120 parts. Expand (⤢) for a modal-sized view; also inside the server-rendered modal.") }}
     <p class="text-secondary small mb-0">Submitted: <code id="record-demo-result">nothing yet</code></p>
   </form>
@@ -45,7 +45,7 @@
 
 <section class="mb-5" id="busy-button">
   <h2 class="h4">gth-busy-button</h2>
-  {{ gth_busy_button("Run slow job", "Running…", {"hx-post": "/v07-demo/slow-job", "hx-swap": "none"},
+  {{ gth_busy_button("Run slow job", "Running…", {"hx-post": "/demo/slow-job", "hx-swap": "none"},
       icon="arrow-repeat", start_toast="Slow job started — takes ~2s") }}
 </section>
 {% endblock %}

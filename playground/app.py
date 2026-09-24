@@ -1,5 +1,9 @@
 """Minimal demo app exercising every shipped gth-* component with fixture
-data — no real database. See docs/testing.md. Run directly:
+data — no real database. See docs/testing.md. Its wiring is exactly what a
+FastAPI consumer writes (greentechhub_ui.install / static_dirs plus
+greentechhub_fastapi's ui_context / mount_static_dirs / hx_response — see
+docs/contract.md "Setup"); everything else here is demo fixtures. Run
+directly:
 
     python playground/app.py
     # or: uv run playground/app.py
@@ -12,11 +16,13 @@ from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from jinja2 import ChoiceLoader, FileSystemLoader
+from greentechhub_fastapi.htmx import hx_response
+from greentechhub_fastapi.templating import mount_static_dirs, ui_context
+from markupsafe import Markup
 
 import greentechhub_ui
+from greentechhub_ui.htmx import trigger, wants_fragment
 
 _here = Path(__file__).parent
 
@@ -97,11 +103,13 @@ TOAST_PRESETS = {
                            "re-fetched.", kind="info", events=["watchlistChanged"]),
 }
 
-WATCHLIST_DEMO = [
+_WATCHLIST_INITIAL = (
     {"id": 1, "name": "Widget A"},
     {"id": 2, "name": "Widget B"},
     {"id": 3, "name": "Widget C"},
-]
+)
+# Module state the confirm-delete demo mutates; POST /demo/reset restores it.
+WATCHLIST_DEMO = [dict(item) for item in _WATCHLIST_INITIAL]
 
 # extra_css/extra_js/extra_head demo — data: URIs so this needs no external
 # network resource and no extra static file, just to prove the data-driven
@@ -112,16 +120,13 @@ EXTRA_JS_DATA_URL = "data:text/javascript," + quote(
 )
 EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
-# ── Jinja/FastAPI wiring — mirrors BottleBot's real templating.py/app.py ───
+# ── Jinja/FastAPI wiring — the setup any consumer uses (docs/contract.md,
+#    "Setup"): gth-ui's framework-neutral install()/static_dirs() plus
+#    greentechhub-fastapi's ui_context/mount_static_dirs ─────────────────────
 
-templates = Jinja2Templates(directory=_here / "templates")
-templates.env.loader = ChoiceLoader(
-    [
-        templates.env.loader,
-        FileSystemLoader(greentechhub_ui.templates_path),
-        FileSystemLoader(greentechhub_ui.components_path),
-    ]
-)
+# ui_context supplies current_path to every page: the sidebar's active trail
+# and nav_breadcrumbs need it.
+templates = Jinja2Templates(directory=_here / "templates", context_processors=[ui_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -181,7 +186,8 @@ PAGES = {
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
 }
 
-templates.env.globals.update(greentechhub_ui.shell_globals(
+greentechhub_ui.install(
+    templates.env,
     service_name="Playground",
     show_logo=True,
     layout="sidebar",
@@ -195,11 +201,16 @@ templates.env.globals.update(greentechhub_ui.shell_globals(
             {"label": "Overview", "url": "/", "icon": "grid", "match": "exact"},
         ],
     ),
-))
+)
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
-app.mount("/gth-static", StaticFiles(directory=greentechhub_ui.theme_path), name="gth-static")
-app.mount("/gth-assets", StaticFiles(directory=greentechhub_ui.static_path), name="gth-assets")
+mount_static_dirs(app, greentechhub_ui.static_dirs())
+
+
+def _macro(template: str, macro: str, *args, **kwargs) -> Markup:
+    """One gth macro rendered for an htmx endpoint (live badges, palette rows,
+    lazy tree nodes), with the env's globals in scope."""
+    return greentechhub_ui.render_macro(templates.env, template, macro, *args, **kwargs)
 
 
 def _validate_budget(value: float) -> list[str] | None:
@@ -220,7 +231,7 @@ def _widget_rows(page: int) -> dict:
     rows = WIDGETS[start: start + WIDGET_ROWS_PAGE_SIZE]
     next_url = None
     if start + WIDGET_ROWS_PAGE_SIZE < len(WIDGETS):
-        next_url = "/v07-demo/widget-rows?" + urlencode({"page": page + 1})
+        next_url = "/demo/widget-rows?" + urlencode({"page": page + 1})
     return {"widget_rows": rows, "widget_total": len(WIDGETS), "widget_next_url": next_url}
 
 
@@ -234,12 +245,11 @@ def _paginate_widgets(offset: int) -> dict:
 
 
 def _page(request: Request, name: str, **context):
-    """A category page: pages/<name>.html with its title and current_path
-    (for the sidebar's active trail and nav_breadcrumbs)."""
+    """A category page: pages/<name>.html (extends gth-ui's page.html) with its
+    title; current_path comes from the ui_context processor."""
     title, subtitle = PAGES.get(name, ("greentechhub-ui playground", ""))
     return templates.TemplateResponse(request, f"pages/{name}.html", {
-        "current_path": request.url.path, "page_title": title, "page_subtitle": subtitle,
-        **context,
+        "page_title": title, "page_subtitle": subtitle, **context,
     })
 
 
@@ -285,15 +295,22 @@ async def extensibility_page(request: Request):
                  extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
 
 
-_WATCHLIST_BADGE = templates.env.from_string(
-    '{% from "badge.html" import gth_badge %}{% if n %}{{ gth_badge(n, "neutral") }}{% endif %}'
-)
-
-
 @app.get("/nav-badges/watchlist", response_class=HTMLResponse)
 async def watchlist_badge():
-    """Live nav badge: the watchlist size, re-fetched on watchlistChanged."""
-    return HTMLResponse(_WATCHLIST_BADGE.render(n=len(WATCHLIST_DEMO)))
+    """Live nav badge: the watchlist size, re-fetched on watchlistChanged
+    (nothing at zero hides it)."""
+    count = len(WATCHLIST_DEMO)
+    return HTMLResponse(_macro("badge.html", "gth_badge", count, "neutral") if count else "")
+
+
+@app.post("/demo/reset")
+async def demo_reset():
+    """Restore the demos that keep server-side state (the watchlist, the
+    health count) and refresh everything showing them."""
+    WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
+    HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
+    return hx_response(greentechhub_ui.toast(
+        "Demo data reset.", "info", events=["watchlistChanged", "healthChanged", "watchlistReset"]))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)
@@ -335,9 +352,7 @@ async def toast_demo(preset: str | None = None):
         options = TOAST_PRESETS[preset]
     else:
         return HTMLResponse("Unknown preset", status_code=404)
-    resp = HTMLResponse("", status_code=204)
-    resp.headers["HX-Trigger"] = greentechhub_ui.toast(**options)
-    return resp
+    return hx_response(greentechhub_ui.toast(**options))
 
 
 @app.get("/modal-demo/content", response_class=HTMLResponse)
@@ -351,15 +366,15 @@ async def watchlist_demo_delete(request: Request, item_id: int):
     resp = templates.TemplateResponse(
         request, "_watchlist_list.html", {"watchlist": WATCHLIST_DEMO}
     )
-    resp.headers["HX-Trigger"] = "watchlistChanged"  # refreshes the sidebar badge
+    resp.headers["HX-Trigger"] = trigger("watchlistChanged")  # refreshes the sidebar badge
     return resp
 
 
-def _is_htmx_fragment(request: Request) -> bool:
-    """htmx swap requests get just the table; plain navigation (and htmx's
-    history-restore request, which needs a whole page) get the page."""
-    return (request.headers.get("HX-Request") == "true"
-            and request.headers.get("HX-History-Restore-Request") != "true")
+@app.get("/demo/watchlist", response_class=HTMLResponse)
+async def watchlist_list(request: Request):
+    """The watchlist fragment, re-fetched after a reset (watchlistReset)."""
+    return templates.TemplateResponse(request, "_watchlist_list.html",
+                                      {"watchlist": WATCHLIST_DEMO})
 
 
 def _records_state(query, *, mode: str, scroll: bool, base_url: str,
@@ -405,8 +420,8 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
-               "category_options": CATEGORY_OPTIONS, "current_path": request.url.path}
-    if _is_htmx_fragment(request):
+               "category_options": CATEGORY_OPTIONS}
+    if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_records_table.html", context)
     return templates.TemplateResponse(request, "tables.html", context)
 
@@ -436,16 +451,14 @@ SIDEBAR_DEMO_NAV = [
 
 # Live nav badge demo: an open-issues count the Health item re-fetches
 # whenever a response fires healthChanged.
-HEALTH_ISSUES = {"open": 3}
-_BADGE = templates.env.from_string(
-    '{% from "badge.html" import gth_badge %}'
-    '{% if n %}{{ gth_badge(n, "warn") }}{% endif %}'
-)
+HEALTH_ISSUES_INITIAL = 3
+HEALTH_ISSUES = {"open": HEALTH_ISSUES_INITIAL}
 
 
 @app.get("/layouts/sidebar-badges/health", response_class=HTMLResponse)
 async def health_badge():
-    return HTMLResponse(_BADGE.render(n=HEALTH_ISSUES["open"]))
+    count = HEALTH_ISSUES["open"]
+    return HTMLResponse(_macro("badge.html", "gth_badge", count, "warn") if count else "")
 
 
 @app.post("/layouts/sidebar-badges/health/{action}")
@@ -456,11 +469,9 @@ async def health_badge_action(action: str):
         HEALTH_ISSUES["open"] = 3
     else:
         return HTMLResponse("Unknown action", status_code=404)
-    resp = HTMLResponse("", status_code=204)
-    resp.headers["HX-Trigger"] = greentechhub_ui.toast(
+    return hx_response(greentechhub_ui.toast(
         f"{HEALTH_ISSUES['open']} open issue(s)", kind="info", events=["healthChanged"]
-    )
-    return resp
+    ))
 
 
 @app.get("/layouts/sidebar", response_class=HTMLResponse)
@@ -469,17 +480,9 @@ async def sidebar_demo(request: Request, rest: str = ""):
     return templates.TemplateResponse(request, "sidebar_demo.html", {
         "layout": "sidebar",
         "nav_items": SIDEBAR_DEMO_NAV,
-        "current_path": request.url.path,
         "nav_breadcrumbs": partial(greentechhub_ui.navigation.breadcrumbs_for, SIDEBAR_DEMO_NAV),
         "command_search_url": "/layouts/sidebar-search",
     })
-
-
-_COMMAND_ITEMS = templates.env.from_string(
-    '{% from "command_palette.html" import gth_command_item %}'
-    '{% for r in rows %}{{ gth_command_item(r.name, "/layouts/sidebar/parts?id=" ~ r.id, "cpu",'
-    ' r.category ~ " · $" ~ "%.2f"|format(r.price)) }}{% endfor %}'
-)
 
 
 @app.get("/layouts/sidebar-search", response_class=HTMLResponse)
@@ -487,7 +490,12 @@ async def sidebar_search(q: str = ""):
     """gth_command_palette search_url demo: parts matching q."""
     q = q.strip().lower()
     rows = [r for r in RECORDS if q and q in r["name"].lower()][:8]
-    return HTMLResponse(_COMMAND_ITEMS.render(rows=rows))
+    return HTMLResponse(Markup("").join(
+        _macro("command_palette.html", "gth_command_item", r["name"],
+               f"/layouts/sidebar/parts?id={r['id']}", "cpu",
+               f"{r['category']} · ${r['price']:.2f}")
+        for r in rows
+    ))
 
 
 # ── gth_tree demo: category › assembly › part, from RECORDS ───────────────
@@ -565,7 +573,6 @@ def _resolve_parts(ids: list[str]) -> list[dict]:
 async def tree_page(request: Request):
     # (Not "tree.html": that name is gth_tree's own component file.)
     return templates.TemplateResponse(request, "tree_page.html", {
-        "current_path": request.url.path,
         "tree_nodes": _tree_nodes(), "reorder_nodes": _tree_nodes(), "errors": {}, "resolved": None,
     })
 
@@ -579,10 +586,8 @@ async def tree_nodes(request: Request, tree: str, parent: str, level: int = 3):
     if select is None or kind != "a":
         return HTMLResponse("", status_code=404)
     nodes = [_part_node(p) for p in _parts_of(category, assembly)]
-    return templates.TemplateResponse(request, "_tree_nodes.html", {
-        "nodes": nodes, "level": level, "tree_id": tree, "select": select,
-        "lazy_url": f"/tree/nodes?tree={tree}",
-    })
+    return HTMLResponse(_macro("tree.html", "gth_tree_nodes", nodes, level, tree, select,
+                               f"/tree/nodes?tree={tree}"))
 
 
 @app.get("/tree/detail", response_class=HTMLResponse)
@@ -611,18 +616,18 @@ async def tree_reorder(request: Request):
     return templates.TemplateResponse(request, "_tree_reorder_form.html", context)
 
 
-@app.get("/v07-demo/widget-rows", response_class=HTMLResponse)
-async def v07_widget_rows(request: Request, page: int = 1):
+@app.get("/demo/widget-rows", response_class=HTMLResponse)
+async def demo_widget_rows(request: Request, page: int = 1):
     return templates.TemplateResponse(request, "_widget_rows.html", _widget_rows(page))
 
 
-@app.get("/v07-demo/widgets", response_class=HTMLResponse)
-async def v07_widget_options(request: Request, q: str = ""):
+@app.get("/demo/widgets", response_class=HTMLResponse)
+async def demo_widget_options(request: Request, q: str = ""):
     widgets = [(i, w) for i, w in enumerate(WIDGETS, start=1) if q.strip().lower() in w.lower()]
     return templates.TemplateResponse(request, "_widget_options.html", {"widgets": widgets[:10]})
 
 
-def _v07_modal_context(widget: str = "", size: str = "S", errors: dict | None = None,
+def _modal_context(widget: str = "", size: str = "S", errors: dict | None = None,
                        search: str = "", record: str = "", record_label: str = "") -> dict:
     picked = widget.isdigit() and 0 < int(widget) <= len(WIDGETS)
     return {
@@ -641,57 +646,54 @@ def _record(record_id: str) -> dict | None:
     return None
 
 
-@app.get("/v07-demo/modal", response_class=HTMLResponse)
-async def v07_modal(request: Request):
-    return templates.TemplateResponse(request, "_v07_modal.html", _v07_modal_context())
+@app.get("/demo/modal", response_class=HTMLResponse)
+async def demo_modal(request: Request):
+    return templates.TemplateResponse(request, "_modal.html", _modal_context())
 
 
-@app.post("/v07-demo/modal", response_class=HTMLResponse)
-async def v07_modal_submit(request: Request, widget: str = Form(""), size: str = Form("S"),
+@app.post("/demo/modal", response_class=HTMLResponse)
+async def demo_modal_submit(request: Request, widget: str = Form(""), size: str = Form("S"),
                            widget_search: str = Form(""), record: str = Form(""),
                            record_label: str = Form("")):
     if not widget.isdigit():
-        context = _v07_modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
+        context = _modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
                                      widget_search, record, record_label)
         # Re-render just the form (hx-target="this"); the modal stays open.
-        return templates.TemplateResponse(request, "_v07_form.html", context, status_code=422)
-    resp = HTMLResponse("", status_code=204)
+        return templates.TemplateResponse(request, "_modal_form.html", context, status_code=422)
     part = _record(record)
-    resp.headers["HX-Trigger"] = greentechhub_ui.toast(
+    return hx_response(greentechhub_ui.toast(
         f"Saved {WIDGETS[int(widget) - 1]} ({size})" + (f" for {part['name']}" if part else ""),
         events=["closeModal"],
-    )
-    return resp
+    ))
 
 
-@app.get("/v07-demo/record-picker", response_class=HTMLResponse)
-async def v07_record_picker(request: Request):
+@app.get("/demo/record-picker", response_class=HTMLResponse)
+async def demo_record_picker(request: Request):
     """A gth_record_picker panel body: filter + data table of RECORDS. One
     endpoint serves two pickers, so ?for= keeps their table ids apart."""
     picker = request.query_params.get("for")
     picker = picker if picker in ("modal", "page") else "page"
     state = _records_state(request.query_params, mode="pages", scroll=False,
-                           base_url="/v07-demo/record-picker?" + urlencode({"for": picker}),
+                           base_url="/demo/record-picker?" + urlencode({"for": picker}),
                            table_id=f"picker-{picker}")
     rows, state = _query_records(state)
     # The first load fills the panel (filter + table); the table's own
-    # sort/filter/pager swaps target the table (HX-Target: its id) and must
-    # get just the table back.
-    with_filter = request.headers.get("HX-Target") != state.id
+    # sort/filter/pager swaps target the table and must get just the table.
+    with_filter = not state.is_own_swap(request.headers)
     return templates.TemplateResponse(request, "_record_picker_panel.html",
                                       {"table": state, "records": rows, "with_filter": with_filter})
 
 
-@app.post("/v07-demo/record-pick", response_class=HTMLResponse)
-async def v07_record_pick(part: str = Form(""), part_label: str = Form("")):
+@app.post("/demo/record-pick", response_class=HTMLResponse)
+async def demo_record_pick(part: str = Form(""), part_label: str = Form("")):
     record = _record(part)
     if record is None:
         return HTMLResponse("Nothing picked.")
     return HTMLResponse(f"part={record['id']} ({record['name']})")
 
 
-@app.get("/v07-demo/tab/{key}", response_class=HTMLResponse)
-async def v07_tab(key: str):
+@app.get("/demo/tab/{key}", response_class=HTMLResponse)
+async def demo_tab(key: str):
     if key not in ("activity", "settings"):
         return HTMLResponse("Unknown tab", status_code=404)
     await asyncio.sleep(0.3)  # long enough to see the skeleton
@@ -699,8 +701,8 @@ async def v07_tab(key: str):
                         f"<strong>{key}</strong> pane from the server.</p>")
 
 
-@app.post("/v07-demo/chips", response_class=HTMLResponse)
-async def v07_chips(request: Request):
+@app.post("/demo/chips", response_class=HTMLResponse)
+async def demo_chips(request: Request):
     form = await request.form()
     parts = [f"tags={t}" for t in form.getlist("tags")]
     if form.get("alerts"):
@@ -715,8 +717,8 @@ def _multi_context(widgets=(), tags=(), errors=None) -> dict:
             "errors": errors or {}, "saved": None}
 
 
-@app.post("/v07-demo/multi", response_class=HTMLResponse)
-async def v07_multi(request: Request):
+@app.post("/demo/multi", response_class=HTMLResponse)
+async def demo_multi(request: Request):
     form = await request.form()
     widgets, tags = form.getlist("widgets"), form.getlist("tags")
     if not widgets:
@@ -727,12 +729,10 @@ async def v07_multi(request: Request):
     return templates.TemplateResponse(request, "_multi_form.html", context)
 
 
-@app.post("/v07-demo/slow-job")
-async def v07_slow_job():
+@app.post("/demo/slow-job")
+async def demo_slow_job():
     await asyncio.sleep(2)
-    resp = HTMLResponse("", status_code=204)
-    resp.headers["HX-Trigger"] = greentechhub_ui.toast("Slow job finished")
-    return resp
+    return hx_response(greentechhub_ui.toast("Slow job finished"))
 
 
 if __name__ == "__main__":

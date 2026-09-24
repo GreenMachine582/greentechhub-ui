@@ -1,4 +1,4 @@
-{% extends "pages/_base.html" %}
+{% extends "page.html" %}
 {% from "modal.html" import gth_modal %}
 
 {% block page %}
@@ -28,7 +28,13 @@
     <strong>Confirm delete</strong> count is a live nav badge: the delete response fires
     <code>watchlistChanged</code>, which re-fetches it.
   </p>
-  <div id="watchlist-demo-list">
+  <div class="mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="demo-reset" hx-post="/demo/reset"
+      hx-swap="none"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reset demo data</button>
+  </div>
+  {# Re-fetched when POST /demo/reset fires watchlistReset. #}
+  <div id="watchlist-demo-list" hx-get="/demo/watchlist" hx-trigger="watchlistReset from:body"
+    hx-target="this" hx-swap="innerHTML">
     {% include "_watchlist_list.html" %}
   </div>
 </section>
@@ -42,6 +48,6 @@
     <code>gth-record-picker</code> and a <code>gth-segmented</code>.
   </p>
   <button type="button" class="btn btn-outline-secondary"
-    hx-get="/v07-demo/modal" hx-target="#gth-modal-host">Open server-rendered modal</button>
+    hx-get="/demo/modal" hx-target="#gth-modal-host">Open server-rendered modal</button>
 </section>
 {% endblock %}

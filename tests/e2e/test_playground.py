@@ -141,14 +141,14 @@ COMBO_VALUE = "#gth-modal-host input[name=widget]"
 COMBO_RESULTS = "#gth-field-widget-results"
 
 
-def _open_v07_modal(page, playground_url):
+def _open_server_modal(page, playground_url):
     page.goto(f"{playground_url}/overlays")
     page.click("text=Open server-rendered modal")
     expect(page.locator(MODAL)).to_be_visible()
 
 
 def test_combobox_search_clear_restores_full_list(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click(COMBO_INPUT)
     expect(page.locator(COMBO_RESULTS)).to_be_visible()
     expect(page.locator(f"{COMBO_RESULTS} [data-value]")).to_have_count(10)
@@ -168,7 +168,7 @@ def test_combobox_search_clear_restores_full_list(page, playground_url):
 
 
 def test_combobox_keyboard_pick_does_not_submit_and_esc_keeps_modal(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click(COMBO_INPUT)
     expect(page.locator(COMBO_RESULTS)).to_be_visible()
     page.keyboard.press("ArrowDown")
@@ -185,7 +185,7 @@ def test_combobox_keyboard_pick_does_not_submit_and_esc_keeps_modal(page, playgr
 
 
 def test_modal_form_422_then_success_closes_modal(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.fill(COMBO_INPUT, "Wid")  # typed, never picked
     expect(page.locator(COMBO_RESULTS)).to_be_visible()
     page.keyboard.press("Escape")  # the open panel overlays the fields below it
@@ -241,14 +241,14 @@ def test_modal_host_reopen_does_not_leak_backdrops(page, playground_url):
     # Swapping a modal in over an open one tears the old one down.
     page.click("text=Open server-rendered modal")
     expect(page.locator(MODAL)).to_be_visible()
-    page.evaluate("htmx.ajax('GET', '/v07-demo/modal', {target: '#gth-modal-host'})")
+    page.evaluate("htmx.ajax('GET', '/demo/modal', {target: '#gth-modal-host'})")
     expect(page.locator("#gth-modal-host .modal")).to_have_count(1)
     expect(page.locator(MODAL)).to_be_visible()
     expect(page.locator(".modal-backdrop")).to_have_count(1)
 
 
 def test_combobox_options_get_panel_scoped_ids(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click(COMBO_INPUT)
     first = page.locator(f"{COMBO_RESULTS} [data-value]").first
     expect(first).to_have_id("gth-field-widget-results-opt-0")
@@ -373,7 +373,7 @@ def test_data_table_infinite_inside_scroll_box(page, playground_url):
 def test_tabs_lazy_load_once_and_keyboard(page, playground_url):
     page.goto(f"{playground_url}/layout")
     requests = []
-    page.on("request", lambda r: requests.append(r.url) if "/v07-demo/tab/" in r.url else None)
+    page.on("request", lambda r: requests.append(r.url) if "/demo/tab/" in r.url else None)
     activity = page.locator("#demo-tabs-pane-activity")
     expect(activity.locator(".gth-skeleton")).to_have_count(1)
 
@@ -560,7 +560,7 @@ def test_record_picker_search_page_and_keyboard_pick(page, playground_url):
 
 
 def test_record_picker_in_modal_esc_keeps_modal_and_422_keeps_pick(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click("#gth-field-record-trigger")
     panel = page.locator("#gth-field-record-panel")
     expect(panel).to_be_visible()
@@ -644,7 +644,7 @@ def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playgroun
     page.mouse.move(box["x"] + 20, box["y"] + box["height"] / 2)
     page.mouse.down()
     # A swap lands between press and release (as a debounced search would).
-    page.evaluate("""() => htmx.ajax('GET', '/v07-demo/record-picker?for=page&page=2',
+    page.evaluate("""() => htmx.ajax('GET', '/demo/record-picker?for=page&page=2',
                                       {target: '#picker-page', swap: 'outerHTML'})""")
     expect(panel.locator(".gth-table-summary")).to_contain_text("11–20 of 120")
     page.mouse.up()
@@ -653,7 +653,7 @@ def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playgroun
 
 
 def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click("#gth-field-record-trigger")
     page.keyboard.press("Escape")  # immediately: focus may still be on the trigger
     expect(page.locator("#gth-field-record-panel")).to_be_hidden()
@@ -709,7 +709,7 @@ def test_record_picker_expand_shrink_and_dismiss(page, playground_url):
 
 
 def test_record_picker_modal_size_inside_bootstrap_modal(page, playground_url):
-    _open_v07_modal(page, playground_url)
+    _open_server_modal(page, playground_url)
     page.click("#gth-field-record-trigger")
     panel = page.locator("#gth-field-record-panel")
     expect(panel.locator("input[type=search]")).to_be_focused()
@@ -1035,11 +1035,11 @@ def test_playground_watchlist_live_badge(page, playground_url):
     page.goto(f"{playground_url}/overlays")
     badge = page.locator(f"{MAIN_NAV} a:has-text('Confirm delete') .gth-nav-badge")
     items = page.locator("#watchlist-demo-list .list-group-item")
-    count = items.count()  # server state: other tests may have deleted some
-    if count == 0:
-        expect(badge.locator(".badge")).to_have_count(0)
-        return
-    expect(badge).to_have_text(str(count))
+    # Other tests delete from the shared demo list: reset it (list + badge refresh).
+    page.click("#demo-reset")
+    expect(items).to_have_count(3)
+    expect(badge).to_have_text("3")
+    count = 3
     page.locator("#watchlist-demo-list").get_by_role("button", name="Remove").first.click()
     page.locator(".gth-modal.show").get_by_role("button", name="Delete").click()
     expect(items).to_have_count(count - 1)

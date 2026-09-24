@@ -1,7 +1,7 @@
 {% from "form.html" import gth_form %}
 {% from "multiselect.html" import gth_multiselect %}
-{% call gth_form("/v07-demo/multi", form_attrs={"hx-post": "/v07-demo/multi", "hx-target": "this", "hx-swap": "outerHTML", "id": "multi-demo"}) %}
-  {{ gth_multiselect("widgets", "Widgets", url="/v07-demo/widgets", values=widget_values, max_items=5,
+{% call gth_form("/demo/multi", form_attrs={"hx-post": "/demo/multi", "hx-target": "this", "hx-swap": "outerHTML", "id": "multi-demo"}) %}
+  {{ gth_multiselect("widgets", "Widgets", url="/demo/widgets", values=widget_values, max_items=5,
       max_message="You can choose up to 5 widgets.",
       errors=errors.get("widgets"), placeholder="Search widgets…", help_text="Up to 5.") }}
   {{ gth_multiselect("tags", "Tags", values=tag_values, placeholder="Type a tag, then Enter or comma",
