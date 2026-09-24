@@ -16,6 +16,9 @@ The consumer still mounts the directories itself — this only knows the
 prefixes, it doesn't own the app.
 """
 
+from functools import partial
+
+from greentechhub_ui import navigation
 from greentechhub_ui.theme import brand_context
 
 
@@ -28,13 +31,21 @@ def shell_globals(
     theme_toggle: bool = True,
     show_logo: bool = False,
     navbar_theme: str | None = None,
+    layout: str = "navbar",
 ) -> dict:
     """Globals for app.html: brand, nav_items, and every asset URL.
 
     `assets_prefix` is where `greentechhub_ui.static_path` is mounted,
     `theme_prefix` where `greentechhub_ui.theme_path` is. `navbar_theme="dark"`
     pins gth_navbar dark; by default it follows the color mode.
+    `layout="sidebar"` moves nav_items into gth_sidebar (see app.html).
+
+    Also installs two nav helpers as globals: `nav_breadcrumbs(path)` (the
+    gth_page_header breadcrumbs derived from nav_items) and
+    `nav_mark_active(items, path)` (used by gth_sidebar).
     """
+    if layout not in ("navbar", "sidebar"):
+        raise ValueError(f"layout must be 'navbar' or 'sidebar', got {layout!r}")
     globals_ = {
         "brand": brand_context(
             service_name=service_name, show_logo=show_logo, static_url_prefix=assets_prefix
@@ -51,6 +62,9 @@ def shell_globals(
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
+        "layout": layout,
+        "nav_breadcrumbs": partial(navigation.breadcrumbs_for, nav_items),
+        "nav_mark_active": navigation.mark_active,
     }
     if theme_toggle:
         globals_["theme_toggle_js_url"] = f"{assets_prefix}/js/theme-toggle.js"

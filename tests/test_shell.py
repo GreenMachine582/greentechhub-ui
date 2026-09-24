@@ -45,3 +45,16 @@ def test_navbar_theme_follows_color_mode_unless_pinned():
     assert shell_globals(service_name="Svc", nav_items=NAV)["navbar_theme"] is None
     g = shell_globals(service_name="Svc", nav_items=NAV, navbar_theme="dark")
     assert g["navbar_theme"] == "dark"
+
+
+def test_layout_and_nav_helpers():
+    import pytest
+
+    nav = [{"label": "Data", "children": [{"label": "Tables", "url": "/tables"}]}]
+    g = shell_globals(service_name="Svc", nav_items=nav)
+    assert g["layout"] == "navbar"
+    assert g["nav_breadcrumbs"]("/tables") == [{"label": "Tables"}]
+    assert g["nav_mark_active"](nav, "/tables")[0]["expanded"] is True
+    assert shell_globals(service_name="Svc", nav_items=nav, layout="sidebar")["layout"] == "sidebar"
+    with pytest.raises(ValueError):
+        shell_globals(service_name="Svc", nav_items=nav, layout="grid")
