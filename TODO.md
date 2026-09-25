@@ -47,8 +47,6 @@
 - [ ] `gth_embed_card` — iframe card with loading and error states — PyFinBot's Grafana slot
 
 ### Resilience & security
-- [ ] Global htmx error handling (static `gth-htmx-errors.js`, loaded by `app.html`) — a toast on 5xx and on
-  network/offline failures, a "session expired" toast when `HX-Redirect` points at the login page
 - [ ] Top loading bar for htmx requests slower than ~300ms
 - [ ] `gth_data_table(..., refresh_event=…)` — re-request the table with its current sort/filters when the event
   fires on `<body>` (e.g. after a save's HX-Trigger); upstreams PyFinBot's `_table_refresh.html` out-of-band

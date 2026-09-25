@@ -93,4 +93,69 @@
       document.body.dispatchEvent(new CustomEvent("showToast", { detail: { message: message, kind: "info" } }));
     }
   });
+
+  // Automatic toasts for failed htmx requests — otherwise a 4xx/5xx (which
+  // htmx doesn't swap), a network failure or a timeout does nothing visible.
+  // Stands down when the response already carries its own showToast (htmx
+  // processes HX-Trigger for every status), for 422 (gth_form's inline
+  // validation errors, swapped by app.html), and inside an element marked
+  // data-gth-error-toast="off" (on <body>: app-wide). A 401 with HX-Redirect
+  // never gets here — htmx navigates first.
+  var STATUS = {
+    401: { title: "Signed out", message: "Sign in again to continue.", kind: "warning" },
+    403: { title: "Not allowed", message: "You don't have permission to do that.", kind: "warning" },
+    404: { title: "Not found", message: "It may have been deleted." },
+    409: { title: "Conflict", kind: "warning" }
+  };
+  var DEDUPE_MS = 4000;
+  var recent = {};
+
+  function optedOut(elt) {
+    return !!(elt && elt.closest && elt.closest('[data-gth-error-toast="off"]'));
+  }
+
+  function errorToast(title, message, kind) {
+    var key = title + "\n" + message;
+    var now = Date.now();
+    if (recent[key] && now - recent[key] < DEDUPE_MS) return;  // e.g. a failing poll or several lazy loads
+    recent[key] = now;
+    document.body.dispatchEvent(new CustomEvent("showToast", {
+      detail: { title: title, message: message, kind: kind || "danger" }
+    }));
+  }
+
+  // FastAPI's HTTPException body: {"detail": "Stock not found"} — shown as
+  // text (toast.js never renders it as HTML), only when short and a string.
+  function serverDetail(xhr) {
+    if (!/json/i.test(xhr.getResponseHeader("Content-Type") || "")) return null;
+    try {
+      var detail = JSON.parse(xhr.responseText).detail;
+      return typeof detail === "string" && detail.trim() && detail.length <= 200 ? detail.trim() : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  document.body.addEventListener("htmx:responseError", function (e) {
+    var xhr = e.detail.xhr;
+    if (xhr.status === 422 || optedOut(e.detail.elt)) return;
+    if (/showToast/.test(xhr.getResponseHeader("HX-Trigger") || "")) return;
+    var known = STATUS[xhr.status] || {};
+    var fallback = xhr.status >= 500
+      ? { title: "Server error", message: "Something went wrong on the server (" + xhr.status + ")." }
+      : { title: "Request failed", message: "The request failed (" + xhr.status + ")." };
+    errorToast(known.title || fallback.title, serverDetail(xhr) || known.message || fallback.message,
+      known.kind);
+  });
+
+  document.body.addEventListener("htmx:sendError", function (e) {
+    if (optedOut(e.detail.elt)) return;
+    if (navigator.onLine === false) errorToast("You're offline", "Reconnect and try again.", "warning");
+    else errorToast("Can't reach the server", "Check your connection and try again.");
+  });
+
+  document.body.addEventListener("htmx:timeout", function (e) {
+    if (optedOut(e.detail.elt)) return;
+    errorToast("Request timed out", "The server took too long to respond.");
+  });
 })();
