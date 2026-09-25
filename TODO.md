@@ -80,9 +80,6 @@
   `routes/watchlist.py`
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
-### PyFinBot
-- [ ] Swap `_table_refresh.html` for `gth_data_table(refresh_event=…)` once it ships
-
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
 - [ ] Full component adoption beyond `theme/` — not blocking v1.0, decided based on real appetite once the theme-only step is live
