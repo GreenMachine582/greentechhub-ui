@@ -48,9 +48,6 @@
 
 ### Resilience & security
 - [ ] Top loading bar for htmx requests slower than ~300ms
-- [ ] `gth_data_table(..., refresh_event=…)` — re-request the table with its current sort/filters when the event
-  fires on `<body>` (e.g. after a save's HX-Trigger); upstreams PyFinBot's `_table_refresh.html` out-of-band
-  `<span>` hook
 - [ ] Error pages — `403.html` / `404.html` / `500.html` extending `page.html`, with FastAPI and Django
   exception-handler wiring in the docs
 - [ ] CSP-ready shell — move `app.html`'s inline `<script>`s to static files (the pre-paint theme bootstrap

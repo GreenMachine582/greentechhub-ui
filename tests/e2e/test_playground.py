@@ -1316,3 +1316,26 @@ def test_network_failure_toasts(page, playground_url):
     page.route(re.compile("/demo/error/403$"), lambda route: route.abort())
     toast = _error_button(page, "403")
     expect(toast.locator(".gth-toast-title")).to_have_text("Can't reach the server")
+
+
+def test_data_table_refresh_event_keeps_sort_and_filters(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    stock_header = page.locator("#records th:has-text('Stock')")
+    page.click(".gth-table-filter label:has-text('Sensor')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    stock_header.locator("button").click()
+    expect(stock_header).to_have_attribute("aria-sort", "ascending")
+    _htmx_idle(page)
+    page.locator("#records .gth-table-pager a[aria-label='Page 2']").click()
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20 of 30")
+    _htmx_idle(page)
+
+    try:
+        page.get_by_role("button", name="Add record").click()
+        # Re-queried from page 1 with the same filter + sort: the new stock-1 sensor leads.
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10 of 31")
+        expect(page.locator(RECORD_ROWS).first).to_contain_text("Added sensor 1")
+        expect(stock_header).to_have_attribute("aria-sort", "ascending")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")

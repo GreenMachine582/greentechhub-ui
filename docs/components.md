@@ -218,7 +218,7 @@ Query parameters are fixed: `page`, `size`, `sort`, `dir`, `partial=rows`, plus 
 ```jinja
 {# table.html #}
 gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="",
-               load_more_label="Load more")      {# rows via {% call(row) %} #}
+               load_more_label="Load more", refresh_event=None)   {# rows via {% call(row) %} #}
 {# headers: "Name" or {"label": "Name", "sort_key": "name", "class": "text-end"} —
    a sort_key in state.sortable renders a sort button with aria-sort + caret.
    Renders <div id="{{ state.id }}"> wrapping the table; sort buttons, pager,
@@ -229,7 +229,11 @@ gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_cl
      load_more — trailing gth_table_load_more row
      infinite  — trailing row that loads itself on intersect (skeleton + a
                  focus-visible "Load more" fallback button for keyboard users)
-     none      — nothing; pass every row #}
+     none      — nothing; pass every row
+   refresh_event (v0.10): e.g. "stocksChanged" — the table re-requests itself
+   (page 1, current sort + filters, no history entry) whenever that event
+   fires on <body>, typically from a save's
+   HX-Trigger: toast("Saved", events=["stocksChanged"]). #}
 
 gth_table_pager(state, label="Table pages")
 {# Bootstrap .pagination in <nav aria-label>: prev, first/last + a window with

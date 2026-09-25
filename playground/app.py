@@ -54,6 +54,8 @@ RECORDS = [
     }
     for i in range(1, 121)
 ]
+# The table refresh demo appends to RECORDS; POST /demo/reset trims it back.
+_RECORDS_INITIAL = len(RECORDS)
 CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
     {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
 ]
@@ -310,8 +312,20 @@ async def demo_reset():
     health count) and refresh everything showing them."""
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
+    del RECORDS[_RECORDS_INITIAL:]
     return hx_response(greentechhub_ui.toast(
-        "Demo data reset.", "info", events=["watchlistChanged", "healthChanged", "watchlistReset"]))
+        "Demo data reset.", "info",
+        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
+
+
+@app.post("/demo/records")
+async def add_record():
+    """A "save" elsewhere on the page: the records table re-queries itself
+    (gth_data_table refresh_event="recordsChanged"), keeping its sort/filters."""
+    n = len(RECORDS) - _RECORDS_INITIAL + 1
+    RECORDS.append({"id": len(RECORDS) + 1, "name": f"Added sensor {n}", "category": "Sensor",
+                    "stock": 1, "price": 9.99})
+    return hx_response(greentechhub_ui.toast(f"Added sensor {n}", events=["recordsChanged"]))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)

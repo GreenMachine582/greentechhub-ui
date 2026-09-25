@@ -492,6 +492,24 @@ def test_data_table_rows_only_append():
     assert 'hx-get="/parts?page=3&amp;partial=rows"' in rendered
 
 
+def test_data_table_refresh_event():
+    template = _DATA_TABLE.replace("rows)", 'rows, refresh_event="partsChanged")')
+    state = _table_state({"page": "2", "sort": "name", "dir": "desc", "q": "b"}, mode="load_more",
+                         filter_params=("q",))
+    rendered = _render(template, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_refresh_event")
+    # Page 1 with the current sort + filters, no history entry.
+    assert 'hx-get="/parts?q=b&amp;sort=name&amp;dir=desc"' in rendered
+    assert 'hx-trigger="partsChanged from:body"' in rendered
+    assert "hx-push-url" not in rendered.split("gth-table-refresh")[1].split(">")[0]
+
+
+def test_data_table_refresh_event_not_in_row_appends():
+    template = _DATA_TABLE.replace("rows)", 'rows, refresh_event="partsChanged")')
+    state = _table_state({"page": "2", "partial": "rows"}, mode="load_more")
+    assert "gth-table-refresh" not in _render(template, state=state, rows=_ROWS)
+
+
 def test_data_table_none_mode_has_no_navigation():
     state = _table_state(mode="none")
     rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
