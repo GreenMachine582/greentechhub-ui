@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -155,6 +155,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Feedback", "url": "/feedback", "icon": "bell", "children": [
         {"label": "Toast", "url": "/feedback#toast"},
+        {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
@@ -353,6 +354,20 @@ async def toast_demo(preset: str | None = None):
     else:
         return HTMLResponse("Unknown preset", status_code=404)
     return hx_response(greentechhub_ui.toast(**options))
+
+
+@app.get("/demo/error/{status}")
+async def error_demo(status: int, own_toast: bool = False):
+    """Failed requests for toast.js's automatic error toasts: a 404 with a
+    FastAPI-style JSON detail, any other status bare, or (own_toast) a 500
+    that sends its own toast — which the generic one then stands down for."""
+    if own_toast:
+        own = greentechhub_ui.toast("The report service is down — try again in a minute.", "danger",
+                                    title="Reports unavailable")
+        return hx_response(own, status_code=500)
+    if status == 404:
+        return JSONResponse({"detail": "Widget #42 not found"}, status_code=404)
+    return HTMLResponse(f"Error {status}", status_code=status if 400 <= status < 600 else 500)
 
 
 @app.get("/modal-demo/content", response_class=HTMLResponse)
