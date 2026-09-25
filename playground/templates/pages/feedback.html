@@ -41,6 +41,28 @@
   </div>
 </section>
 
+<section class="mb-5" id="error-toasts">
+  <h2 class="h4">gth-toast (failed requests)</h2>
+  <p class="text-secondary">
+    <code>toast.js</code> toasts any failed htmx request on its own: 4xx/5xx (a FastAPI JSON <code>detail</code>
+    becomes the message), network failures and timeouts. It stays quiet for 422 (inline form errors), when the
+    response sends its own toast, and inside <code>data-gth-error-toast="off"</code>.
+  </p>
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" hx-get="/demo/error/403" hx-swap="none">403</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" hx-get="/demo/error/404" hx-swap="none">404 with detail</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" hx-get="/demo/error/500" hx-swap="none">500</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" hx-get="/demo/error/500?own_toast=true" hx-swap="none">500 with its own toast</button>
+    <span data-gth-error-toast="off">
+      <button type="button" class="btn btn-sm btn-outline-secondary" hx-get="/demo/error/500" hx-swap="none"
+        data-error-demo="silent">500, opted out</button>
+    </span>
+  </div>
+  <p class="text-secondary small mt-2 mb-0">
+    For a network failure, switch DevTools to offline and press any button.
+  </p>
+</section>
+
 <section class="mb-5" id="flashes">
   <h2 class="h4">gth-toast (static flashes)</h2>
   <p class="text-secondary">

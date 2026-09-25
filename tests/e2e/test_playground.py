@@ -39,6 +39,7 @@ def test_form_validation_and_success_toast(page, playground_url):
     page.click("#form-demo-container button[type=submit]")
     page.wait_for_selector("#gth-field-budget.is-invalid")
     assert "greater than or equal to 0" in page.inner_text("#form-demo-container")
+    expect(page.locator(DYNAMIC_TOAST)).to_have_count(0)  # 422 = inline errors, no error toast
 
     page.fill("#gth-field-budget", "250")
     page.click("#form-demo-container button[type=submit]")
@@ -1262,3 +1263,79 @@ def test_logo_is_48px_and_the_sidebar_docks_under_the_navbar(page, playground_ur
 
     page.goto(f"{playground_url}/layouts/sidebar")  # the logo in the other demo too
     assert page.locator(".gth-navbar-brand img:visible").first.bounding_box()["height"] == 48
+
+
+def _error_button(page, label):
+    page.locator("#error-toasts").get_by_role("button", name=label, exact=True).click()
+    return page.locator(DYNAMIC_TOAST).last
+
+
+def test_failed_requests_toast_with_status_or_server_detail(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    toast = _error_button(page, "404 with detail")
+    expect(toast.locator(".gth-toast-title")).to_have_text("Not found")
+    # the JSON detail
+    expect(toast.locator(".gth-toast-message")).to_have_text("Widget #42 not found")
+    expect(toast).to_have_class(re.compile("gth-toast-danger"))
+
+    toast = _error_button(page, "403")
+    expect(toast.locator(".gth-toast-title")).to_have_text("Not allowed")
+    expect(toast).to_have_class(re.compile("gth-toast-warning"))
+
+    toast = _error_button(page, "500")
+    expect(toast.locator(".gth-toast-title")).to_have_text("Server error")
+    expect(toast.locator(".gth-toast-message")).to_have_text(
+        "Something went wrong on the server (500).")
+
+
+def test_failed_request_toasts_are_deduped_and_stand_down(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    server_error = page.locator(f"{DYNAMIC_TOAST}:has-text('Server error')")
+
+    _error_button(page, "500")
+    expect(server_error).to_have_count(1)
+    _error_button(page, "500")  # same failure again within a few seconds: no second toast
+    page.wait_for_timeout(500)
+    expect(server_error).to_have_count(1)
+
+    # A response with its own toast gets only that one.
+    _error_button(page, "500 with its own toast")
+    expect(page.locator(f"{DYNAMIC_TOAST}:has-text('Reports unavailable')")).to_have_count(1)
+    expect(server_error).to_have_count(1)
+
+    # Opted out: nothing at all.
+    before = page.locator(DYNAMIC_TOAST).count()
+    with page.expect_response(re.compile("/demo/error/500$")):
+        _error_button(page, "500, opted out")
+    page.wait_for_timeout(300)
+    expect(page.locator(DYNAMIC_TOAST)).to_have_count(before)
+
+
+def test_network_failure_toasts(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    page.route(re.compile("/demo/error/403$"), lambda route: route.abort())
+    toast = _error_button(page, "403")
+    expect(toast.locator(".gth-toast-title")).to_have_text("Can't reach the server")
+
+
+def test_data_table_refresh_event_keeps_sort_and_filters(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    stock_header = page.locator("#records th:has-text('Stock')")
+    page.click(".gth-table-filter label:has-text('Sensor')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    stock_header.locator("button").click()
+    expect(stock_header).to_have_attribute("aria-sort", "ascending")
+    _htmx_idle(page)
+    page.locator("#records .gth-table-pager a[aria-label='Page 2']").click()
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20 of 30")
+    _htmx_idle(page)
+
+    try:
+        page.get_by_role("button", name="Add record").click()
+        # Re-queried from page 1 with the same filter + sort: the new stock-1 sensor leads.
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10 of 31")
+        expect(page.locator(RECORD_ROWS).first).to_contain_text("Added sensor 1")
+        expect(stock_header).to_have_attribute("aria-sort", "ascending")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")

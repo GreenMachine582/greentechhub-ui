@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -54,6 +54,8 @@ RECORDS = [
     }
     for i in range(1, 121)
 ]
+# The table refresh demo appends to RECORDS; POST /demo/reset trims it back.
+_RECORDS_INITIAL = len(RECORDS)
 CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
     {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
 ]
@@ -155,6 +157,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Feedback", "url": "/feedback", "icon": "bell", "children": [
         {"label": "Toast", "url": "/feedback#toast"},
+        {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
@@ -309,8 +312,20 @@ async def demo_reset():
     health count) and refresh everything showing them."""
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
+    del RECORDS[_RECORDS_INITIAL:]
     return hx_response(greentechhub_ui.toast(
-        "Demo data reset.", "info", events=["watchlistChanged", "healthChanged", "watchlistReset"]))
+        "Demo data reset.", "info",
+        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
+
+
+@app.post("/demo/records")
+async def add_record():
+    """A "save" elsewhere on the page: the records table re-queries itself
+    (gth_data_table refresh_event="recordsChanged"), keeping its sort/filters."""
+    n = len(RECORDS) - _RECORDS_INITIAL + 1
+    RECORDS.append({"id": len(RECORDS) + 1, "name": f"Added sensor {n}", "category": "Sensor",
+                    "stock": 1, "price": 9.99})
+    return hx_response(greentechhub_ui.toast(f"Added sensor {n}", events=["recordsChanged"]))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)
@@ -353,6 +368,20 @@ async def toast_demo(preset: str | None = None):
     else:
         return HTMLResponse("Unknown preset", status_code=404)
     return hx_response(greentechhub_ui.toast(**options))
+
+
+@app.get("/demo/error/{status}")
+async def error_demo(status: int, own_toast: bool = False):
+    """Failed requests for toast.js's automatic error toasts: a 404 with a
+    FastAPI-style JSON detail, any other status bare, or (own_toast) a 500
+    that sends its own toast — which the generic one then stands down for."""
+    if own_toast:
+        own = greentechhub_ui.toast("The report service is down — try again in a minute.", "danger",
+                                    title="Reports unavailable")
+        return hx_response(own, status_code=500)
+    if status == 404:
+        return JSONResponse({"detail": "Widget #42 not found"}, status_code=404)
+    return HTMLResponse(f"Error {status}", status_code=status if 400 <= status < 600 else 500)
 
 
 @app.get("/modal-demo/content", response_class=HTMLResponse)

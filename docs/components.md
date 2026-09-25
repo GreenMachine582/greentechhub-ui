@@ -218,7 +218,7 @@ Query parameters are fixed: `page`, `size`, `sort`, `dir`, `partial=rows`, plus 
 ```jinja
 {# table.html #}
 gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="",
-               load_more_label="Load more")      {# rows via {% call(row) %} #}
+               load_more_label="Load more", refresh_event=None)   {# rows via {% call(row) %} #}
 {# headers: "Name" or {"label": "Name", "sort_key": "name", "class": "text-end"} —
    a sort_key in state.sortable renders a sort button with aria-sort + caret.
    Renders <div id="{{ state.id }}"> wrapping the table; sort buttons, pager,
@@ -229,7 +229,11 @@ gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_cl
      load_more — trailing gth_table_load_more row
      infinite  — trailing row that loads itself on intersect (skeleton + a
                  focus-visible "Load more" fallback button for keyboard users)
-     none      — nothing; pass every row #}
+     none      — nothing; pass every row
+   refresh_event (v0.10): e.g. "stocksChanged" — the table re-requests itself
+   (page 1, current sort + filters, no history entry) whenever that event
+   fires on <body>, typically from a save's
+   HX-Trigger: toast("Saved", events=["stocksChanged"]). #}
 
 gth_table_pager(state, label="Table pages")
 {# Bootstrap .pagination in <nav aria-label>: prev, first/last + a window with
@@ -492,3 +496,28 @@ TableState.is_own_swap(headers) -> bool                           # HX-Target is
 {% block header_actions %}<button class="btn btn-sm btn-primary">New</button>{% endblock %}
 {% block page %}…{% endblock %}
 ```
+
+## Shipped signatures (v0.10)
+
+### Automatic error toasts
+
+`toast.js` (already loaded through `toast_js_url`) toasts any htmx request that fails, so a 4xx/5xx
+(which htmx doesn't swap), a dropped connection or a timeout is never silent:
+
+| Failure | Title | Message |
+|---|---|---|
+| 401 / 403 / 409 | Signed out / Not allowed / Conflict (warning) | a JSON `detail`, else a default |
+| 404 | Not found | a JSON `detail` (e.g. FastAPI's `HTTPException`), else "It may have been deleted." |
+| other 4xx / 5xx | Request failed / Server error | a JSON `detail`, else "…(status)." |
+| `htmx:sendError` | Can't reach the server — or You're offline when `navigator.onLine` is false | |
+| `htmx:timeout` | Request timed out | |
+
+- **A server toast wins.** A response whose `HX-Trigger` already carries `showToast` (e.g.
+  `hx_response(toast("Reports unavailable", "danger"), status_code=503)`) shows only that one.
+- **422 is left alone** — it's `gth_form`'s inline validation errors, which `app.html` swaps in.
+- **Opt out** with `data-gth-error-toast="off"` on the element or any ancestor (on `<body>`: app-wide), e.g.
+  for a background poll whose failure the page already shows another way.
+- The `detail` is shown as text, and only when it's a short string. The same title and message within 4s
+  shows once, so a failing poll or a burst of lazy loads doesn't stack toasts.
+- A 401 carrying `HX-Redirect` (gth-fastapi's `require_page_identity`) never toasts: htmx navigates to the
+  login page first.

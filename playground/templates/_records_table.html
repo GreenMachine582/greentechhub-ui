@@ -4,7 +4,7 @@
     {"label": "Category", "sort_key": "category"},
     {"label": "Stock", "sort_key": "stock", "class": "text-end"},
     {"label": "Price", "sort_key": "price", "class": "text-end"},
-  ], records, empty_message="No records match.") %}
+  ], records, empty_message="No records match.", refresh_event="recordsChanged") %}
 <tr data-record-id="{{ r.id }}">
   <td>{{ r.name }}</td>
   <td>{{ r.category }}</td>
