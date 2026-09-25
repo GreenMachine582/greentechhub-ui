@@ -5,6 +5,14 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.10.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.9.0...v0.10.0) (2026-09-25)
+
+
+### Features
+
+* **table:** gth_data_table refresh_event re-queries after saves ([#13](https://github.com/GreenMachine582/greentechhub-ui/issues/13)) ([98e6bb7](https://github.com/GreenMachine582/greentechhub-ui/commit/98e6bb7c9800280feccd1c578a9d141f65ee6941))
+* **toast:** automatic toasts for failed htmx requests ([#12](https://github.com/GreenMachine582/greentechhub-ui/issues/12)) ([60e1942](https://github.com/GreenMachine582/greentechhub-ui/commit/60e1942647e0a28ad22c1ef7b692d4edca78ef49))
+
 ## [0.9.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.8.0...v0.9.0) (2026-09-24)
 
 ### Features
