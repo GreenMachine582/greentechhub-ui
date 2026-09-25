@@ -18,6 +18,15 @@
      href="/tables?mode=infinite&amp;scroll=1"{% if scroll %} aria-current="page"{% endif %}>Infinite (scroll box)</a>
 </nav>
 
+<p class="d-flex flex-wrap align-items-center gap-2 text-secondary small">
+  <button type="button" class="btn btn-sm btn-outline-primary" hx-post="/demo/records" hx-swap="none">
+    <i class="bi bi-plus-lg" aria-hidden="true"></i> Add record
+  </button>
+  <span><code>refresh_event="recordsChanged"</code>: a save elsewhere fires the event and the table re-queries
+    itself, keeping its sort and filters.</span>
+  <button type="button" class="btn btn-sm btn-link" hx-post="/demo/reset" hx-swap="none">Reset demo data</button>
+</p>
+
 {% call gth_table_filter(table, placeholder="Search records…") %}
   {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),
       field_class="mb-0") }}
