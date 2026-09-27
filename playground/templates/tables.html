@@ -24,7 +24,8 @@
     <i class="bi bi-plus-lg" aria-hidden="true"></i> Add record
   </button>
   <span><code>refresh_event="recordsChanged"</code>: a save elsewhere fires the event and the table re-queries
-    itself, keeping its sort and filters.</span>
+    itself, keeping its sort and filters. Tick rows for the <code>bulk_actions</code> bar: the selection
+    survives sorting and paging (Shift+click for a range, Esc to clear), and a filter change clears it.</span>
   <button type="button" class="btn btn-sm btn-link" hx-post="/demo/reset" hx-swap="none">Reset demo data</button>
 </p>
 

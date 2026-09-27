@@ -58,8 +58,10 @@ RECORDS = [
     }
     for i in range(1, 121)
 ]
-# The table refresh demo appends to RECORDS; POST /demo/reset trims it back.
+# The table refresh demo appends to RECORDS and the bulk actions change stock;
+# POST /demo/reset trims it back and restores the stock.
 _RECORDS_INITIAL = len(RECORDS)
+_RECORDS_STOCK = [r["stock"] for r in RECORDS]
 CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
     {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
 ]
@@ -320,6 +322,8 @@ async def demo_reset():
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     del RECORDS[_RECORDS_INITIAL:]
+    for r, stock in zip(RECORDS, _RECORDS_STOCK, strict=True):
+        r["stock"] = stock
     return hx_response(greentechhub_ui.toast(
         "Demo data reset.", "info",
         events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
@@ -333,6 +337,35 @@ async def add_record():
     RECORDS.append({"id": len(RECORDS) + 1, "name": f"Added sensor {n}", "category": "Sensor",
                     "stock": 1, "price": 9.99, "added": date.today()})
     return hx_response(greentechhub_ui.toast(f"Added sensor {n}", events=["recordsChanged"]))
+
+
+async def _bulk_records(request: Request) -> list[dict]:
+    """The records a gth_data_table bulk action posted (repeated `ids`)."""
+    form = await request.form()
+    ids = {int(i) for i in form.getlist("ids") if str(i).isdigit()}
+    return [r for r in RECORDS if r["id"] in ids]
+
+
+def _records_word(n: int) -> str:
+    return f"{n} record" if n == 1 else f"{n} records"
+
+
+@app.post("/demo/records/restock")
+async def restock_records(request: Request):
+    rows = await _bulk_records(request)
+    for r in rows:
+        r["stock"] += 50
+    return hx_response(greentechhub_ui.toast(f"Restocked {_records_word(len(rows))}.",
+                                             events=["recordsChanged"]))
+
+
+@app.post("/demo/records/sold-out")
+async def sold_out_records(request: Request):
+    rows = await _bulk_records(request)
+    for r in rows:
+        r["stock"] = 0
+    return hx_response(greentechhub_ui.toast(f"Marked {_records_word(len(rows))} sold out.",
+                                             "warning", events=["recordsChanged"]))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)
