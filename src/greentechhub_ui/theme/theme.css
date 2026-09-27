@@ -252,6 +252,15 @@ th[aria-sort] .gth-table-sort .bi {
   margin-top: 0;
   vertical-align: middle;
 }
+.gth-table-select .form-check-input:checked,
+.gth-table-select .form-check-input:indeterminate {
+  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-color-primary-dark);
+}
+.gth-table-select .form-check-input:focus {
+  border-color: var(--gth-color-primary);
+  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
+}
 .gth-data-table .table > tbody > tr.table-active > * {
   --bs-table-bg-state: var(--gth-brand-subtle-bg);
 }
