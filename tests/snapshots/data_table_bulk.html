@@ -1,0 +1,64 @@
+
+
+
+
+
+
+<div id="parts" class="gth-data-table" data-gth-table-mode="load_more" data-gth-table-select data-gth-filter-key="category=x&amp;q=b%26c">
+<div class="table-responsive gth-table-wrapper">
+<table class="table table-hover align-middle gth-table ">
+  <thead><tr><th scope="col" class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select-all aria-label="Select all rows shown"></th><th scope="col" aria-sort="ascending">
+  <button type="button" class="gth-table-sort" hx-get="/parts?q=b%26c&amp;category=x&amp;sort=name&amp;dir=desc" hx-target="#parts" hx-swap="outerHTML" hx-indicator="#parts">Name <i class="bi bi-caret-up-fill" aria-hidden="true"></i>
+  </button>
+</th><th scope="col">Qty</th></tr></thead>
+  <tbody id="parts-tbody">
+  
+    
+<tr>
+
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="Bolt" aria-label="Select Bolt"></td><td>Bolt</td><td>3</td></tr>
+
+<tr>
+
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="Nut" aria-label="Select Nut"></td><td>Nut</td><td>9</td></tr>
+
+<tr>
+
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="Pin &#34;A&#34; &lt;b&gt;" aria-label="Select Pin &#34;A&#34; &lt;b&gt;"></td><td>Pin &#34;A&#34; &lt;b&gt;</td><td>1</td></tr>
+
+    
+    
+
+
+
+<tr class="gth-pagination gth-table-load-more">
+  <td colspan="3" class="text-center py-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+      hx-get="/parts?q=b%26c&amp;category=x&amp;sort=name&amp;dir=asc&amp;page=2&amp;partial=rows" hx-target="closest tr" hx-swap="outerHTML">
+      Load more <span class="text-secondary">(9 total)</span>
+    </button>
+  </td>
+</tr>
+
+
+
+    
+  
+  </tbody>
+</table>
+</div>
+
+<span class="visually-hidden" id="parts-bulk-status" aria-live="polite"></span>
+<div class="gth-table-bulk" role="toolbar" aria-label="Bulk actions" data-gth-bulk data-table="parts" data-name="part_ids" hidden>
+  <span class="gth-table-bulk-count" id="parts-bulk-count"></span>
+  
+  <button type="button" class="btn btn-sm btn-outline-secondary" hx-post="/parts/archive?a=1&amp;b=2" hx-swap="none"><i class="bi bi-archive" aria-hidden="true"></i> Archive</button>
+  
+  <button type="button" class="btn btn-sm btn-outline-danger" hx-post="/parts/delete" hx-swap="none" hx-confirm="Delete the selected parts?" hx-target="#x">Delete</button>
+  
+  <button type="button" class="btn btn-sm btn-link ms-auto" data-gth-select-clear>Clear selection</button>
+</div>
+
+
+</div>
+

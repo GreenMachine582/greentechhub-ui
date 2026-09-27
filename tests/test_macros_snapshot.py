@@ -510,6 +510,49 @@ def test_data_table_refresh_event_not_in_row_appends():
     assert "gth-table-refresh" not in _render(template, state=state, rows=_ROWS)
 
 
+_BULK_TABLE = """{% from "table.html" import gth_data_table, gth_table_select_cell %}
+{% call(r) gth_data_table(state, [{"label": "Name", "sort_key": "name"}, "Qty"], rows,
+    bulk_actions=[{"label": "Archive", "url": "/parts/archive?a=1&b=2", "icon": "archive"},
+                  {"label": "Delete", "url": "/parts/delete", "style": "btn-outline-danger",
+                   "confirm": "Delete the selected parts?", "attrs": {"hx-target": "#x"}}],
+    select_name="part_ids") %}
+<tr>{{ gth_table_select_cell(r.name, r.name) }}<td>{{ r.name|e }}</td><td>{{ r.qty }}</td></tr>
+{% endcall %}"""
+
+
+def test_data_table_bulk():
+    state = _table_state({"q": "b&c", "category": "x", "sort": "name"}, mode="load_more",
+                         filter_params=("q", "category"))
+    rows = _ROWS + [{"name": 'Pin "A" <b>', "qty": 1}]
+    rendered = _render(_BULK_TABLE, state=state, rows=rows)
+    assert_snapshot(rendered, "data_table_bulk")
+    assert 'data-gth-table-select data-gth-filter-key="category=x&amp;q=b%26c"' in rendered
+    assert rendered.count("data-gth-select-all") == 1
+    assert 'colspan="3"' in rendered  # the load-more row spans the checkbox column too
+    pin = "Pin &#34;A&#34; &lt;b&gt;"
+    assert f'value="{pin}" aria-label="Select {pin}"' in rendered
+    bar = rendered.split('role="toolbar"')[1].split("</div>")[0]
+    assert 'data-table="parts" data-name="part_ids" hidden' in bar
+    assert 'hx-post="/parts/archive?a=1&amp;b=2" hx-swap="none"' in bar
+    assert 'hx-confirm="Delete the selected parts?" hx-target="#x"' in bar
+    assert 'id="parts-bulk-status" aria-live="polite"' in rendered
+
+
+def test_data_table_bulk_rows_only():
+    state = _table_state({"page": "2", "partial": "rows"}, mode="load_more")
+    rendered = _render(_BULK_TABLE, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_bulk_rows_only")
+    assert "gth-table-bulk" not in rendered and "data-gth-select-all" not in rendered
+    assert rendered.count("data-gth-select ") == 2 and 'colspan="3"' in rendered
+
+
+def test_data_table_without_bulk_actions_has_no_selection():
+    state = _table_state(mode="pages")
+    for template in (_DATA_TABLE, _DATA_TABLE.replace("rows)", "rows, bulk_actions=[])")):
+        rendered = _render(template, state=state, rows=_ROWS)
+        assert "gth-table-select" not in rendered and "gth-table-bulk" not in rendered
+
+
 def test_data_table_none_mode_has_no_navigation():
     state = _table_state(mode="none")
     rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
