@@ -28,6 +28,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
+| `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
 | `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
@@ -521,3 +522,31 @@ TableState.is_own_swap(headers) -> bool                           # HX-Target is
   shows once, so a failing poll or a burst of lazy loads doesn't stack toasts.
 - A 401 carrying `HX-Redirect` (gth-fastapi's `require_page_identity`) never toasts: htmx navigates to the
   login page first.
+
+## Shipped signatures (v0.11)
+
+### Date range
+
+```jinja
+{# date_range.html — behaviour in static/js/date-range.js (date_range_js_url) #}
+gth_date_range(name_from="date_from", name_to="date_to", value_from=None, value_to=None,
+               label="Date range", hide_label=False, presets=("today", "month", "fy", "last_fy"),
+               fy_start_month=7, errors=None, help_text=None, field_class="mb-3")
+{# Two native <input type="date">s submitting YYYY-MM-DD (empty = open end).
+   presets picks and orders the chips; unknown keys are skipped, () renders
+   none. fy_start_month (1-12) sets the financial year: 7 = 1 Jul – 30 Jun.
+   The chips render hidden and date-range.js shows them, so without JS the
+   inputs still work. A chip fills both inputs from the browser's local date
+   and fires one bubbling `change`; the chip matching the current inputs is
+   aria-pressed. errors/help_text describe both inputs. #}
+```
+
+Inside a `gth_table_filter` slot it re-queries the table from page 1 on a chip click or a date edit; add both
+names to `filter_params` and parse them yourself (`TableState` keeps filters as strings):
+
+```jinja
+{% call gth_table_filter(table) %}
+  {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
+      hide_label=True, field_class="mb-0") }}
+{% endcall %}
+```

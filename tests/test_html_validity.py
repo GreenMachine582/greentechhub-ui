@@ -65,6 +65,9 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "command_palette",
         "tree_single",
         "tree_multi",
+        "date_range",
+        "date_range_with_values_and_errors",
+        "date_range_presets_subset",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

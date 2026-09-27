@@ -2,6 +2,7 @@
 {% from "page_header.html" import gth_page_header %}
 {% from "table.html" import gth_table_filter %}
 {% from "segmented.html" import gth_segmented %}
+{% from "date_range.html" import gth_date_range %}
 
 {% block title %}Tables{% endblock %}
 
@@ -30,6 +31,8 @@
 {% call gth_table_filter(table, placeholder="Search records…") %}
   {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),
       field_class="mb-0") }}
+  {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
+      label="Added between", hide_label=True, field_class="mb-0") }}
 {% endcall %}
 
 {% include "_records_table.html" %}

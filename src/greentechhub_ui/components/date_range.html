@@ -1,0 +1,46 @@
+{% macro gth_date_range(name_from="date_from", name_to="date_to", value_from=None, value_to=None,
+                         label="Date range", hide_label=False, presets=("today", "month", "fy", "last_fy"),
+                         fy_start_month=7, errors=None, help_text=None, field_class="mb-3") %}
+{# Two native date inputs plus preset chips (Today, This month, This FY,
+   Last FY). Submits name_from / name_to as YYYY-MM-DD (empty = open end).
+   presets: keys from the four above, in display order; () for none.
+   fy_start_month: 1-12, the month the financial year starts (7 = July, AU).
+   The chips are rendered hidden and shown by static/js/date-range.js
+   (date_range_js_url), which fills both inputs from the browser's local
+   date and fires one bubbling `change` — so inside a gth_table_filter slot
+   a chip re-queries the table once. Without JS the inputs still work. -#}
+{%- set preset_labels = {"today": "Today", "month": "This month", "fy": "This FY", "last_fy": "Last FY"} %}
+{%- set described = [] -%}
+{%- if help_text %}{% set _ = described.append("gth-field-" ~ name_from ~ "-help") %}{% endif -%}
+{%- if errors %}{% set _ = described.append("gth-field-" ~ name_from ~ "-error") %}{% endif %}
+<div class="{{ field_class }} gth-form-field gth-date-range" role="group" aria-labelledby="gth-field-{{ name_from }}-label"
+  data-gth-date-range data-fy-start-month="{{ fy_start_month }}">
+  <span class="form-label {{ 'visually-hidden' if hide_label else 'd-block' }}" id="gth-field-{{ name_from }}-label">{{ label }}</span>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    {% for name, value, text, role in [(name_from, value_from, "From", "from"), (name_to, value_to, "To", "to")] %}
+    <div class="input-group w-auto">
+      <label class="input-group-text" for="gth-field-{{ name }}">{{ text }}</label>
+      <input type="date" class="form-control{% if errors %} is-invalid{% endif %}" id="gth-field-{{ name }}" name="{{ name }}"
+        value="{{ value if value is not none else '' }}" data-gth-date-{{ role }}
+        {%- if errors %} aria-invalid="true"{% endif %}
+        {%- if described %} aria-describedby="{{ described|join(' ') }}"{% endif %}>
+    </div>
+    {% endfor %}
+    {% if presets %}
+    <div class="d-flex flex-wrap gap-2 gth-date-range-presets" hidden>
+      {% for key in presets if key in preset_labels %}
+      <button type="button" class="btn btn-sm rounded-pill gth-chip" data-preset="{{ key }}" aria-pressed="false">
+        <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>{{ preset_labels[key] -}}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% if help_text %}<div class="form-text" id="gth-field-{{ name_from }}-help">{{ help_text }}</div>{% endif %}
+  {% if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name_from }}-error">
+    {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}

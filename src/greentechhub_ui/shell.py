@@ -61,6 +61,7 @@ def shell_globals(
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
+        "date_range_js_url": f"{assets_prefix}/js/date-range.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",

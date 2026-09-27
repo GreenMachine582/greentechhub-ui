@@ -21,8 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `gth_date_range` — two native date inputs plus preset chips (Today, This month, This FY, Last FY; FY start
-  month configurable) — PyFinBot's transaction filters and reports
 - [ ] `gth_file_drop` — drop zone with an htmx upload progress bar (`htmx:xhr:progress`), accept/size hints and a
   per-file error list — PyFinBot's import page
 - [ ] `gth_data_table` bulk selection — row checkboxes + a sticky action bar ("3 selected · Archive · Delete"),
@@ -79,6 +77,11 @@
   `hx_response(toast(...))` for the six hand-built 204 + HX-Trigger responses in `routes/scrape.py` /
   `routes/watchlist.py`
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
+
+### PyFinBot
+- [ ] Swap the hand-built From/To date inputs in `transactions.html`'s filter bar for `gth_date_range` (same
+  `date_from`/`date_to` params, `fy_start_month=7`) once the release carrying it is tagged — `install()` already
+  supplies `date_range_js_url`
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
