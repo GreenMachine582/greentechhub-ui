@@ -449,7 +449,8 @@ def test_date_range_filters_the_data_table(page, playground_url):
     expect(summary).to_contain_text("1–10 of 73")
     assert "date_from=2025-07-01" in page.url and "date_to=2026-06-30" in page.url
     # The filter bar isn't swapped, so the chip stays pressed.
-    expect(page.locator(".gth-table-filter [data-preset=fy]")).to_have_attribute("aria-pressed", "true")
+    fy_chip = page.locator(".gth-table-filter [data-preset=fy]")
+    expect(fy_chip).to_have_attribute("aria-pressed", "true")
 
 
 # ── gth-multiselect ──────────────────────────────────────────────────────
