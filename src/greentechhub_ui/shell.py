@@ -64,6 +64,7 @@ def shell_globals(
         "date_range_js_url": f"{assets_prefix}/js/date-range.js",
         "file_drop_js_url": f"{assets_prefix}/js/file-drop.js",
         "table_select_js_url": f"{assets_prefix}/js/table-select.js",
+        "table_view_js_url": f"{assets_prefix}/js/table-view.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",
