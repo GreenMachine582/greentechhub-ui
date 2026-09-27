@@ -62,6 +62,7 @@ def shell_globals(
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
         "date_range_js_url": f"{assets_prefix}/js/date-range.js",
+        "file_drop_js_url": f"{assets_prefix}/js/file-drop.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",

@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
+from playground import app as playground_app
 from playground.app import app
 
 
@@ -187,6 +188,27 @@ def test_tables_date_range_filter():
     assert "of 36" in _run(_get("/tables", params={"date_to": "2025-06-30"}, headers=HX)).text
     # A malformed date is ignored, not a 500.
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
+
+
+def test_demo_upload_rechecks_type_and_size(monkeypatch):
+    monkeypatch.setattr(playground_app, "UPLOAD_DELAY", 0)
+
+    def upload(files):
+        return _run(_post("/demo/upload", files=files))
+
+    csv = ("a.csv", b"x,y\n1,2\n", "text/csv")
+    ok = upload([("files", csv)])
+    assert ok.status_code == 200 and "Uploaded: <code>a.csv (8 B)</code>" in ok.text
+
+    bad = upload([("files", ("n.txt", b"hi", "text/plain")),
+                  ("files", ("big.csv", b"x" * (1024 * 1024 + 1), "text/csv"))])
+    assert bad.status_code == 422
+    assert "n.txt — not an accepted file type" in bad.text
+    assert "big.csv — larger than 1 MB" in bad.text
+
+    # A browser submits an empty file part when nothing was chosen.
+    empty = upload([("files", ("", b"", "application/octet-stream"))])
+    assert empty.status_code == 422 and "Choose at least one file." in empty.text
 
 
 def test_tables_infinite_rows_only_append():

@@ -101,9 +101,10 @@ def test_app_shell_optional_component_scripts():
 
     html = _env().get_template("app.html").render(**_context(
         modal_host_js_url="/a/js/modal-host.js", combobox_js_url="/a/js/combobox.js",
-        date_range_js_url="/a/js/date-range.js",
+        date_range_js_url="/a/js/date-range.js", file_drop_js_url="/a/js/file-drop.js",
     ))
     assert '<script src="/a/js/date-range.js"></script>' in html
+    assert '<script src="/a/js/file-drop.js"></script>' in html
     assert '<script src="/a/js/modal-host.js"></script>' in html
     assert '<script src="/a/js/combobox.js"></script>' in html
 

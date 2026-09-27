@@ -453,6 +453,111 @@ def test_date_range_filters_the_data_table(page, playground_url):
     expect(fy_chip).to_have_attribute("aria-pressed", "true")
 
 
+# ── gth-file-drop ─────────────────────────────────────────────────────────
+
+FD = "#upload-demo [data-gth-file-drop]"
+FD_INPUT = "#gth-field-files"
+CSV = {"name": "a.csv", "mimeType": "text/csv", "buffer": b"x,y\n1,2\n"}
+
+
+def _picked(page):
+    return page.eval_on_selector(FD_INPUT, "el => [...el.files].map(f => f.name)")
+
+
+def test_file_drop_lists_picks_and_rejects_bad_files(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.set_input_files(FD_INPUT, [CSV])
+    files = page.locator(f"{FD} .gth-file-drop-file")
+    expect(files).to_have_count(1)
+    expect(files.first).to_contain_text("a.csv")
+    expect(files.first.locator(".gth-file-drop-size")).to_have_text("8 B")
+
+    page.set_input_files(FD_INPUT, [
+        {"name": "notes.txt", "mimeType": "text/plain", "buffer": b"hi"},
+        {"name": "big.csv", "mimeType": "text/csv", "buffer": b"x" * (1024 * 1024 + 1)},
+        CSV,
+    ])
+    errors = page.locator(f"{FD} .gth-file-drop-errors li")
+    expect(errors).to_have_text(["notes.txt — not an accepted file type",
+                                 "big.csv — larger than 1 MB"])
+    expect(files).to_have_count(1)
+    assert _picked(page) == ["a.csv"]
+    expect(page.locator(FD_INPUT)).to_have_attribute("aria-invalid", "true")
+
+    page.set_input_files(FD_INPUT, [CSV])  # a clean pick clears the errors
+    expect(errors).to_have_count(0)
+    expect(page.locator(FD_INPUT)).not_to_have_attribute("aria-invalid", "true")
+
+
+def test_file_drop_accepts_a_drop(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    zone = page.locator(f"{FD} .gth-file-drop-zone")
+    zone.evaluate("""zone => {
+        const dt = new DataTransfer();
+        dt.items.add(new File(["a,b"], "dropped.csv", {type: "text/csv"}));
+        const init = {dataTransfer: dt, bubbles: true, cancelable: true};
+        zone.dispatchEvent(new DragEvent("dragover", init));
+        window.__gthDragover = zone.classList.contains("is-dragover");
+        zone.dispatchEvent(new DragEvent("drop", init));
+    }""")
+    assert page.evaluate("window.__gthDragover") is True
+    expect(zone).not_to_have_class(re.compile("is-dragover"))
+    assert _picked(page) == ["dropped.csv"]
+    expect(page.locator(f"{FD} .gth-file-drop-file")).to_contain_text("dropped.csv")
+
+
+def test_file_drop_uploads_with_progress_then_result(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    # Nothing chosen: the server's 422 is swapped in.
+    page.click("#upload-demo button[type=submit]")
+    expect(page.locator(f"{FD} .gth-file-drop-errors li")).to_have_text("Choose at least one file.")
+
+    page.set_input_files(FD_INPUT, [CSV])
+    page.click("#upload-demo button[type=submit]")
+    progress = page.locator(f"{FD} .gth-file-drop-progress")
+    expect(progress).to_be_visible()  # the demo server waits ~1s
+    expect(page.locator("#upload-demo-result")).to_have_text("Uploaded: a.csv (8 B)")
+    expect(page.locator(f"{FD} .gth-file-drop-progress")).to_be_hidden()
+
+
+def _xhr(loaded, total):
+    return {"lengthComputable": True, "loaded": loaded, "total": total}
+
+
+def test_file_drop_progress_bar_follows_xhr_progress(page, playground_url):
+    # Localhost uploads finish before a real progress event can be watched, so
+    # drive the bar with the events htmx would fire.
+    page.goto(f"{playground_url}/forms")
+    page.set_input_files(FD_INPUT, [CSV])
+    fire = """([name, detail]) => {
+        const form = document.getElementById("upload-demo");
+        form.dispatchEvent(new CustomEvent(name, {bubbles: true, detail: {elt: form, ...detail}}));
+    }"""
+    progress = page.locator(f"{FD} .gth-file-drop-progress")
+    page.evaluate(fire, ["htmx:beforeRequest", {}])
+    expect(progress).to_be_visible()
+    expect(progress).to_have_attribute("aria-valuenow", "0")
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(50, 100)])
+    expect(progress).to_have_attribute("aria-valuenow", "50")
+    assert progress.locator(".progress-bar").evaluate("el => el.style.width") == "50%"
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(100, 100)])
+    expect(progress).to_have_attribute("aria-valuetext", "Processing…")
+    expect(progress.locator(".progress-bar")).to_have_text("Processing…")
+    # The response download's own progress events don't move the bar back.
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(10, 900)])
+    expect(progress).to_have_attribute("aria-valuetext", "Processing…")
+    page.evaluate(fire, ["htmx:afterRequest", {}])
+    expect(progress).to_be_hidden()
+
+
+def test_file_drop_input_is_keyboard_reachable(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.locator(FD_INPUT).focus()
+    zone = page.locator(f"{FD} .gth-file-drop-zone")
+    shadow = zone.evaluate("el => getComputedStyle(el).boxShadow")
+    assert shadow != "none"  # the hidden input's focus ring is drawn on the zone
+
+
 # ── gth-multiselect ──────────────────────────────────────────────────────
 
 MS_INPUT = "#gth-field-widgets-search"
