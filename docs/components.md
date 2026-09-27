@@ -29,6 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
+| `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
 | `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
@@ -548,5 +549,39 @@ names to `filter_params` and parse them yourself (`TableState` keeps filters as 
 {% call gth_table_filter(table) %}
   {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
       hide_label=True, field_class="mb-0") }}
+{% endcall %}
+```
+
+### File drop
+
+```jinja
+{# file_drop.html — behaviour in static/js/file-drop.js (file_drop_js_url) #}
+gth_file_drop(name, label, accept=None, max_size=None, multiple=False, errors=None,
+              help_text=None, prompt=None, field_class="mb-3", input_attrs=None)
+{# A dashed drop zone labelling a real <input type="file"> (visually hidden, still
+   focusable — its focus ring is drawn on the zone). accept: ".csv,.xlsx" or a
+   sequence; max_size: bytes. Both become the hint ("CSV, XLSX · up to 5 MB") and
+   the client-side check on every pick or drop: a rejected file is removed from
+   the input and gets its own line in the error list ("big.csv — larger than
+   5 MB"). Without multiple, extra dropped files are rejected the same way.
+   errors: server messages, shown in the same list until the next pick. #}
+```
+
+The enclosing form sends the upload, so give it `hx-encoding="multipart/form-data"` (or `enctype`). While
+that request runs, the progress bar follows `htmx:xhr:progress`. htmx 1.9 fires that event for the response
+download as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
+stays there until `htmx:afterRequest`.
+
+**The server still has to check type and size**, because the client check is only a convenience. When
+nothing was chosen, the browser still sends an empty file part. Starlette parses that as a `str`, so
+`list[UploadFile] = File()` answers with FastAPI's JSON 422. Instead, take `UploadFile | None = File(None)`
+or read `await request.form()` and keep only the parts with a filename, as the playground's `/demo/upload`
+does. Then return the form re-rendered with `errors` and a 422, which `app.html` swaps in:
+
+```jinja
+{% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-encoding": "multipart/form-data",
+    "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  {{ gth_file_drop("file", "File", accept=(".csv", ".xlsx"), max_size=5 * 1024 * 1024, errors=errors) }}
+  <button type="submit" class="btn btn-primary">Import</button>
 {% endcall %}
 ```

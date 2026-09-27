@@ -21,8 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `gth_file_drop` — drop zone with an htmx upload progress bar (`htmx:xhr:progress`), accept/size hints and a
-  per-file error list — PyFinBot's import page
 - [ ] `gth_data_table` bulk selection — row checkboxes + a sticky action bar ("3 selected · Archive · Delete"),
   keyboard-accessible, selection kept across load-more pages
 - [ ] `gth_data_table` column visibility + density toggle, remembered per table (localStorage)
@@ -82,6 +80,9 @@
 - [ ] Swap the hand-built From/To date inputs in `transactions.html`'s filter bar for `gth_date_range` (same
   `date_from`/`date_to` params, `fy_start_month=7`) once the release carrying it is tagged — `install()` already
   supplies `date_range_js_url`
+- [ ] Swap `import.html`'s plain file field for `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
+  max_size=…)` in the same release, giving drag-and-drop, the type/size check before upload and progress for big
+  spreadsheets. The upload route's `File(None)` already avoids the empty-submit JSON 422
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

@@ -81,6 +81,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
 | `date_range_js_url` | none (no script rendered) — shows and drives `gth-date-range`'s preset chips (v0.11) |
+| `file_drop_js_url` | none (no script rendered) — drag-and-drop, client checks and upload progress for `gth-file-drop` (v0.11) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
 | `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
