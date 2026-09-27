@@ -5,6 +5,7 @@ Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
 """
 
 import re
+from datetime import datetime
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect
@@ -404,6 +405,51 @@ def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
     expect(checked).to_be_visible()
     unchecked = page.locator("#chips-demo label:has-text('Motors') .gth-chip-check")
     expect(unchecked).to_be_hidden()
+
+
+# ── gth-date-range ────────────────────────────────────────────────────────
+
+DR = "#date-range-demo"
+
+
+def test_date_range_presets_fill_inputs_and_fire_one_change(page, playground_url):
+    page.clock.set_fixed_time(datetime(2026, 3, 15, 10))
+    posts = []
+    page.on("request", lambda r: posts.append(r) if r.url.endswith("/demo/date-range") else None)
+    page.goto(f"{playground_url}/forms")
+    result = page.locator("#date-range-demo-result")
+    month = page.locator(f"{DR} [data-preset=month]")
+    expect(month).to_be_visible()  # rendered hidden, shown by date-range.js
+
+    month.click()
+    expect(result).to_have_text("date_from=2026-03-01, date_to=2026-03-31")
+    expect(month).to_have_attribute("aria-pressed", "true")
+    expect(month.locator(".gth-chip-check")).to_be_visible()
+    assert len(posts) == 1
+
+    page.click(f"{DR} [data-preset=fy]")
+    expect(result).to_have_text("date_from=2025-07-01, date_to=2026-06-30")
+    expect(month).to_have_attribute("aria-pressed", "false")
+    page.click(f"{DR} [data-preset=last_fy]")
+    expect(result).to_have_text("date_from=2024-07-01, date_to=2025-06-30")
+    page.click(f"{DR} [data-preset=today]")
+    expect(result).to_have_text("date_from=2026-03-15, date_to=2026-03-15")
+    assert len(posts) == 4
+
+    # Editing a date by hand clears the pressed chip.
+    page.fill("#gth-field-date_from", "2026-03-01")
+    expect(page.locator(f"{DR} [data-preset=today]")).to_have_attribute("aria-pressed", "false")
+
+
+def test_date_range_filters_the_data_table(page, playground_url):
+    page.clock.set_fixed_time(datetime(2026, 3, 15, 10))
+    page.goto(f"{playground_url}/tables?mode=pages&page=3")
+    page.click(".gth-table-filter [data-preset=fy]")
+    summary = page.locator("#records .gth-table-summary")
+    expect(summary).to_contain_text("1–10 of 73")
+    assert "date_from=2025-07-01" in page.url and "date_to=2026-06-30" in page.url
+    # The filter bar isn't swapped, so the chip stays pressed.
+    expect(page.locator(".gth-table-filter [data-preset=fy]")).to_have_attribute("aria-pressed", "true")
 
 
 # ── gth-multiselect ──────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ directly:
 """
 
 import asyncio
+from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -51,6 +52,8 @@ RECORDS = [
         "category": RECORD_CATEGORIES[i % 4],
         "stock": (i * 37) % 250,
         "price": round(((i * 53) % 900) / 10 + 4.99, 2),
+        # Every 5 days from Jan 2025 to Aug 2026 — spans two AU financial years.
+        "added": date(2025, 1, 1) + timedelta(days=i * 5),
     }
     for i in range(1, 121)
 ]
@@ -151,6 +154,7 @@ PLAYGROUND_NAV = [
     {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
         {"label": "Form + validation", "url": "/forms#form"},
         {"label": "Chips + switch", "url": "/forms#chips"},
+        {"label": "Date range", "url": "/forms#date-range"},
         {"label": "Multiselect + tags", "url": "/forms#multiselect"},
         {"label": "Record picker", "url": "/forms#record-picker"},
         {"label": "Busy button", "url": "/forms#busy-button"},
@@ -324,7 +328,7 @@ async def add_record():
     (gth_data_table refresh_event="recordsChanged"), keeping its sort/filters."""
     n = len(RECORDS) - _RECORDS_INITIAL + 1
     RECORDS.append({"id": len(RECORDS) + 1, "name": f"Added sensor {n}", "category": "Sensor",
-                    "stock": 1, "price": 9.99})
+                    "stock": 1, "price": 9.99, "added": date.today()})
     return hx_response(greentechhub_ui.toast(f"Added sensor {n}", events=["recordsChanged"]))
 
 
@@ -415,12 +419,19 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         mode=mode,
         page_size=10,
         page_sizes=(10, 25, 50),
-        sortable=("name", "category", "stock", "price"),
+        sortable=("name", "category", "stock", "price", "added"),
         default_sort="name",
-        filter_params=("q", "category"),
+        filter_params=("q", "category", "date_from", "date_to"),
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
     )
+
+
+def _parse_date(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
 
 
 def _query_records(state: greentechhub_ui.TableState):
@@ -431,6 +442,10 @@ def _query_records(state: greentechhub_ui.TableState):
         rows = [r for r in rows if q in r["name"].lower()]
     if category := state.filters.get("category"):
         rows = [r for r in rows if r["category"] == category]
+    if date_from := _parse_date(state.filters.get("date_from")):
+        rows = [r for r in rows if r["added"] >= date_from]
+    if date_to := _parse_date(state.filters.get("date_to")):
+        rows = [r for r in rows if r["added"] <= date_to]
     if state.sort:
         rows = sorted(rows, key=lambda r: (r[state.sort], r["id"]),
                       reverse=state.direction == "desc")
@@ -728,6 +743,11 @@ async def demo_tab(key: str):
     await asyncio.sleep(0.3)  # long enough to see the skeleton
     return HTMLResponse(f'<p class="mb-0" data-tab-loaded="{key}">Loaded the '
                         f"<strong>{key}</strong> pane from the server.</p>")
+
+
+@app.post("/demo/date-range", response_class=HTMLResponse)
+async def demo_date_range(date_from: str = Form(""), date_to: str = Form("")):
+    return HTMLResponse(f"date_from={date_from or '(open)'}, date_to={date_to or '(open)'}")
 
 
 @app.post("/demo/chips", response_class=HTMLResponse)

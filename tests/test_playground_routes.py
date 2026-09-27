@@ -181,6 +181,14 @@ def test_tables_sort_and_filter():
     assert "Sensor" not in response.text.split("<tbody")[1]
 
 
+def test_tables_date_range_filter():
+    fy = {"date_from": "2025-07-01", "date_to": "2026-06-30"}
+    assert "of 73" in _run(_get("/tables", params=fy, headers=HX)).text
+    assert "of 36" in _run(_get("/tables", params={"date_to": "2025-06-30"}, headers=HX)).text
+    # A malformed date is ignored, not a 500.
+    assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
+
+
 def test_tables_infinite_rows_only_append():
     response = _run(_get("/tables", params={"mode": "infinite", "page": 12, "partial": "rows"},
                          headers=HX))
