@@ -38,6 +38,13 @@
   <p class="text-secondary small mt-2 mb-0">Also filtering the <a href="/tables">data table</a> by date added.</p>
 </section>
 
+<section class="mb-5" id="file-drop">
+  <h2 class="h4">gth-file-drop</h2>
+  {% with accept=upload_accept, max_size=upload_max_size, errors=[], uploaded=none %}
+    {% include "_upload_form.html" %}
+  {% endwith %}
+</section>
+
 <section class="mb-5" id="multiselect">
   <h2 class="h4">gth-multiselect (+ tags mode)</h2>
   {% include "_multi_form.html" %}

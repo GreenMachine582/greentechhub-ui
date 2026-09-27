@@ -21,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
+from starlette.datastructures import UploadFile
 
 import greentechhub_ui
 from greentechhub_ui.htmx import trigger, wants_fragment
@@ -155,6 +156,7 @@ PLAYGROUND_NAV = [
         {"label": "Form + validation", "url": "/forms#form"},
         {"label": "Chips + switch", "url": "/forms#chips"},
         {"label": "Date range", "url": "/forms#date-range"},
+        {"label": "File drop", "url": "/forms#file-drop"},
         {"label": "Multiselect + tags", "url": "/forms#multiselect"},
         {"label": "Record picker", "url": "/forms#record-picker"},
         {"label": "Busy button", "url": "/forms#busy-button"},
@@ -278,6 +280,7 @@ async def data_page(request: Request):
 @app.get("/forms", response_class=HTMLResponse)
 async def forms_page(request: Request):
     return _page(request, "forms", field_errors={}, budget_value=250,
+                 upload_accept=UPLOAD_ACCEPT, upload_max_size=UPLOAD_MAX_SIZE,
                  **_multi_context(tags=["urgent"]))
 
 
@@ -776,6 +779,43 @@ async def demo_multi(request: Request):
     context = _multi_context(widgets, tags)
     context["saved"] = f"widgets={','.join(widgets)} tags={','.join(tags) or '-'}"
     return templates.TemplateResponse(request, "_multi_form.html", context)
+
+
+UPLOAD_ACCEPT = (".csv", ".xlsx")
+UPLOAD_MAX_SIZE = 1024 * 1024
+UPLOAD_DELAY = 1.0  # seconds; long enough to see the "Processing…" bar
+
+
+def _upload_context(errors=(), uploaded=None) -> dict:
+    return {"accept": UPLOAD_ACCEPT, "max_size": UPLOAD_MAX_SIZE, "errors": list(errors),
+            "uploaded": uploaded}
+
+
+@app.post("/demo/upload", response_class=HTMLResponse)
+async def demo_upload(request: Request):
+    """gth_file_drop's server side: re-check what the browser already checked.
+    Read the form directly: with nothing chosen the browser still sends an
+    empty part, which Starlette parses as a str, and list[UploadFile] = File()
+    would answer with FastAPI's JSON 422 instead of the form."""
+    await asyncio.sleep(UPLOAD_DELAY)
+    form = await request.form()
+    files = [f for f in form.getlist("files") if isinstance(f, UploadFile) and f.filename]
+    errors, done = [], []
+    for f in files:
+        size = len(await f.read())
+        if not f.filename.lower().endswith(UPLOAD_ACCEPT):
+            errors.append(f"{f.filename} — not an accepted file type")
+        elif size > UPLOAD_MAX_SIZE:
+            errors.append(f"{f.filename} — larger than 1 MB")
+        else:
+            done.append(f"{f.filename} ({size} B)")
+    if not files:
+        errors.append("Choose at least one file.")
+    if errors:
+        return templates.TemplateResponse(request, "_upload_form.html", _upload_context(errors),
+                                          status_code=422)
+    return templates.TemplateResponse(request, "_upload_form.html",
+                                      _upload_context(uploaded=", ".join(done)))
 
 
 @app.post("/demo/slow-job")
