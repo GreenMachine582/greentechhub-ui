@@ -9,13 +9,16 @@ brand identity — they intentionally diverge from GreenTechHub production's
 current logo file, not a copy of it. Two variants: logo.png is tuned for
 gth-navbar's hardcoded dark background; logo-light.png has a much stronger
 outline for the unpredictable (often light) background of a browser's
-favicon chrome, so brand_context() uses it for favicon_url — and, as
-logo_light_url, for gth_navbar in light mode.
+chrome, so gth_navbar uses it in light mode (logo_light_url). favicon.png is
+logo-light.png cropped to the mark and squared at 64x64
+(scripts/make_favicon.py): the 512px canvas's padding made the tab icon look
+smaller than other sites'.
 """
 
 BRAND_NAME = "GreenTechHub"
 LOGO_ASSET_PATH = "logo/logo.png"
 LOGO_LIGHT_ASSET_PATH = "logo/logo-light.png"
+FAVICON_ASSET_PATH = "logo/favicon.png"
 
 COLOR_PRIMARY = "#1FBE1E"
 COLOR_PRIMARY_DARK = "#169617"
@@ -31,23 +34,22 @@ def brand_context(
 
     `show_logo` defaults to False so adopting this doesn't change any
     existing consumer's rendered output until they opt in (same pattern as
-    gth_navbar's show_theme_toggle). logo_url (dark navbar) and favicon_url
-    (browser chrome) intentionally point at different assets — see the
-    module docstring. logo_light_url is the navbar's light-mode logo, the
-    same asset as favicon_url.
+    gth_navbar's show_theme_toggle). logo_url (dark navbar), logo_light_url
+    (light navbar) and favicon_url (the tab icon, a tight square crop of the
+    light variant) point at three assets — see the module docstring.
     """
     if show_logo:
         logo_url = f"{static_url_prefix}/{LOGO_ASSET_PATH}"
-        favicon_url = f"{static_url_prefix}/{LOGO_LIGHT_ASSET_PATH}"
+        logo_light_url = f"{static_url_prefix}/{LOGO_LIGHT_ASSET_PATH}"
+        favicon_url = f"{static_url_prefix}/{FAVICON_ASSET_PATH}"
     else:
-        logo_url = None
-        favicon_url = None
+        logo_url = logo_light_url = favicon_url = None
     return {
         "name": BRAND_NAME,
         "logo_url": logo_url,
         # gth_navbar follows the color mode: on a light navbar it shows this
         # stronger-outlined variant instead of logo_url.
-        "logo_light_url": favicon_url,
+        "logo_light_url": logo_light_url,
         "favicon_url": favicon_url,
         "service_name": service_name,
     }
