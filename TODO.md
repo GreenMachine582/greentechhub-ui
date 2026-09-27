@@ -21,8 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `gth_date_range` — two native date inputs plus preset chips (Today, This month, This FY, Last FY; FY start
-  month configurable) — PyFinBot's transaction filters and reports
 - [ ] `gth_file_drop` — drop zone with an htmx upload progress bar (`htmx:xhr:progress`), accept/size hints and a
   per-file error list — PyFinBot's import page
 - [ ] `gth_data_table` bulk selection — row checkboxes + a sticky action bar ("3 selected · Archive · Delete"),
