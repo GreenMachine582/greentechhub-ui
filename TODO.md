@@ -78,6 +78,11 @@
   `routes/watchlist.py`
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
+### PyFinBot
+- [ ] Swap the hand-built From/To date inputs in `transactions.html`'s filter bar for `gth_date_range` (same
+  `date_from`/`date_to` params, `fy_start_month=7`) and add `date_range_js_url` via `shell_globals()`, once the
+  release carrying it is tagged
+
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
 - [ ] Full component adoption beyond `theme/` — not blocking v1.0, decided based on real appetite once the theme-only step is live
