@@ -281,8 +281,15 @@ th[aria-sort] .gth-table-sort .bi {
   display: none;
   margin-right: 0.25rem;
 }
-.btn-check:checked + .gth-chip .gth-chip-check {
+.btn-check:checked + .gth-chip .gth-chip-check,
+.gth-chip[aria-pressed="true"] .gth-chip-check {
   display: inline-block;
+}
+/* Toggle-button chips (gth-date-range presets) use aria-pressed, not a btn-check. */
+.gth-chip[aria-pressed="true"] {
+  color: var(--bs-btn-active-color);
+  background-color: var(--bs-btn-active-bg);
+  border-color: var(--bs-btn-active-border-color);
 }
 
 /* gth-switch — brand color instead of Bootstrap's blue. */

@@ -887,3 +887,39 @@ def test_back_to_top():
     )
     assert_snapshot(rendered, "back_to_top")
     assert 'data-threshold="600"' in rendered and " hidden>" in rendered
+
+
+def test_date_range():
+    rendered = _render("""{% from "date_range.html" import gth_date_range %}{{ gth_date_range() }}""")
+    assert_snapshot(rendered, "date_range")
+    assert 'name="date_from"' in rendered and 'name="date_to"' in rendered
+    assert 'data-fy-start-month="7"' in rendered
+    assert 'class="d-flex flex-wrap gap-2 gth-date-range-presets" hidden' in rendered  # JS shows them
+    assert [p.split('"')[0] for p in rendered.split('data-preset="')[1:]] == ["today", "month", "fy", "last_fy"]
+    assert "aria-describedby" not in rendered
+
+
+def test_date_range_with_values_and_errors():
+    rendered = _render(
+        """{% from "date_range.html" import gth_date_range %}
+        {{ gth_date_range("from", "to", value_from="2025-07-01", value_to="2026-06-30", label="Period",
+            errors=["From must be before To."], help_text="Inclusive.") }}"""
+    )
+    assert_snapshot(rendered, "date_range_with_values_and_errors")
+    assert 'value="2025-07-01"' in rendered and 'value="2026-06-30"' in rendered
+    assert rendered.count('aria-describedby="gth-field-from-help gth-field-from-error"') == 2
+    assert rendered.count('aria-invalid="true"') == 2
+
+
+def test_date_range_presets_subset():
+    rendered = _render(
+        """{% from "date_range.html" import gth_date_range %}
+        {{ gth_date_range(presets=("fy", "bogus", "today"), fy_start_month=1, hide_label=True) }}"""
+    )
+    assert_snapshot(rendered, "date_range_presets_subset")
+    assert [p.split('"')[0] for p in rendered.split('data-preset="')[1:]] == ["fy", "today"]
+    assert 'data-fy-start-month="1"' in rendered
+    assert 'class="form-label visually-hidden"' in rendered
+
+    bare = _render("""{% from "date_range.html" import gth_date_range %}{{ gth_date_range(presets=()) }}""")
+    assert "gth-date-range-presets" not in bare
