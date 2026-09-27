@@ -931,3 +931,47 @@ def test_date_range_presets_subset():
 
     bare = _render(DATE_RANGE + "{{ gth_date_range(presets=()) }}")
     assert "gth-date-range-presets" not in bare
+
+
+FILE_DROP = """{% from "file_drop.html" import gth_file_drop %}"""
+
+
+def test_file_drop():
+    rendered = _render(FILE_DROP + """{{ gth_file_drop("file", "File") }}""")
+    assert_snapshot(rendered, "file_drop")
+    assert 'type="file"' in rendered and 'class="visually-hidden gth-file-drop-input"' in rendered
+    assert "accept=" not in rendered and "data-max-size" not in rendered
+    assert " multiple" not in rendered
+    assert 'aria-describedby="gth-field-file-error"' in rendered
+    assert "gth-file-drop-hint" not in rendered
+    assert 'aria-live="polite"></ul>' in rendered  # empty, so CSS :empty hides it
+
+
+def test_file_drop_accept_and_size():
+    rendered = _render(
+        FILE_DROP + """{{ gth_file_drop("docs", "Documents", accept=(".csv", ".xlsx"),
+            max_size=5 * 1024 * 1024, multiple=True, help_text="Re-uploading is safe.",
+            input_attrs={"required": "required"}) }}"""
+    )
+    assert_snapshot(rendered, "file_drop_accept_and_size")
+    assert 'accept=".csv,.xlsx"' in rendered and 'data-accept=".csv,.xlsx"' in rendered
+    assert 'data-max-size="5242880" data-max-label="5 MB"' in rendered
+    assert ">CSV, XLSX · up to 5 MB<" in rendered
+    assert " multiple" in rendered and 'required="required"' in rendered
+    assert ">Drop files here or browse<" in rendered
+    described = 'aria-describedby="gth-field-docs-hint gth-field-docs-help gth-field-docs-error"'
+    assert described in rendered
+
+    sizes = _render(FILE_DROP + """{{ gth_file_drop("a", "A", max_size=1536) }}
+        {{ gth_file_drop("b", "B", accept="image/*", max_size=500) }}""")
+    assert ">up to 1.5 KB<" in sizes and ">image/* · up to 500 B<" in sizes
+
+
+def test_file_drop_with_errors():
+    rendered = _render(
+        FILE_DROP + """{{ gth_file_drop("file", "File", errors=["Bad date.", "Too big."]) }}"""
+    )
+    assert_snapshot(rendered, "file_drop_with_errors")
+    assert rendered.count("<li data-server>") == 2 and "Drop a file here" in rendered
+    assert 'aria-invalid="true"' in rendered
+    assert 'class="gth-file-drop-zone is-invalid"' in rendered

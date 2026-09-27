@@ -17,6 +17,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["theme_toggle_js_url"] == "/gth-assets/js/theme-toggle.js"
     assert g["record_picker_js_url"] == "/gth-assets/js/record-picker.js"
     assert g["date_range_js_url"] == "/gth-assets/js/date-range.js"
+    assert g["file_drop_js_url"] == "/gth-assets/js/file-drop.js"
 
 
 def test_every_asset_url_exists_in_the_package():
