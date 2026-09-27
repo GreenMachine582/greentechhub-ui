@@ -369,6 +369,121 @@ def test_data_table_infinite_inside_scroll_box(page, playground_url):
     assert th.evaluate("el => getComputedStyle(el).position") == "sticky"
 
 
+# ── gth-data-table bulk selection ────────────────────────────────────────
+
+BULK_BAR = "#records [data-gth-bulk]"
+BULK_COUNT = "#records .gth-table-bulk-count"
+SELECT_ALL = "#records [data-gth-select-all]"
+
+
+def _row_box(page, n):
+    return page.locator(f"{RECORD_ROWS} [data-gth-select]").nth(n)
+
+
+def test_bulk_selection_survives_paging_and_sort_but_not_filters(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    _row_box(page, 0).check()
+    _row_box(page, 2).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
+    expect(page.locator(RECORD_ROWS).nth(0)).to_have_class(re.compile("table-active"))
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+
+    page.click("#records .gth-table-pager a[aria-label='Page 2']")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected (2 on other pages)")
+    _htmx_idle(page)
+    page.click("#records .gth-table-pager a[aria-label='Page 1']")
+    expect(_row_box(page, 0)).to_be_checked()
+    expect(_row_box(page, 2)).to_be_checked()
+    expect(_row_box(page, 1)).not_to_be_checked()
+
+    _htmx_idle(page)
+    name_header = page.locator("#records th:has-text('Name')")
+    name_header.locator("button").click()  # re-sorts, same filters
+    expect(name_header).to_have_attribute("aria-sort", "descending")
+    expect(page.locator(BULK_COUNT)).to_contain_text("2 selected")
+
+    _htmx_idle(page)
+    page.click(".gth-table-filter label:has-text('Cable')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(0)
+
+
+def test_bulk_select_all_and_shift_click_range(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    page.locator(SELECT_ALL).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+    _row_box(page, 4).uncheck()
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+    page.get_by_role("button", name="Clear selection").click()
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+
+    _row_box(page, 1).click()
+    _row_box(page, 5).click(modifiers=["Shift"])
+    expect(page.locator(BULK_COUNT)).to_have_text("5 selected")
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(5)
+
+
+def test_bulk_selection_kept_across_load_more(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=load_more")
+    page.locator(SELECT_ALL).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+    _htmx_idle(page)
+    page.click("#records .gth-table-load-more button")
+    expect(page.locator(RECORD_ROWS)).to_have_count(20)
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(10)
+    expect(_row_box(page, 15)).not_to_be_checked()
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+
+
+def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    first_stock = int(page.locator(RECORD_ROWS).nth(0).locator("td").nth(3).inner_text())
+    posted = []
+    page.on("request", lambda r: posted.append(r.post_data)
+            if r.url.endswith("/demo/records/restock") else None)
+    try:
+        _row_box(page, 0).check()
+        page.click("#records .gth-table-pager a[aria-label='Page 2']")
+        expect(page.locator(BULK_COUNT)).to_contain_text("on other pages")
+        _htmx_idle(page)
+        _row_box(page, 0).check()
+        page.get_by_role("button", name="Restock +50").click()
+        expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 2 records.")
+        expect(page.locator(BULK_BAR)).to_be_hidden()
+        assert len(posted) == 1 and posted[0].count("ids=") == 2
+        # refresh_event re-queries page 1, where the first row was restocked.
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10")
+        stock = page.locator(RECORD_ROWS).nth(0).locator("td").nth(3)
+        expect(stock).to_have_text(str(first_stock + 50))
+        expect(_row_box(page, 0)).not_to_be_checked()
+
+        page.on("dialog", lambda d: d.accept())  # "Mark sold out" confirms first
+        _row_box(page, 0).check()
+        page.get_by_role("button", name="Mark sold out").click()
+        expect(stock).to_have_text("0")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_bulk_selection_by_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    _row_box(page, 0).focus()
+    page.keyboard.press("Space")
+    expect(page.locator(BULK_COUNT)).to_have_text("1 selected")
+    page.keyboard.press("Tab")
+    expect(_row_box(page, 1)).to_be_focused()
+    page.keyboard.press("Space")
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
+    expect(page.locator("#records-bulk-status")).to_have_text("2 selected")
+    page.keyboard.press("Escape")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    expect(page.locator("#records-bulk-status")).to_have_text("Selection cleared")
+
+
 # ── gth-badge / gth-tabs / gth-chips / gth-switch ─────────────────────────
 
 

@@ -211,6 +211,24 @@ def test_demo_upload_rechecks_type_and_size(monkeypatch):
     assert empty.status_code == 422 and "Choose at least one file." in empty.text
 
 
+def test_bulk_record_actions_then_reset():
+    records = playground_app.RECORDS
+    before = (records[0]["stock"], records[1]["stock"], records[2]["stock"])
+    try:
+        response = _run(_post("/demo/records/restock", data={"ids": ["1", "2", "x"]}))
+        trigger = json.loads(response.headers["HX-Trigger"])
+        assert trigger["showToast"]["message"] == "Restocked 2 records."
+        assert "recordsChanged" in trigger
+        assert (records[0]["stock"], records[1]["stock"]) == (before[0] + 50, before[1] + 50)
+        assert records[2]["stock"] == before[2]
+
+        _run(_post("/demo/records/sold-out", data={"ids": "3"}))
+        assert records[2]["stock"] == 0
+    finally:
+        _run(_post("/demo/reset"))
+    assert (records[0]["stock"], records[1]["stock"], records[2]["stock"]) == before
+
+
 def test_tables_infinite_rows_only_append():
     response = _run(_get("/tables", params={"mode": "infinite", "page": 12, "partial": "rows"},
                          headers=HX))

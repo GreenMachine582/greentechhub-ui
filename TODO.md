@@ -21,8 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `gth_data_table` bulk selection — row checkboxes + a sticky action bar ("3 selected · Archive · Delete"),
-  keyboard-accessible, selection kept across load-more pages
 - [ ] `gth_data_table` column visibility + density toggle, remembered per table (localStorage)
 - [ ] `TableState.export_url` — the current filters/sort as a CSV link (the consumer writes the CSV; gth-ui builds
   the URL and an export button)

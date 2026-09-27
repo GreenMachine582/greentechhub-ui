@@ -20,7 +20,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
-| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7) |
+| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
@@ -583,5 +583,46 @@ does. Then return the form re-rendered with `errors` and a 422, which `app.html`
     "hx-target": "this", "hx-swap": "outerHTML"}) %}
   {{ gth_file_drop("file", "File", accept=(".csv", ".xlsx"), max_size=5 * 1024 * 1024, errors=errors) }}
   <button type="submit" class="btn btn-primary">Import</button>
+{% endcall %}
+```
+
+### Bulk selection
+
+```jinja
+{# table.html — behaviour in static/js/table-select.js (table_select_js_url) #}
+gth_data_table(state, headers, rows, ..., bulk_actions=None, select_name="ids")
+gth_table_select_cell(value, label)    {# first <td> of each row: a checkbox for `value`, "Select <label>" #}
+{# bulk_actions: [{"label", "url", "icon"?, "style"? (default "btn-outline-secondary"),
+                   "confirm"? (hx-confirm), "attrs"? (extra attributes)}]
+   A non-empty list adds a checkbox column (a tri-state select-all in the header,
+   headers and colspans shift by one) and a bar under the table that sticks to the
+   viewport bottom while anything is selected: "3 selected (1 on other pages)",
+   one button per action, and "Clear selection". Each button hx-posts every
+   selected value as `select_name` (repeated) with hx-swap="none". #}
+```
+
+The selection is a set of row values that table-select.js keeps per table id. It lasts through sorting, the
+pager, the page size, load-more and infinite appends, and `refresh_event` re-queries. It's cleared when the
+filters change, so an action never reaches rows the current filter hides. It's also cleared after an action
+succeeds, by "Clear selection", and by Esc. It isn't kept across a full page reload. Shift+click selects a
+range of the rows shown.
+
+Answer the action with an `HX-Trigger`, since nothing is swapped. Usually that's a toast carrying the table's
+`refresh_event`, so the table re-queries with its sort and filters:
+
+```python
+@app.post("/stocks/archive")
+async def archive(request: Request):
+    ids = (await request.form()).getlist("ids")
+    n = await repo.archive(ids)
+    return hx_response(toast(f"Archived {n} stocks.", events=["stocksChanged"]))
+```
+
+```jinja
+{% call(s) gth_data_table(table, headers, stocks, refresh_event="stocksChanged",
+    bulk_actions=[{"label": "Archive", "url": "/stocks/archive", "icon": "archive"},
+                  {"label": "Delete", "url": "/stocks/delete", "style": "btn-outline-danger",
+                   "confirm": "Delete the selected stocks?"}]) %}
+<tr>{{ gth_table_select_cell(s.id, s.symbol) }}<td>{{ s.symbol }}</td>…</tr>
 {% endcall %}
 ```
