@@ -289,6 +289,45 @@ def test_form_field_with_errors():
     assert_snapshot(rendered, "form_field_with_errors")
 
 
+FORM_FIELD = """{% from "form.html" import gth_form_field %}"""
+
+
+def test_form_field_affixes():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("budget", "Budget", value=250,
+        type="number", prefix="$", suffix="AUD", help_text="Per month.",
+        errors=["Too high."]) }}""")
+    assert_snapshot(rendered, "form_field_affixes")
+    assert '<div class="input-group has-validation">' in rendered
+    assert '<span class="input-group-text" id="gth-field-budget-prefix">$</span>' in rendered
+    assert '<span class="input-group-text" id="gth-field-budget-suffix">AUD</span>' in rendered
+    ids = ("gth-field-budget-help gth-field-budget-prefix gth-field-budget-suffix"
+           " gth-field-budget-error")
+    assert f'aria-describedby="{ids}"' in rendered
+    # The error sits below the group, not inside it.
+    assert rendered.index("</div>", rendered.index("-suffix")) < rendered.index("invalid-feedback")
+
+
+def test_form_field_counter():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("title", "Title", value="Hello",
+        maxlength=20) }}""")
+    assert_snapshot(rendered, "form_field_counter")
+    assert 'maxlength="20"' in rendered
+    assert 'data-gth-counter-for="gth-field-title">5 / 20</div>' in rendered
+    assert 'aria-describedby=" gth-field-title-counter"' in rendered
+    off = _render(FORM_FIELD + """{{ gth_form_field("t", "T", maxlength=20, counter=False) }}""")
+    assert 'maxlength="20"' in off and "gth-char-counter" not in off
+
+
+def test_form_field_textarea():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("notes", "Notes", value='a <b> & "c"',
+        type="textarea", rows=5, maxlength=140, step=1, min=0, help_text="Optional.") }}""")
+    assert_snapshot(rendered, "form_field_textarea")
+    assert '<textarea rows="5" id="gth-field-notes" name="notes"' in rendered
+    assert ">a &lt;b&gt; &amp; &#34;c&#34;</textarea>" in rendered
+    assert "value=" not in rendered and "step=" not in rendered and "min=" not in rendered
+    assert ">11 / 140</div>" in rendered
+
+
 def test_toast_flashes_empty():
     rendered = _render(
         """{% from "toast.html" import gth_toast_flashes %}
