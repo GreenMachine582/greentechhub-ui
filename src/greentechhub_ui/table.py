@@ -23,6 +23,11 @@ agnostic like the rest of the package::
 Query parameters (fixed names): ``page``, ``size``, ``sort``, ``dir``,
 ``partial=rows`` (a load-more/infinite append — render only the rows), and
 one per ``filter_params`` entry.
+
+``export_base_url`` (the consumer's CSV endpoint) gives ``export_url``: that
+endpoint with the current filters and sort, no paging. gth_data_table shows
+it as an export button; the endpoint builds its state with the same
+``from_query`` arguments and writes every matching row.
 """
 
 from collections.abc import Iterable, Mapping
@@ -66,6 +71,7 @@ class TableState:
     push_url: bool = False
     window: int = 2
     max_height: str | None = None
+    export_base_url: str | None = None
 
     def __post_init__(self):
         if self.mode not in MODES:
@@ -90,6 +96,7 @@ class TableState:
         push_url: bool = False,
         window: int = 2,
         max_height: str | None = None,
+        export_base_url: str | None = None,
     ) -> "TableState":
         """Parse page/size/sort/dir/filters from `query`, ignoring anything
         out of range or not allow-listed (a hand-edited URL can't request
@@ -135,6 +142,7 @@ class TableState:
             push_url=push_url,
             window=window,
             max_height=max_height,
+            export_base_url=export_base_url,
         )
 
     def with_result(self, *, total: int | None = None, has_next: bool | None = None):
@@ -184,10 +192,22 @@ class TableState:
 
     # ── URLs ─────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _join(base: str, params: list[tuple[str, object]]) -> str:
+        if not params:
+            return base
+        sep = "&" if "?" in base else "?"
+        return base + sep + urlencode(params)
+
     def url(self, *, page=_KEEP, size=_KEEP, sort=_KEEP, dir=_KEEP, partial=None, **filters) -> str:
         """This table's URL with the current sort/filters/size, overriding
         any of them (None drops a parameter). Defaults are left out, so the
         URLs stay short: page 1, the default size, the default sort."""
+        return self._join(self.base_url, self._params(page=page, size=size, sort=sort, dir=dir,
+                                                      partial=partial, **filters))
+
+    def _params(self, *, page=_KEEP, size=_KEEP, sort=_KEEP, dir=_KEEP, partial=None,
+                **filters) -> list[tuple[str, object]]:
         page = self.page if page is _KEEP else page
         size = self.page_size if size is _KEEP else size
         sort = self.sort if sort is _KEEP else sort
@@ -204,10 +224,7 @@ class TableState:
             params.append(("page", page))
         if partial:
             params.append(("partial", partial))
-        if not params:
-            return self.base_url
-        sep = "&" if "?" in self.base_url else "?"
-        return self.base_url + sep + urlencode(params)
+        return params
 
     def page_url(self, page: int) -> str:
         return self.url(page=page)
@@ -250,6 +267,14 @@ class TableState:
         picker's panel endpoint returns just the table then, and the filter
         bar + table on the panel's first load."""
         return hx_target(headers) == self.id
+
+    @property
+    def export_url(self) -> str | None:
+        """export_base_url with the current filters and sort — never page or
+        size: an export is every matching row. None without export_base_url."""
+        if not self.export_base_url:
+            return None
+        return self._join(self.export_base_url, self._params(page=None, size=None))
 
     @property
     def size_url(self) -> str:

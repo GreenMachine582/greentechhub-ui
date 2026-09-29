@@ -588,6 +588,25 @@ def test_data_table_view_options_off_by_default():
     assert "data-gth-col" not in rendered and "gth-table-toolbar" not in rendered
 
 
+def test_data_table_export():
+    template = _VIEW_TABLE.replace("view_options=True)",
+                                   'view_options=True, export_label="Download")')
+    state = _table_state({"q": "b&c", "sort": "name", "dir": "desc", "page": "3"}, mode="pages",
+                         export_base_url="/parts/export.csv")
+    rendered = _render(template, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_export")
+    toolbar = rendered.split('<div class="gth-table-toolbar">')[1].split('<div class="dropdown"')[0]
+    assert 'href="/parts/export.csv?q=b%26c&amp;sort=name&amp;dir=desc" download>' in toolbar
+    assert "> Download" in toolbar and "page=" not in toolbar
+
+    # Export alone still gets the toolbar; appended rows never do.
+    alone = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert "gth-table-export" in alone and "data-gth-view-menu" not in alone
+    appended = _table_state({"page": "2", "partial": "rows"}, mode="load_more",
+                            export_base_url="/parts/export.csv")
+    assert "gth-table-toolbar" not in _render(_DATA_TABLE, state=appended, rows=_ROWS)
+
+
 def test_data_table_none_mode_has_no_navigation():
     state = _table_state(mode="none")
     rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)

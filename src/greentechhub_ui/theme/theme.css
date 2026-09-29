@@ -289,7 +289,10 @@ th[aria-sort] .gth-table-sort .bi {
 /* View options: the "View" menu above the table, hidden columns, compact rows. */
 .gth-table-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 .gth-table-view-menu {

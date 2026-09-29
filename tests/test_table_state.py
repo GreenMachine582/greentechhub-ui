@@ -118,3 +118,22 @@ def test_page_links_window(page, links):
 
 def test_total_pages_is_at_least_one():
     assert _state().with_result(total=0).total_pages == 1
+
+
+def test_export_url_is_none_without_an_export_endpoint():
+    assert _state().export_url is None
+
+
+def test_export_url_keeps_filters_and_sort_but_never_paging():
+    s = _state({"q": "a b", "sort": "price", "dir": "desc", "page": "3", "size": "50",
+                "partial": "rows"}, mode="load_more", sortable=("price",), page_sizes=(25, 50),
+               export_base_url="/rows/export.csv")
+    assert s.export_url == "/rows/export.csv?q=a+b&sort=price&dir=desc"
+
+
+def test_export_url_leaves_out_the_default_sort_and_joins_an_existing_query():
+    s = _state({"sort": "name"}, sortable=("name",), default_sort="name",
+               export_base_url="/export?format=csv")
+    assert s.export_url == "/export?format=csv"
+    s = _state({"q": "x"}, export_base_url="/export?format=csv")
+    assert s.export_url == "/export?format=csv&q=x"
