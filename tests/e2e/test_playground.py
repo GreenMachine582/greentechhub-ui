@@ -6,6 +6,7 @@ Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
 
 import re
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect
@@ -586,6 +587,30 @@ def test_view_menu_by_keyboard(page, playground_url):
         expect(page.locator(VIEW_TOGGLE)).to_have_attribute("aria-expanded", "false")
     finally:
         _clear_views(page)
+
+
+# ── TableState.export_url ─────────────────────────────────────────────────
+
+def test_export_link_follows_filters_and_sort_and_downloads(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    export = page.locator("#records .gth-table-export")
+    expect(export).to_have_attribute("href", "/tables/export.csv")
+    page.click(".gth-table-filter label:has-text('Board')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    price = page.locator("#records th:has-text('Price')")
+    price.locator("button").click()
+    expect(price).to_have_attribute("aria-sort", "ascending")
+    expect(export).to_have_attribute(
+        "href", "/tables/export.csv?category=Board&sort=price&dir=asc")
+
+    with page.expect_download() as info:
+        export.click()
+    download = info.value
+    assert download.suggested_filename == "records.csv"
+    lines = Path(download.path()).read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "ID,Name,Category,Stock,Price,Added"
+    assert len(lines) == 31 and all(",Board," in line for line in lines[1:])
 
 
 # ── gth-badge / gth-tabs / gth-chips / gth-switch ─────────────────────────

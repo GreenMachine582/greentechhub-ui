@@ -21,8 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `TableState.export_url` — the current filters/sort as a CSV link (the consumer writes the CSV; gth-ui builds
-  the URL and an export button)
 - [ ] `gth_form_field` extras — input prefix/suffix (`$`, `%`, units), help text, character counter
 - [ ] Formatting filters registered by `install()` — `money`, `number` (full precision, trailing zeros trimmed) and
   `date`, upstreamed from PyFinBot's `money`/`qty` filters

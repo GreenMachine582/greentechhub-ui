@@ -7,6 +7,8 @@ stays at the Jinja-render level and is faster for catching macro drift.
 """
 
 import asyncio
+import csv
+import io
 import json
 from concurrent.futures import ThreadPoolExecutor
 
@@ -227,6 +229,25 @@ def test_bulk_record_actions_then_reset():
     finally:
         _run(_post("/demo/reset"))
     assert (records[0]["stock"], records[1]["stock"], records[2]["stock"]) == before
+
+
+def test_tables_export_csv_honours_filters_and_sort_not_paging():
+    params = {"category": "Cable", "sort": "price", "dir": "desc", "page": "3", "size": "10"}
+    response = _run(_get("/tables/export.csv", params=params))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-disposition"] == 'attachment; filename="records.csv"'
+    lines = list(csv.reader(io.StringIO(response.text)))
+    assert lines[0] == ["ID", "Name", "Category", "Stock", "Price", "Added"]
+    rows = lines[1:]
+    assert len(rows) == 30 and {r[2] for r in rows} == {"Cable"}
+    prices = [float(r[4]) for r in rows]
+    assert prices == sorted(prices, reverse=True)
+
+
+def test_tables_page_links_the_export_with_the_current_filters():
+    page = _run(_get("/tables", params={"category": "Motor", "sort": "stock", "page": "2"})).text
+    assert 'href="/tables/export.csv?category=Motor&amp;sort=stock&amp;dir=asc" download>' in page
 
 
 def test_tables_infinite_rows_only_append():

@@ -92,7 +92,7 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 {%- endmacro %}
 
 {% macro gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="", load_more_label="Load more", refresh_event=None,
-                         bulk_actions=None, select_name="ids", view_options=False) %}
+                         bulk_actions=None, select_name="ids", view_options=False, export_label="Export CSV") %}
 {# One call for the full page AND every htmx partial of a table whose
    navigation comes from `state` (greentechhub_ui.TableState): "none",
    "load_more", "infinite" or "pages". Rows via {% call(row) %}.
@@ -118,7 +118,10 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    between comfortable and compact density, remembered per table (and page)
    in localStorage by static/js/table-view.js (table_view_js_url). Header
    dicts take "key" (the column's stored name; default sort_key, then label),
-   "hideable": False (always shown) and "hidden": True (hidden until shown). #}
+   "hideable": False (always shown) and "hidden": True (hidden until shown).
+   state.export_url (TableState(export_base_url=...)): an `export_label` link
+   above the table to the consumer's CSV endpoint with the current filters
+   and sort — inside the wrapper, so every swap keeps it current. #}
 {% set selectable = (bulk_actions or [])|length > 0 -%}
 {% set colspan = headers|length + (1 if selectable else 0) %}
 {% set root = ("#" ~ state.id ~ "-scroll") if state.max_height else none %}
@@ -134,8 +137,8 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 <span hidden class="gth-table-refresh" hx-get="{{ state.url(page=None)|e }}" hx-trigger="{{ refresh_event|e }} from:body"
   hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"></span>
 {%- endif %}
-{%- if view_options %}
-{{ _view_menu(state, headers) }}
+{%- if view_options or state.export_url %}
+{{ _toolbar(state, headers, view_options, export_label) }}
 {%- endif %}
 <div class="table-responsive gth-table-wrapper{% if state.max_height %} gth-table-scroll{% endif %}"
   {%- if state.max_height %} id="{{ state.id }}-scroll" style="--gth-table-max-height: {{ state.max_height|e }}"{% endif %}>
@@ -178,8 +181,14 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 {% endif %}
 {% endmacro %}
 
-{% macro _view_menu(state, headers) %}
+{% macro _toolbar(state, headers, view_options, export_label) %}
 <div class="gth-table-toolbar">
+  {%- if state.export_url %}
+  <a class="btn btn-sm btn-outline-secondary gth-table-export" href="{{ state.export_url|e }}" download>
+    <i class="bi bi-download" aria-hidden="true"></i> {{ export_label }}
+  </a>
+  {%- endif %}
+  {%- if view_options %}
   <div class="dropdown" data-gth-view-menu hidden>
     <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" id="{{ state.id }}-view-toggle"
       data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
@@ -205,6 +214,7 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
       <button type="button" class="dropdown-item" data-gth-view-reset>Reset view</button>
     </div>
   </div>
+  {%- endif %}
 </div>
 {% endmacro %}
 
