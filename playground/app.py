@@ -10,13 +10,15 @@ directly:
 """
 
 import asyncio
+import csv
+import io
 from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -460,6 +462,7 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         filter_params=("q", "category", "date_from", "date_to"),
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
+        export_base_url="/tables/export.csv" if table_id == "records" else None,
     )
 
 
@@ -489,6 +492,22 @@ def _query_records(state: greentechhub_ui.TableState):
     if state.mode != "none":
         rows = rows[state.offset: state.offset + state.limit]
     return rows, state.with_result(total=total)
+
+
+@app.get("/tables/export.csv")
+async def tables_export(request: Request):
+    """TableState.export_url's endpoint: the same state as the table (so the
+    same allow-listed filters and sort), every matching row, no paging."""
+    state = _records_state(request.query_params, mode="none", scroll=False, base_url="/tables")
+    rows, _ = _query_records(state)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["ID", "Name", "Category", "Stock", "Price", "Added"])
+    for r in rows:
+        writer.writerow([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
+                         r["added"].isoformat()])
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="records.csv"'})
 
 
 @app.get("/tables", response_class=HTMLResponse)

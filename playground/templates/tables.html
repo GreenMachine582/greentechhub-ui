@@ -27,7 +27,8 @@
     itself, keeping its sort and filters. Tick rows for the <code>bulk_actions</code> bar: the selection
     survives sorting and paging (Shift+click for a range, Esc to clear), and a filter change clears it.
     <code>view_options</code>: the View menu hides columns (ID starts hidden, Name is pinned) and switches to
-    compact rows, remembered in this browser.</span>
+    compact rows, remembered in this browser. Export CSV downloads every row matching the current filters and
+    sort (<code>TableState(export_base_url=...)</code>).</span>
   <button type="button" class="btn btn-sm btn-link" hx-post="/demo/reset" hx-swap="none">Reset demo data</button>
 </p>
 
