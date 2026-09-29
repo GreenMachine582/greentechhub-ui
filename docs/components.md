@@ -20,7 +20,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
-| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density (v0.11) |
+| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
@@ -646,3 +646,41 @@ load-more or infinite append, so hidden columns stay hidden. A column is hidden 
 cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
 so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
 column always stays shown. Without JS the menu stays hidden and every column shows.
+
+### Export
+
+```python
+TableState.from_query(..., export_base_url=None)   # the consumer's CSV endpoint, e.g. "/stocks/export.csv"
+TableState.export_url -> str | None                # that endpoint + the current filters and sort; never page/size
+```
+
+```jinja
+gth_data_table(state, headers, rows, ..., export_label="Export CSV")
+{# With state.export_url set, an `export_label` download link sits in the toolbar above
+   the table (next to the View menu). It's inside the table's wrapper, so every sort,
+   filter and refresh_event swap re-renders it with the current URL. It's a plain
+   <a download>, so it works without JS. #}
+```
+
+gth-ui builds the URL, and the consumer writes the CSV. Build the export's state with **the same
+`from_query` arguments** as the table, so it takes the same allow-listed filters and sort. Then fetch every
+matching row and ignore `offset`/`limit`:
+
+```python
+def _stocks_state(query, **kw):
+    return TableState.from_query(query, id="stocks", base_url="/stocks", sortable=("symbol", "price"),
+                                 filter_params=("q", "market"), export_base_url="/stocks/export.csv", **kw)
+
+@app.get("/stocks/export.csv")
+async def export_stocks(request: Request):
+    state = _stocks_state(request.query_params, mode="none")
+    rows = await repo.list(sort=state.sort, direction=state.direction, **state.filters)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Symbol", "Name", "Price"])
+    writer.writerows((r.symbol, r.name, r.price) for r in rows)
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="stocks.csv"'})
+```
+
+For very large tables, stream the rows with `StreamingResponse` instead of building one string.
