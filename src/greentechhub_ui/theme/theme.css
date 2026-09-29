@@ -286,6 +286,42 @@ th[aria-sort] .gth-table-sort .bi {
   font-weight: 600;
   margin-right: 0.5rem;
 }
+/* View options: the "View" menu above the table, hidden columns, compact rows. */
+.gth-table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+.gth-table-view-menu {
+  min-width: 13rem;
+}
+.gth-table-view-menu fieldset {
+  margin: 0;
+}
+.gth-table-view-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.gth-table-view-menu .form-check-input {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+.gth-table-view-menu .form-check-input:checked {
+  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-color-primary-dark);
+}
+.gth-table-view-menu .dropdown-item:has(:disabled) {
+  cursor: default;
+  color: var(--bs-secondary-color);
+}
+.gth-col-hidden {
+  display: none !important;
+}
+.gth-table-compact {
+  font-size: 0.875rem;
+}
 .gth-table-footer {
   padding-top: var(--gth-space-sm);
 }

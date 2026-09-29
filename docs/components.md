@@ -20,7 +20,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
-| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar (v0.11) |
+| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
@@ -626,3 +626,23 @@ async def archive(request: Request):
 <tr>{{ gth_table_select_cell(s.id, s.symbol) }}<td>{{ s.symbol }}</td>…</tr>
 {% endcall %}
 ```
+
+### Column visibility and density
+
+```jinja
+{# table.html — behaviour in static/js/table-view.js (table_view_js_url) #}
+gth_data_table(state, headers, rows, ..., view_options=False)
+{# view_options=True adds a "View" menu above the table: a checkbox per column,
+   Comfortable/Compact density (Bootstrap's table-sm), and "Reset view".
+   Header dicts gain:
+     "key"       the column's stored name (default: sort_key, then label)
+     "hideable"  False pins the column: always shown, its checkbox disabled
+     "hidden"    True hides it until the user shows it #}
+```
+
+The choice is stored in `localStorage["gth-table-view:<pathname>#<table id>"]`, so it's per browser, per page and
+per table. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
+load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
+cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
+so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
+column always stays shown. Without JS the menu stays hidden and every column shows.

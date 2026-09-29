@@ -553,6 +553,41 @@ def test_data_table_without_bulk_actions_has_no_selection():
         assert "gth-table-select" not in rendered and "gth-table-bulk" not in rendered
 
 
+_VIEW_TABLE = """{% from "table.html" import gth_data_table %}
+{% call(r) gth_data_table(state, [
+    {"label": "Name", "sort_key": "name", "hideable": False},
+    {"label": "Qty", "key": "quantity", "class": "text-end"},
+    {"label": "Notes", "hidden": True},
+    "Owner",
+  ], rows, view_options=True) %}
+<tr><td>{{ r.name }}</td><td>{{ r.qty }}</td><td></td><td></td></tr>
+{% endcall %}"""
+
+
+def test_data_table_view_options():
+    state = _table_state({"sort": "name"}, mode="pages")
+    rendered = _render(_VIEW_TABLE, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_view_options")
+    assert 'class="gth-data-table" data-gth-table-mode="pages" data-gth-table-view>' in rendered
+    head = rendered.split("<thead>")[1].split("</thead>")[0]
+    assert 'aria-sort="ascending" data-gth-col="name" data-gth-pinned>' in head  # key = sort_key
+    assert 'class="text-end" data-gth-col="quantity">Qty' in head  # explicit key
+    assert 'data-gth-col="Notes" data-default-hidden>Notes' in head  # key = label
+    assert 'data-gth-col="Owner">Owner' in head  # a plain string header
+    menu = rendered.split("data-gth-view-menu hidden>")[1].split("</fieldset>")[0]
+    assert 'data-gth-col-toggle="name" checked disabled> Name' in menu
+    assert 'data-gth-col-toggle="Notes" checked> Notes' in menu
+    assert rendered.count('name="parts-density"') == 2
+    assert 'value="comfortable" data-gth-density checked' in rendered
+    assert "data-gth-view-reset" in rendered
+
+
+def test_data_table_view_options_off_by_default():
+    state = _table_state(mode="pages")
+    rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert "data-gth-col" not in rendered and "gth-table-toolbar" not in rendered
+
+
 def test_data_table_none_mode_has_no_navigation():
     state = _table_state(mode="none")
     rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)

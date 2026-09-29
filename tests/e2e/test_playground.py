@@ -441,7 +441,7 @@ def test_bulk_selection_kept_across_load_more(page, playground_url):
 
 def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
     page.goto(f"{playground_url}/tables?mode=pages")
-    first_stock = int(page.locator(RECORD_ROWS).nth(0).locator("td").nth(3).inner_text())
+    first_stock = int(page.locator(RECORD_ROWS).nth(0).locator("td.text-end").first.inner_text())
     posted = []
     page.on("request", lambda r: posted.append(r.post_data)
             if r.url.endswith("/demo/records/restock") else None)
@@ -457,7 +457,7 @@ def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
         assert len(posted) == 1 and posted[0].count("ids=") == 2
         # refresh_event re-queries page 1, where the first row was restocked.
         expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10")
-        stock = page.locator(RECORD_ROWS).nth(0).locator("td").nth(3)
+        stock = page.locator(RECORD_ROWS).nth(0).locator("td.text-end").first
         expect(stock).to_have_text(str(first_stock + 50))
         expect(_row_box(page, 0)).not_to_be_checked()
 
@@ -482,6 +482,110 @@ def test_bulk_selection_by_keyboard(page, playground_url):
     page.keyboard.press("Escape")
     expect(page.locator(BULK_BAR)).to_be_hidden()
     expect(page.locator("#records-bulk-status")).to_have_text("Selection cleared")
+
+
+# ── gth-data-table view options ──────────────────────────────────────────
+
+VIEW_TOGGLE = "#records-view-toggle"
+
+
+def _col_toggle(page, key):
+    return page.locator(f"#records [data-gth-col-toggle='{key}']")
+
+
+def _header(page, key):
+    return page.locator(f"#records thead th[data-gth-col='{key}']")
+
+
+def _clear_views(page):
+    page.evaluate("""() => Object.keys(localStorage)
+        .filter(k => k.startsWith("gth-table-view:")).forEach(k => localStorage.removeItem(k))""")
+
+
+def test_view_columns_hide_and_persist(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        # ID starts hidden (header and cells); Name is pinned.
+        expect(_header(page, "id")).to_be_hidden()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=1")).to_be_hidden()
+        page.click(VIEW_TOGGLE)
+        expect(_col_toggle(page, "id")).not_to_be_checked()
+        expect(_col_toggle(page, "name")).to_be_disabled()
+
+        _col_toggle(page, "category").uncheck()
+        expect(_header(page, "category")).to_be_hidden()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=3")).to_be_hidden()
+        _col_toggle(page, "id").check()
+        expect(_header(page, "id")).to_be_visible()
+        page.keyboard.press("Escape")
+
+        # A sort swap and a page change keep the view; so does a reload.
+        _header(page, "price").locator("button").click()
+        expect(_header(page, "price")).to_have_attribute("aria-sort", "ascending")
+        expect(_header(page, "category")).to_be_hidden()
+        _htmx_idle(page)
+        page.click("#records .gth-table-pager a[aria-label='Page 2']")
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=3")).to_be_hidden()
+        page.reload()
+        expect(_header(page, "category")).to_be_hidden()
+        expect(_header(page, "id")).to_be_visible()
+
+        # Reset brings the defaults back.
+        page.click(VIEW_TOGGLE)
+        page.get_by_role("button", name="Reset view").click()
+        expect(_header(page, "category")).to_be_visible()
+        expect(_header(page, "id")).to_be_hidden()
+    finally:
+        _clear_views(page)
+
+
+def test_view_keeps_one_column_and_covers_appended_rows(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=load_more")
+    try:
+        page.click(VIEW_TOGGLE)
+        for key in ("category", "stock", "price", "added"):
+            _col_toggle(page, key).uncheck()
+        # Name is pinned, so every hideable column can go; the table keeps Name.
+        expect(_header(page, "name")).to_be_visible()
+        page.keyboard.press("Escape")
+        _htmx_idle(page)
+        page.click("#records .gth-table-load-more button")
+        expect(page.locator(RECORD_ROWS)).to_have_count(20)
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=3")).to_be_hidden()  # Category
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=0")).to_be_visible()  # checkbox
+    finally:
+        _clear_views(page)
+
+
+def test_view_density_compact_persists(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        table = page.locator("#records table")
+        expect(table).not_to_have_class(re.compile("table-sm"))
+        page.click(VIEW_TOGGLE)
+        page.get_by_label("Compact").check()
+        expect(table).to_have_class(re.compile("table-sm"))
+        page.reload()
+        expect(page.locator("#records table")).to_have_class(re.compile("gth-table-compact"))
+    finally:
+        _clear_views(page)
+
+
+def test_view_menu_by_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        page.locator(VIEW_TOGGLE).focus()
+        page.keyboard.press("Enter")
+        expect(page.locator(VIEW_TOGGLE)).to_have_attribute("aria-expanded", "true")
+        page.keyboard.press("Tab")  # into the menu: the first column's checkbox
+        expect(_col_toggle(page, "id")).to_be_focused()
+        page.keyboard.press("Space")
+        expect(_header(page, "id")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(page.locator(VIEW_TOGGLE)).to_have_attribute("aria-expanded", "false")
+    finally:
+        _clear_views(page)
 
 
 # ── gth-badge / gth-tabs / gth-chips / gth-switch ─────────────────────────
