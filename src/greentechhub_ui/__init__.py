@@ -1,4 +1,4 @@
-from . import htmx, navigation, theme
+from . import formatting, htmx, navigation, theme
 from ._paths import components_path, static_path, templates_path, theme_path
 from .setup import install, render_macro, static_dirs, template_dirs
 from .shell import shell_globals
@@ -16,6 +16,7 @@ __all__ = [
     "render_macro",
     "shell_globals",
     "TableState",
+    "formatting",
     "htmx",
     "theme",
     "toast",
