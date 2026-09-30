@@ -1,14 +1,24 @@
-{% from "table.html" import gth_data_table %}
+{% from "table.html" import gth_data_table, gth_table_select_cell %}
 {% call(r) gth_data_table(table, [
-    {"label": "Name", "sort_key": "name"},
+    {"label": "ID", "key": "id", "hidden": True},
+    {"label": "Name", "sort_key": "name", "hideable": False},
     {"label": "Category", "sort_key": "category"},
     {"label": "Stock", "sort_key": "stock", "class": "text-end"},
     {"label": "Price", "sort_key": "price", "class": "text-end"},
-  ], records, empty_message="No records match.", refresh_event="recordsChanged") %}
+    {"label": "Added", "sort_key": "added"},
+  ], records, empty_message="No records match.", refresh_event="recordsChanged", view_options=True,
+  bulk_actions=[
+    {"label": "Restock +50", "url": "/demo/records/restock", "icon": "box-seam"},
+    {"label": "Mark sold out", "url": "/demo/records/sold-out", "icon": "x-circle",
+     "style": "btn-outline-danger", "confirm": "Set stock to 0 for the selected records?"},
+  ]) %}
 <tr data-record-id="{{ r.id }}">
+  {{ gth_table_select_cell(r.id, r.name) }}
+  <td class="text-secondary">#{{ r.id }}</td>
   <td>{{ r.name }}</td>
   <td>{{ r.category }}</td>
   <td class="text-end">{{ r.stock }}</td>
-  <td class="text-end">${{ "%.2f"|format(r.price) }}</td>
+  <td class="text-end">{{ r.price|money }}</td>
+  <td class="text-nowrap">{{ r.added|date }}</td>
 </tr>
 {% endcall %}

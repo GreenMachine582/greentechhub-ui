@@ -2,6 +2,7 @@
 {% from "page_header.html" import gth_page_header %}
 {% from "table.html" import gth_table_filter %}
 {% from "segmented.html" import gth_segmented %}
+{% from "date_range.html" import gth_date_range %}
 
 {% block title %}Tables{% endblock %}
 
@@ -23,13 +24,19 @@
     <i class="bi bi-plus-lg" aria-hidden="true"></i> Add record
   </button>
   <span><code>refresh_event="recordsChanged"</code>: a save elsewhere fires the event and the table re-queries
-    itself, keeping its sort and filters.</span>
+    itself, keeping its sort and filters. Tick rows for the <code>bulk_actions</code> bar: the selection
+    survives sorting and paging (Shift+click for a range, Esc to clear), and a filter change clears it.
+    <code>view_options</code>: the View menu hides columns (ID starts hidden, Name is pinned) and switches to
+    compact rows, remembered in this browser. Export CSV downloads every row matching the current filters and
+    sort (<code>TableState(export_base_url=...)</code>).</span>
   <button type="button" class="btn btn-sm btn-link" hx-post="/demo/reset" hx-swap="none">Reset demo data</button>
 </p>
 
 {% call gth_table_filter(table, placeholder="Search records…") %}
   {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),
       field_class="mb-0") }}
+  {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
+      label="Added between", hide_label=True, field_class="mb-0") }}
 {% endcall %}
 
 {% include "_records_table.html" %}

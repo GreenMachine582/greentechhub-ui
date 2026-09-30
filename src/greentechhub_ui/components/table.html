@@ -60,24 +60,39 @@
 hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{% if state.push_url %} hx-push-url="true"{% endif %}
 {%- endmacro %}
 
-{% macro _header(state, h) -%}
+{% macro _col_key(h) -%}
+{{ (h.get("key") or h.get("sort_key") or h.label) if h is mapping else h }}
+{%- endmacro %}
+
+{% macro _col_attrs(h) -%}
+{#- The view_options hooks on a <th>: its column key, and whether it's
+    pinned (hideable=False) or hidden until the user shows it. -#}
+{%- set is_map = h is mapping -%}
+{%- set pinned = is_map and h.get("hideable") is false -%}
+{{ " " }}data-gth-col="{{ _col_key(h)|e }}"
+{%- if pinned %} data-gth-pinned{% elif is_map and h.get("hidden") %} data-default-hidden{% endif %}
+{%- endmacro %}
+
+{% macro _header(state, h, view=false) -%}
 {%- set is_map = h is mapping -%}
 {%- set label = h.label if is_map else h -%}
 {%- set key = h.get("sort_key") if is_map else none -%}
 {%- set th_class = h.get("class") if is_map else none -%}
+{%- set extra = _col_attrs(h) if view else "" -%}
 {%- if key and key in state.sortable -%}
 {%- set aria = state.aria_sort(key) -%}
-<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}{% if aria %} aria-sort="{{ aria }}"{% endif %}>
+<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}{% if aria %} aria-sort="{{ aria }}"{% endif %}{{ extra }}>
   <button type="button" class="gth-table-sort" hx-get="{{ state.sort_url(key)|e }}" {{ _swap_attrs(state) }}>
     {{- label }} <i class="bi bi-{{ {'ascending': 'caret-up-fill', 'descending': 'caret-down-fill'}.get(aria, 'chevron-expand') }}" aria-hidden="true"></i>
   </button>
 </th>
 {%- else -%}
-<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}>{{ label }}</th>
+<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %}{{ extra }}>{{ label }}</th>
 {%- endif -%}
 {%- endmacro %}
 
-{% macro gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="", load_more_label="Load more", refresh_event=None) %}
+{% macro gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="", load_more_label="Load more", refresh_event=None,
+                         bulk_actions=None, select_name="ids", view_options=False, export_label="Export CSV") %}
 {# One call for the full page AND every htmx partial of a table whose
    navigation comes from `state` (greentechhub_ui.TableState): "none",
    "load_more", "infinite" or "pages". Rows via {% call(row) %}.
@@ -91,23 +106,46 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    refresh_event: re-request the table (page 1, current sort + filters)
    whenever that event fires on <body> — e.g. a save's
    HX-Trigger: toast("Saved", events=["stocksChanged"]). The hook lives inside
-   the wrapper, so every swap replaces it with one carrying the latest URL. #}
-{% set colspan = headers|length %}
+   the wrapper, so every swap replaces it with one carrying the latest URL.
+   bulk_actions: [{"label", "url", "icon"?, "style"?, "confirm"?, "attrs"?}]
+   turns on row selection — start each row with gth_table_select_cell — and a
+   sticky bar whose buttons hx-post the selected values as `select_name`
+   (repeated; hx-swap="none", so answer with an HX-Trigger such as
+   toast("Archived 3", events=[refresh_event])). Behaviour in
+   static/js/table-select.js (table_select_js_url): the selection survives
+   sorting, paging and load-more, and clears when the filters change.
+   view_options: a "View" menu above the table to show/hide columns and switch
+   between comfortable and compact density, remembered per table (and page)
+   in localStorage by static/js/table-view.js (table_view_js_url). Header
+   dicts take "key" (the column's stored name; default sort_key, then label),
+   "hideable": False (always shown) and "hidden": True (hidden until shown).
+   state.export_url (TableState(export_base_url=...)): an `export_label` link
+   above the table to the consumer's CSV endpoint with the current filters
+   and sort — inside the wrapper, so every swap keeps it current. #}
+{% set selectable = (bulk_actions or [])|length > 0 -%}
+{% set colspan = headers|length + (1 if selectable else 0) %}
 {% set root = ("#" ~ state.id ~ "-scroll") if state.max_height else none %}
 {% if state.rows_only %}
 {% for row in rows %}{{ caller(row) }}{% endfor %}
 {{ gth_table_load_more(state.next_url, label=load_more_label, colspan=colspan, total=state.total,
     infinite=state.mode == "infinite", root=root) }}
 {% else %}
-<div id="{{ state.id }}" class="gth-data-table" data-gth-table-mode="{{ state.mode }}">
+<div id="{{ state.id }}" class="gth-data-table" data-gth-table-mode="{{ state.mode }}"
+  {%- if selectable %} data-gth-table-select data-gth-filter-key="{{ state.filters|dictsort|urlencode|e }}"{% endif %}
+  {%- if view_options %} data-gth-table-view{% endif %}>
 {%- if refresh_event %}
 <span hidden class="gth-table-refresh" hx-get="{{ state.url(page=None)|e }}" hx-trigger="{{ refresh_event|e }} from:body"
   hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"></span>
 {%- endif %}
+{%- if view_options or state.export_url %}
+{{ _toolbar(state, headers, view_options, export_label) }}
+{%- endif %}
 <div class="table-responsive gth-table-wrapper{% if state.max_height %} gth-table-scroll{% endif %}"
   {%- if state.max_height %} id="{{ state.id }}-scroll" style="--gth-table-max-height: {{ state.max_height|e }}"{% endif %}>
 <table class="table table-hover align-middle gth-table {{ table_class }}">
-  <thead><tr>{% for h in headers %}{{ _header(state, h) }}{% endfor %}</tr></thead>
+  <thead><tr>
+    {%- if selectable %}<th scope="col" class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select-all aria-label="Select all rows shown"></th>{% endif %}
+    {%- for h in headers %}{{ _header(state, h, view_options) }}{% endfor %}</tr></thead>
   <tbody id="{{ state.id }}-tbody">
   {% if rows %}
     {% for row in rows %}{{ caller(row) }}{% endfor %}
@@ -121,6 +159,9 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
   </tbody>
 </table>
 </div>
+{%- if selectable %}
+{{ _bulk_bar(state, bulk_actions, select_name) }}
+{%- endif %}
 {% if state.mode == "pages" and rows %}
 <div class="d-flex flex-wrap align-items-center gap-2 gth-table-footer">
   <span class="text-secondary small me-auto gth-table-summary">
@@ -139,6 +180,65 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 </div>
 {% endif %}
 {% endmacro %}
+
+{% macro _toolbar(state, headers, view_options, export_label) %}
+<div class="gth-table-toolbar">
+  {%- if state.export_url %}
+  <a class="btn btn-sm btn-outline-secondary gth-table-export" href="{{ state.export_url|e }}" download>
+    <i class="bi bi-download" aria-hidden="true"></i> {{ export_label }}
+  </a>
+  {%- endif %}
+  {%- if view_options %}
+  <div class="dropdown" data-gth-view-menu hidden>
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" id="{{ state.id }}-view-toggle"
+      data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+      <i class="bi bi-layout-three-columns" aria-hidden="true"></i> View
+    </button>
+    <div class="dropdown-menu dropdown-menu-end gth-table-view-menu" aria-labelledby="{{ state.id }}-view-toggle">
+      <fieldset>
+        <legend class="dropdown-header">Columns</legend>
+        {% for h in headers %}
+        <label class="dropdown-item"><input type="checkbox" class="form-check-input" data-gth-col-toggle="{{ _col_key(h)|e }}" checked
+          {%- if h is mapping and h.get("hideable") is false %} disabled{% endif %}> {{ h.label if h is mapping else h }}</label>
+        {% endfor %}
+      </fieldset>
+      <hr class="dropdown-divider">
+      <fieldset>
+        <legend class="dropdown-header">Density</legend>
+        {% for value, text in [("comfortable", "Comfortable"), ("compact", "Compact")] %}
+        <label class="dropdown-item"><input type="radio" class="form-check-input" name="{{ state.id }}-density" value="{{ value }}" data-gth-density
+          {%- if loop.first %} checked{% endif %}> {{ text }}</label>
+        {% endfor %}
+      </fieldset>
+      <hr class="dropdown-divider">
+      <button type="button" class="dropdown-item" data-gth-view-reset>Reset view</button>
+    </div>
+  </div>
+  {%- endif %}
+</div>
+{% endmacro %}
+
+{% macro _bulk_bar(state, actions, name) %}
+<span class="visually-hidden" id="{{ state.id }}-bulk-status" aria-live="polite"></span>
+<div class="gth-table-bulk" role="toolbar" aria-label="Bulk actions" data-gth-bulk data-table="{{ state.id }}" data-name="{{ name|e }}" hidden>
+  <span class="gth-table-bulk-count" id="{{ state.id }}-bulk-count"></span>
+  {% for a in actions %}
+  <button type="button" class="btn btn-sm {{ a.style or 'btn-outline-secondary' }}" hx-post="{{ a.url|e }}" hx-swap="none"
+    {%- if a.confirm %} hx-confirm="{{ a.confirm|e }}"{% endif %}
+    {%- for k, v in (a.attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
+    {%- if a.icon %}<i class="bi bi-{{ a.icon }}" aria-hidden="true"></i> {% endif %}{{ a.label -}}
+  </button>
+  {% endfor %}
+  <button type="button" class="btn btn-sm btn-link ms-auto" data-gth-select-clear>Clear selection</button>
+</div>
+{% endmacro %}
+
+{% macro gth_table_select_cell(value, label) %}
+{# The first cell of each row in a gth_data_table with bulk_actions: a
+   checkbox for `value` (what the bulk actions post), named "Select <label>"
+   for assistive tech. It has no name, so it never submits with a form. #}
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="{{ value|e }}" aria-label="Select {{ label|e }}"></td>
+{%- endmacro %}
 
 {% macro gth_table_pager(state, label="Table pages") %}
 {# Numbered page links for a "pages"-mode TableState: previous, a window

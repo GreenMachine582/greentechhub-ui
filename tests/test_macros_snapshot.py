@@ -289,6 +289,45 @@ def test_form_field_with_errors():
     assert_snapshot(rendered, "form_field_with_errors")
 
 
+FORM_FIELD = """{% from "form.html" import gth_form_field %}"""
+
+
+def test_form_field_affixes():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("budget", "Budget", value=250,
+        type="number", prefix="$", suffix="AUD", help_text="Per month.",
+        errors=["Too high."]) }}""")
+    assert_snapshot(rendered, "form_field_affixes")
+    assert '<div class="input-group has-validation">' in rendered
+    assert '<span class="input-group-text" id="gth-field-budget-prefix">$</span>' in rendered
+    assert '<span class="input-group-text" id="gth-field-budget-suffix">AUD</span>' in rendered
+    ids = ("gth-field-budget-help gth-field-budget-prefix gth-field-budget-suffix"
+           " gth-field-budget-error")
+    assert f'aria-describedby="{ids}"' in rendered
+    # The error sits below the group, not inside it.
+    assert rendered.index("</div>", rendered.index("-suffix")) < rendered.index("invalid-feedback")
+
+
+def test_form_field_counter():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("title", "Title", value="Hello",
+        maxlength=20) }}""")
+    assert_snapshot(rendered, "form_field_counter")
+    assert 'maxlength="20"' in rendered
+    assert 'data-gth-counter-for="gth-field-title">5 / 20</div>' in rendered
+    assert 'aria-describedby=" gth-field-title-counter"' in rendered
+    off = _render(FORM_FIELD + """{{ gth_form_field("t", "T", maxlength=20, counter=False) }}""")
+    assert 'maxlength="20"' in off and "gth-char-counter" not in off
+
+
+def test_form_field_textarea():
+    rendered = _render(FORM_FIELD + """{{ gth_form_field("notes", "Notes", value='a <b> & "c"',
+        type="textarea", rows=5, maxlength=140, step=1, min=0, help_text="Optional.") }}""")
+    assert_snapshot(rendered, "form_field_textarea")
+    assert '<textarea rows="5" id="gth-field-notes" name="notes"' in rendered
+    assert ">a &lt;b&gt; &amp; &#34;c&#34;</textarea>" in rendered
+    assert "value=" not in rendered and "step=" not in rendered and "min=" not in rendered
+    assert ">11 / 140</div>" in rendered
+
+
 def test_toast_flashes_empty():
     rendered = _render(
         """{% from "toast.html" import gth_toast_flashes %}
@@ -508,6 +547,103 @@ def test_data_table_refresh_event_not_in_row_appends():
     template = _DATA_TABLE.replace("rows)", 'rows, refresh_event="partsChanged")')
     state = _table_state({"page": "2", "partial": "rows"}, mode="load_more")
     assert "gth-table-refresh" not in _render(template, state=state, rows=_ROWS)
+
+
+_BULK_TABLE = """{% from "table.html" import gth_data_table, gth_table_select_cell %}
+{% call(r) gth_data_table(state, [{"label": "Name", "sort_key": "name"}, "Qty"], rows,
+    bulk_actions=[{"label": "Archive", "url": "/parts/archive?a=1&b=2", "icon": "archive"},
+                  {"label": "Delete", "url": "/parts/delete", "style": "btn-outline-danger",
+                   "confirm": "Delete the selected parts?", "attrs": {"hx-target": "#x"}}],
+    select_name="part_ids") %}
+<tr>{{ gth_table_select_cell(r.name, r.name) }}<td>{{ r.name|e }}</td><td>{{ r.qty }}</td></tr>
+{% endcall %}"""
+
+
+def test_data_table_bulk():
+    state = _table_state({"q": "b&c", "category": "x", "sort": "name"}, mode="load_more",
+                         filter_params=("q", "category"))
+    rows = _ROWS + [{"name": 'Pin "A" <b>', "qty": 1}]
+    rendered = _render(_BULK_TABLE, state=state, rows=rows)
+    assert_snapshot(rendered, "data_table_bulk")
+    assert 'data-gth-table-select data-gth-filter-key="category=x&amp;q=b%26c"' in rendered
+    assert rendered.count("data-gth-select-all") == 1
+    assert 'colspan="3"' in rendered  # the load-more row spans the checkbox column too
+    pin = "Pin &#34;A&#34; &lt;b&gt;"
+    assert f'value="{pin}" aria-label="Select {pin}"' in rendered
+    bar = rendered.split('role="toolbar"')[1].split("</div>")[0]
+    assert 'data-table="parts" data-name="part_ids" hidden' in bar
+    assert 'hx-post="/parts/archive?a=1&amp;b=2" hx-swap="none"' in bar
+    assert 'hx-confirm="Delete the selected parts?" hx-target="#x"' in bar
+    assert 'id="parts-bulk-status" aria-live="polite"' in rendered
+
+
+def test_data_table_bulk_rows_only():
+    state = _table_state({"page": "2", "partial": "rows"}, mode="load_more")
+    rendered = _render(_BULK_TABLE, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_bulk_rows_only")
+    assert "gth-table-bulk" not in rendered and "data-gth-select-all" not in rendered
+    assert rendered.count("data-gth-select ") == 2 and 'colspan="3"' in rendered
+
+
+def test_data_table_without_bulk_actions_has_no_selection():
+    state = _table_state(mode="pages")
+    for template in (_DATA_TABLE, _DATA_TABLE.replace("rows)", "rows, bulk_actions=[])")):
+        rendered = _render(template, state=state, rows=_ROWS)
+        assert "gth-table-select" not in rendered and "gth-table-bulk" not in rendered
+
+
+_VIEW_TABLE = """{% from "table.html" import gth_data_table %}
+{% call(r) gth_data_table(state, [
+    {"label": "Name", "sort_key": "name", "hideable": False},
+    {"label": "Qty", "key": "quantity", "class": "text-end"},
+    {"label": "Notes", "hidden": True},
+    "Owner",
+  ], rows, view_options=True) %}
+<tr><td>{{ r.name }}</td><td>{{ r.qty }}</td><td></td><td></td></tr>
+{% endcall %}"""
+
+
+def test_data_table_view_options():
+    state = _table_state({"sort": "name"}, mode="pages")
+    rendered = _render(_VIEW_TABLE, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_view_options")
+    assert 'class="gth-data-table" data-gth-table-mode="pages" data-gth-table-view>' in rendered
+    head = rendered.split("<thead>")[1].split("</thead>")[0]
+    assert 'aria-sort="ascending" data-gth-col="name" data-gth-pinned>' in head  # key = sort_key
+    assert 'class="text-end" data-gth-col="quantity">Qty' in head  # explicit key
+    assert 'data-gth-col="Notes" data-default-hidden>Notes' in head  # key = label
+    assert 'data-gth-col="Owner">Owner' in head  # a plain string header
+    menu = rendered.split("data-gth-view-menu hidden>")[1].split("</fieldset>")[0]
+    assert 'data-gth-col-toggle="name" checked disabled> Name' in menu
+    assert 'data-gth-col-toggle="Notes" checked> Notes' in menu
+    assert rendered.count('name="parts-density"') == 2
+    assert 'value="comfortable" data-gth-density checked' in rendered
+    assert "data-gth-view-reset" in rendered
+
+
+def test_data_table_view_options_off_by_default():
+    state = _table_state(mode="pages")
+    rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert "data-gth-col" not in rendered and "gth-table-toolbar" not in rendered
+
+
+def test_data_table_export():
+    template = _VIEW_TABLE.replace("view_options=True)",
+                                   'view_options=True, export_label="Download")')
+    state = _table_state({"q": "b&c", "sort": "name", "dir": "desc", "page": "3"}, mode="pages",
+                         export_base_url="/parts/export.csv")
+    rendered = _render(template, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_export")
+    toolbar = rendered.split('<div class="gth-table-toolbar">')[1].split('<div class="dropdown"')[0]
+    assert 'href="/parts/export.csv?q=b%26c&amp;sort=name&amp;dir=desc" download>' in toolbar
+    assert "> Download" in toolbar and "page=" not in toolbar
+
+    # Export alone still gets the toolbar; appended rows never do.
+    alone = _render(_DATA_TABLE, state=state, rows=_ROWS)
+    assert "gth-table-export" in alone and "data-gth-view-menu" not in alone
+    appended = _table_state({"page": "2", "partial": "rows"}, mode="load_more",
+                            export_base_url="/parts/export.csv")
+    assert "gth-table-toolbar" not in _render(_DATA_TABLE, state=appended, rows=_ROWS)
 
 
 def test_data_table_none_mode_has_no_navigation():
@@ -887,3 +1023,91 @@ def test_back_to_top():
     )
     assert_snapshot(rendered, "back_to_top")
     assert 'data-threshold="600"' in rendered and " hidden>" in rendered
+
+
+DATE_RANGE = """{% from "date_range.html" import gth_date_range %}"""
+
+
+def _presets(rendered: str) -> list[str]:
+    return [p.split('"')[0] for p in rendered.split('data-preset="')[1:]]
+
+
+def test_date_range():
+    rendered = _render(DATE_RANGE + "{{ gth_date_range() }}")
+    assert_snapshot(rendered, "date_range")
+    assert 'name="date_from"' in rendered and 'name="date_to"' in rendered
+    assert 'data-fy-start-month="7"' in rendered
+    # Rendered hidden; date-range.js shows them.
+    assert 'class="d-flex flex-wrap gap-2 gth-date-range-presets" hidden' in rendered
+    assert _presets(rendered) == ["today", "month", "fy", "last_fy"]
+    assert "aria-describedby" not in rendered
+
+
+def test_date_range_with_values_and_errors():
+    rendered = _render(
+        """{% from "date_range.html" import gth_date_range %}
+        {{ gth_date_range("from", "to", value_from="2025-07-01", value_to="2026-06-30",
+            label="Period", errors=["From must be before To."], help_text="Inclusive.") }}"""
+    )
+    assert_snapshot(rendered, "date_range_with_values_and_errors")
+    assert 'value="2025-07-01"' in rendered and 'value="2026-06-30"' in rendered
+    assert rendered.count('aria-describedby="gth-field-from-help gth-field-from-error"') == 2
+    assert rendered.count('aria-invalid="true"') == 2
+
+
+def test_date_range_presets_subset():
+    rendered = _render(
+        """{% from "date_range.html" import gth_date_range %}
+        {{ gth_date_range(presets=("fy", "bogus", "today"), fy_start_month=1, hide_label=True) }}"""
+    )
+    assert_snapshot(rendered, "date_range_presets_subset")
+    assert _presets(rendered) == ["fy", "today"]
+    assert 'data-fy-start-month="1"' in rendered
+    assert 'class="form-label visually-hidden"' in rendered
+
+    bare = _render(DATE_RANGE + "{{ gth_date_range(presets=()) }}")
+    assert "gth-date-range-presets" not in bare
+
+
+FILE_DROP = """{% from "file_drop.html" import gth_file_drop %}"""
+
+
+def test_file_drop():
+    rendered = _render(FILE_DROP + """{{ gth_file_drop("file", "File") }}""")
+    assert_snapshot(rendered, "file_drop")
+    assert 'type="file"' in rendered and 'class="visually-hidden gth-file-drop-input"' in rendered
+    assert "accept=" not in rendered and "data-max-size" not in rendered
+    assert " multiple" not in rendered
+    assert 'aria-describedby="gth-field-file-error"' in rendered
+    assert "gth-file-drop-hint" not in rendered
+    assert 'aria-live="polite"></ul>' in rendered  # empty, so CSS :empty hides it
+
+
+def test_file_drop_accept_and_size():
+    rendered = _render(
+        FILE_DROP + """{{ gth_file_drop("docs", "Documents", accept=(".csv", ".xlsx"),
+            max_size=5 * 1024 * 1024, multiple=True, help_text="Re-uploading is safe.",
+            input_attrs={"required": "required"}) }}"""
+    )
+    assert_snapshot(rendered, "file_drop_accept_and_size")
+    assert 'accept=".csv,.xlsx"' in rendered and 'data-accept=".csv,.xlsx"' in rendered
+    assert 'data-max-size="5242880" data-max-label="5 MB"' in rendered
+    assert ">CSV, XLSX · up to 5 MB<" in rendered
+    assert " multiple" in rendered and 'required="required"' in rendered
+    assert ">Drop files here or browse<" in rendered
+    described = 'aria-describedby="gth-field-docs-hint gth-field-docs-help gth-field-docs-error"'
+    assert described in rendered
+
+    sizes = _render(FILE_DROP + """{{ gth_file_drop("a", "A", max_size=1536) }}
+        {{ gth_file_drop("b", "B", accept="image/*", max_size=500) }}""")
+    assert ">up to 1.5 KB<" in sizes and ">image/* · up to 500 B<" in sizes
+
+
+def test_file_drop_with_errors():
+    rendered = _render(
+        FILE_DROP + """{{ gth_file_drop("file", "File", errors=["Bad date.", "Too big."]) }}"""
+    )
+    assert_snapshot(rendered, "file_drop_with_errors")
+    assert rendered.count("<li data-server>") == 2 and "Drop a file here" in rendered
+    assert 'aria-invalid="true"' in rendered
+    assert 'class="gth-file-drop-zone is-invalid"' in rendered

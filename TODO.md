@@ -20,20 +20,6 @@
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
-### Data & forms
-- [ ] `gth_date_range` — two native date inputs plus preset chips (Today, This month, This FY, Last FY; FY start
-  month configurable) — PyFinBot's transaction filters and reports
-- [ ] `gth_file_drop` — drop zone with an htmx upload progress bar (`htmx:xhr:progress`), accept/size hints and a
-  per-file error list — PyFinBot's import page
-- [ ] `gth_data_table` bulk selection — row checkboxes + a sticky action bar ("3 selected · Archive · Delete"),
-  keyboard-accessible, selection kept across load-more pages
-- [ ] `gth_data_table` column visibility + density toggle, remembered per table (localStorage)
-- [ ] `TableState.export_url` — the current filters/sort as a CSV link (the consumer writes the CSV; gth-ui builds
-  the URL and an export button)
-- [ ] `gth_form_field` extras — input prefix/suffix (`$`, `%`, units), help text, character counter
-- [ ] Formatting filters registered by `install()` — `money`, `number` (full precision, trailing zeros trimmed) and
-  `date`, upstreamed from PyFinBot's `money`/`qty` filters
-
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
@@ -81,7 +67,16 @@
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-- [ ] Swap `_table_refresh.html` for `gth_data_table(refresh_event=…)` once it ships
+- [ ] Swap the hand-built From/To date inputs in `transactions.html`'s filter bar for `gth_date_range` (same
+  `date_from`/`date_to` params, `fy_start_month=7`) once the release carrying it is tagged — `install()` already
+  supplies `date_range_js_url`
+- [ ] Swap `import.html`'s plain file field for `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
+  max_size=…)` in the same release, giving drag-and-drop, the type/size check before upload and progress for big
+  spreadsheets. The upload route's `File(None)` already avoids the empty-submit JSON 422
+- [ ] Drop `templating.py`'s `_money` / `_qty` for the shared `money` / `number` filters that `install()` now
+  registers (its own assignments after `install()` win until they're removed). `|string|qty` becomes `|number`, since
+  floats are handled. **`money` now prints `$`** (`$1,234.50`), so check the stat cards and report columns and use
+  `|money("")` where a `$` is already in the heading. `_fy` stays PyFinBot's own
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

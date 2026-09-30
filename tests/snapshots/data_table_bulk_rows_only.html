@@ -1,0 +1,31 @@
+
+
+
+
+
+
+
+<tr>
+
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="Bolt" aria-label="Select Bolt"></td><td>Bolt</td><td>3</td></tr>
+
+<tr>
+
+<td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="Nut" aria-label="Select Nut"></td><td>Nut</td><td>9</td></tr>
+
+
+
+
+
+<tr class="gth-pagination gth-table-load-more">
+  <td colspan="3" class="text-center py-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+      hx-get="/parts?page=3&amp;partial=rows" hx-target="closest tr" hx-swap="outerHTML">
+      Load more <span class="text-secondary">(9 total)</span>
+    </button>
+  </td>
+</tr>
+
+
+
+

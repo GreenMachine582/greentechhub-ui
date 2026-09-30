@@ -10,16 +10,20 @@ directly:
 """
 
 import asyncio
+import csv
+import io
+from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
+from starlette.datastructures import UploadFile
 
 import greentechhub_ui
 from greentechhub_ui.htmx import trigger, wants_fragment
@@ -51,11 +55,15 @@ RECORDS = [
         "category": RECORD_CATEGORIES[i % 4],
         "stock": (i * 37) % 250,
         "price": round(((i * 53) % 900) / 10 + 4.99, 2),
+        # Every 5 days from Jan 2025 to Aug 2026 — spans two AU financial years.
+        "added": date(2025, 1, 1) + timedelta(days=i * 5),
     }
     for i in range(1, 121)
 ]
-# The table refresh demo appends to RECORDS; POST /demo/reset trims it back.
+# The table refresh demo appends to RECORDS and the bulk actions change stock;
+# POST /demo/reset trims it back and restores the stock.
 _RECORDS_INITIAL = len(RECORDS)
+_RECORDS_STOCK = [r["stock"] for r in RECORDS]
 CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
     {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
 ]
@@ -145,12 +153,15 @@ PLAYGROUND_NAV = [
         {"label": "Table", "url": "/data#table"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
+        {"label": "Formatting", "url": "/data#formatting"},
         {"label": "Data tables", "url": "/tables", "icon": "grid-3x3"},
         {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
     ]},
     {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
         {"label": "Form + validation", "url": "/forms#form"},
         {"label": "Chips + switch", "url": "/forms#chips"},
+        {"label": "Date range", "url": "/forms#date-range"},
+        {"label": "File drop", "url": "/forms#file-drop"},
         {"label": "Multiselect + tags", "url": "/forms#multiselect"},
         {"label": "Record picker", "url": "/forms#record-picker"},
         {"label": "Busy button", "url": "/forms#busy-button"},
@@ -274,6 +285,7 @@ async def data_page(request: Request):
 @app.get("/forms", response_class=HTMLResponse)
 async def forms_page(request: Request):
     return _page(request, "forms", field_errors={}, budget_value=250,
+                 upload_accept=UPLOAD_ACCEPT, upload_max_size=UPLOAD_MAX_SIZE,
                  **_multi_context(tags=["urgent"]))
 
 
@@ -313,6 +325,8 @@ async def demo_reset():
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     del RECORDS[_RECORDS_INITIAL:]
+    for r, stock in zip(RECORDS, _RECORDS_STOCK, strict=True):
+        r["stock"] = stock
     return hx_response(greentechhub_ui.toast(
         "Demo data reset.", "info",
         events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
@@ -324,8 +338,37 @@ async def add_record():
     (gth_data_table refresh_event="recordsChanged"), keeping its sort/filters."""
     n = len(RECORDS) - _RECORDS_INITIAL + 1
     RECORDS.append({"id": len(RECORDS) + 1, "name": f"Added sensor {n}", "category": "Sensor",
-                    "stock": 1, "price": 9.99})
+                    "stock": 1, "price": 9.99, "added": date.today()})
     return hx_response(greentechhub_ui.toast(f"Added sensor {n}", events=["recordsChanged"]))
+
+
+async def _bulk_records(request: Request) -> list[dict]:
+    """The records a gth_data_table bulk action posted (repeated `ids`)."""
+    form = await request.form()
+    ids = {int(i) for i in form.getlist("ids") if str(i).isdigit()}
+    return [r for r in RECORDS if r["id"] in ids]
+
+
+def _records_word(n: int) -> str:
+    return f"{n} record" if n == 1 else f"{n} records"
+
+
+@app.post("/demo/records/restock")
+async def restock_records(request: Request):
+    rows = await _bulk_records(request)
+    for r in rows:
+        r["stock"] += 50
+    return hx_response(greentechhub_ui.toast(f"Restocked {_records_word(len(rows))}.",
+                                             events=["recordsChanged"]))
+
+
+@app.post("/demo/records/sold-out")
+async def sold_out_records(request: Request):
+    rows = await _bulk_records(request)
+    for r in rows:
+        r["stock"] = 0
+    return hx_response(greentechhub_ui.toast(f"Marked {_records_word(len(rows))} sold out.",
+                                             "warning", events=["recordsChanged"]))
 
 
 @app.get("/table-demo/filter", response_class=HTMLResponse)
@@ -342,19 +385,21 @@ async def pagination_list(request: Request, offset: int = 0):
     return templates.TemplateResponse(request, "_pagination_list.html", _paginate_widgets(offset))
 
 
+NOTES_MAX = 140
+
+
 @app.post("/form-demo", response_class=HTMLResponse)
-async def form_demo(request: Request, budget: float = Form(...)):
-    errors = _validate_budget(budget)
-    if errors:
-        resp = templates.TemplateResponse(request, "_form_demo.html", {
-            "field_errors": {"budget": errors},
-            "budget_value": budget,
-        }, status_code=422)
-        return resp
-    resp = templates.TemplateResponse(request, "_form_demo.html", {
-        "field_errors": {},
-        "budget_value": budget,
-    })
+async def form_demo(request: Request, budget: float = Form(...), notes: str = Form("")):
+    field_errors = {}
+    if errors := _validate_budget(budget):
+        field_errors["budget"] = errors
+    # maxlength stops the browser; the server still has to check.
+    if len(notes) > NOTES_MAX:
+        field_errors["notes"] = [f"Keep notes to {NOTES_MAX} characters."]
+    context = {"field_errors": field_errors, "budget_value": budget, "notes_value": notes}
+    if field_errors:
+        return templates.TemplateResponse(request, "_form_demo.html", context, status_code=422)
+    resp = templates.TemplateResponse(request, "_form_demo.html", context)
     resp.headers["HX-Trigger"] = greentechhub_ui.toast(f"Saved budget: ${budget:.2f}")
     return resp
 
@@ -415,12 +460,20 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         mode=mode,
         page_size=10,
         page_sizes=(10, 25, 50),
-        sortable=("name", "category", "stock", "price"),
+        sortable=("name", "category", "stock", "price", "added"),
         default_sort="name",
-        filter_params=("q", "category"),
+        filter_params=("q", "category", "date_from", "date_to"),
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
+        export_base_url="/tables/export.csv" if table_id == "records" else None,
     )
+
+
+def _parse_date(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
 
 
 def _query_records(state: greentechhub_ui.TableState):
@@ -431,6 +484,10 @@ def _query_records(state: greentechhub_ui.TableState):
         rows = [r for r in rows if q in r["name"].lower()]
     if category := state.filters.get("category"):
         rows = [r for r in rows if r["category"] == category]
+    if date_from := _parse_date(state.filters.get("date_from")):
+        rows = [r for r in rows if r["added"] >= date_from]
+    if date_to := _parse_date(state.filters.get("date_to")):
+        rows = [r for r in rows if r["added"] <= date_to]
     if state.sort:
         rows = sorted(rows, key=lambda r: (r[state.sort], r["id"]),
                       reverse=state.direction == "desc")
@@ -438,6 +495,22 @@ def _query_records(state: greentechhub_ui.TableState):
     if state.mode != "none":
         rows = rows[state.offset: state.offset + state.limit]
     return rows, state.with_result(total=total)
+
+
+@app.get("/tables/export.csv")
+async def tables_export(request: Request):
+    """TableState.export_url's endpoint: the same state as the table (so the
+    same allow-listed filters and sort), every matching row, no paging."""
+    state = _records_state(request.query_params, mode="none", scroll=False, base_url="/tables")
+    rows, _ = _query_records(state)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["ID", "Name", "Category", "Stock", "Price", "Added"])
+    for r in rows:
+        writer.writerow([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
+                         r["added"].isoformat()])
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="records.csv"'})
 
 
 @app.get("/tables", response_class=HTMLResponse)
@@ -730,6 +803,11 @@ async def demo_tab(key: str):
                         f"<strong>{key}</strong> pane from the server.</p>")
 
 
+@app.post("/demo/date-range", response_class=HTMLResponse)
+async def demo_date_range(date_from: str = Form(""), date_to: str = Form("")):
+    return HTMLResponse(f"date_from={date_from or '(open)'}, date_to={date_to or '(open)'}")
+
+
 @app.post("/demo/chips", response_class=HTMLResponse)
 async def demo_chips(request: Request):
     form = await request.form()
@@ -756,6 +834,43 @@ async def demo_multi(request: Request):
     context = _multi_context(widgets, tags)
     context["saved"] = f"widgets={','.join(widgets)} tags={','.join(tags) or '-'}"
     return templates.TemplateResponse(request, "_multi_form.html", context)
+
+
+UPLOAD_ACCEPT = (".csv", ".xlsx")
+UPLOAD_MAX_SIZE = 1024 * 1024
+UPLOAD_DELAY = 1.0  # seconds; long enough to see the "Processing…" bar
+
+
+def _upload_context(errors=(), uploaded=None) -> dict:
+    return {"accept": UPLOAD_ACCEPT, "max_size": UPLOAD_MAX_SIZE, "errors": list(errors),
+            "uploaded": uploaded}
+
+
+@app.post("/demo/upload", response_class=HTMLResponse)
+async def demo_upload(request: Request):
+    """gth_file_drop's server side: re-check what the browser already checked.
+    Read the form directly: with nothing chosen the browser still sends an
+    empty part, which Starlette parses as a str, and list[UploadFile] = File()
+    would answer with FastAPI's JSON 422 instead of the form."""
+    await asyncio.sleep(UPLOAD_DELAY)
+    form = await request.form()
+    files = [f for f in form.getlist("files") if isinstance(f, UploadFile) and f.filename]
+    errors, done = [], []
+    for f in files:
+        size = len(await f.read())
+        if not f.filename.lower().endswith(UPLOAD_ACCEPT):
+            errors.append(f"{f.filename} — not an accepted file type")
+        elif size > UPLOAD_MAX_SIZE:
+            errors.append(f"{f.filename} — larger than 1 MB")
+        else:
+            done.append(f"{f.filename} ({size} B)")
+    if not files:
+        errors.append("Choose at least one file.")
+    if errors:
+        return templates.TemplateResponse(request, "_upload_form.html", _upload_context(errors),
+                                          status_code=422)
+    return templates.TemplateResponse(request, "_upload_form.html",
+                                      _upload_context(uploaded=", ".join(done)))
 
 
 @app.post("/demo/slow-job")

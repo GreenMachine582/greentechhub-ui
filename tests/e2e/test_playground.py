@@ -5,6 +5,8 @@ Skips cleanly (not fails) if playwright isn't installed — see conftest.py's
 """
 
 import re
+from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect
@@ -368,6 +370,249 @@ def test_data_table_infinite_inside_scroll_box(page, playground_url):
     assert th.evaluate("el => getComputedStyle(el).position") == "sticky"
 
 
+# ── gth-data-table bulk selection ────────────────────────────────────────
+
+BULK_BAR = "#records [data-gth-bulk]"
+BULK_COUNT = "#records .gth-table-bulk-count"
+SELECT_ALL = "#records [data-gth-select-all]"
+
+
+def _row_box(page, n):
+    return page.locator(f"{RECORD_ROWS} [data-gth-select]").nth(n)
+
+
+def test_bulk_selection_survives_paging_and_sort_but_not_filters(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    _row_box(page, 0).check()
+    _row_box(page, 2).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
+    expect(page.locator(RECORD_ROWS).nth(0)).to_have_class(re.compile("table-active"))
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+
+    page.click("#records .gth-table-pager a[aria-label='Page 2']")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected (2 on other pages)")
+    _htmx_idle(page)
+    page.click("#records .gth-table-pager a[aria-label='Page 1']")
+    expect(_row_box(page, 0)).to_be_checked()
+    expect(_row_box(page, 2)).to_be_checked()
+    expect(_row_box(page, 1)).not_to_be_checked()
+
+    _htmx_idle(page)
+    name_header = page.locator("#records th:has-text('Name')")
+    name_header.locator("button").click()  # re-sorts, same filters
+    expect(name_header).to_have_attribute("aria-sort", "descending")
+    expect(page.locator(BULK_COUNT)).to_contain_text("2 selected")
+
+    _htmx_idle(page)
+    page.click(".gth-table-filter label:has-text('Cable')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(0)
+
+
+def test_bulk_select_all_and_shift_click_range(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    page.locator(SELECT_ALL).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+    _row_box(page, 4).uncheck()
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+    page.get_by_role("button", name="Clear selection").click()
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+
+    _row_box(page, 1).click()
+    _row_box(page, 5).click(modifiers=["Shift"])
+    expect(page.locator(BULK_COUNT)).to_have_text("5 selected")
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(5)
+
+
+def test_bulk_selection_kept_across_load_more(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=load_more")
+    page.locator(SELECT_ALL).check()
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+    _htmx_idle(page)
+    page.click("#records .gth-table-load-more button")
+    expect(page.locator(RECORD_ROWS)).to_have_count(20)
+    expect(page.locator(f"{RECORD_ROWS} [data-gth-select]:checked")).to_have_count(10)
+    expect(_row_box(page, 15)).not_to_be_checked()
+    expect(page.locator(SELECT_ALL)).to_have_js_property("indeterminate", True)
+    expect(page.locator(BULK_COUNT)).to_have_text("10 selected")
+
+
+def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    first_stock = int(page.locator(RECORD_ROWS).nth(0).locator("td.text-end").first.inner_text())
+    posted = []
+    page.on("request", lambda r: posted.append(r.post_data)
+            if r.url.endswith("/demo/records/restock") else None)
+    try:
+        _row_box(page, 0).check()
+        page.click("#records .gth-table-pager a[aria-label='Page 2']")
+        expect(page.locator(BULK_COUNT)).to_contain_text("on other pages")
+        _htmx_idle(page)
+        _row_box(page, 0).check()
+        page.get_by_role("button", name="Restock +50").click()
+        expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 2 records.")
+        expect(page.locator(BULK_BAR)).to_be_hidden()
+        assert len(posted) == 1 and posted[0].count("ids=") == 2
+        # refresh_event re-queries page 1, where the first row was restocked.
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("1–10")
+        stock = page.locator(RECORD_ROWS).nth(0).locator("td.text-end").first
+        expect(stock).to_have_text(str(first_stock + 50))
+        expect(_row_box(page, 0)).not_to_be_checked()
+
+        page.on("dialog", lambda d: d.accept())  # "Mark sold out" confirms first
+        _row_box(page, 0).check()
+        page.get_by_role("button", name="Mark sold out").click()
+        expect(stock).to_have_text("0")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_bulk_selection_by_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    _row_box(page, 0).focus()
+    page.keyboard.press("Space")
+    expect(page.locator(BULK_COUNT)).to_have_text("1 selected")
+    page.keyboard.press("Tab")
+    expect(_row_box(page, 1)).to_be_focused()
+    page.keyboard.press("Space")
+    expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
+    expect(page.locator("#records-bulk-status")).to_have_text("2 selected")
+    page.keyboard.press("Escape")
+    expect(page.locator(BULK_BAR)).to_be_hidden()
+    expect(page.locator("#records-bulk-status")).to_have_text("Selection cleared")
+
+
+# ── gth-data-table view options ──────────────────────────────────────────
+
+VIEW_TOGGLE = "#records-view-toggle"
+
+
+def _col_toggle(page, key):
+    return page.locator(f"#records [data-gth-col-toggle='{key}']")
+
+
+def _header(page, key):
+    return page.locator(f"#records thead th[data-gth-col='{key}']")
+
+
+def _clear_views(page):
+    page.evaluate("""() => Object.keys(localStorage)
+        .filter(k => k.startsWith("gth-table-view:")).forEach(k => localStorage.removeItem(k))""")
+
+
+def test_view_columns_hide_and_persist(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        # ID starts hidden (header and cells); Name is pinned.
+        expect(_header(page, "id")).to_be_hidden()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=1")).to_be_hidden()
+        page.click(VIEW_TOGGLE)
+        expect(_col_toggle(page, "id")).not_to_be_checked()
+        expect(_col_toggle(page, "name")).to_be_disabled()
+
+        _col_toggle(page, "category").uncheck()
+        expect(_header(page, "category")).to_be_hidden()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=3")).to_be_hidden()
+        _col_toggle(page, "id").check()
+        expect(_header(page, "id")).to_be_visible()
+        page.keyboard.press("Escape")
+
+        # A sort swap and a page change keep the view; so does a reload.
+        _header(page, "price").locator("button").click()
+        expect(_header(page, "price")).to_have_attribute("aria-sort", "ascending")
+        expect(_header(page, "category")).to_be_hidden()
+        _htmx_idle(page)
+        page.click("#records .gth-table-pager a[aria-label='Page 2']")
+        expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td >> nth=3")).to_be_hidden()
+        page.reload()
+        expect(_header(page, "category")).to_be_hidden()
+        expect(_header(page, "id")).to_be_visible()
+
+        # Reset brings the defaults back.
+        page.click(VIEW_TOGGLE)
+        page.get_by_role("button", name="Reset view").click()
+        expect(_header(page, "category")).to_be_visible()
+        expect(_header(page, "id")).to_be_hidden()
+    finally:
+        _clear_views(page)
+
+
+def test_view_keeps_one_column_and_covers_appended_rows(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=load_more")
+    try:
+        page.click(VIEW_TOGGLE)
+        for key in ("category", "stock", "price", "added"):
+            _col_toggle(page, key).uncheck()
+        # Name is pinned, so every hideable column can go; the table keeps Name.
+        expect(_header(page, "name")).to_be_visible()
+        page.keyboard.press("Escape")
+        _htmx_idle(page)
+        page.click("#records .gth-table-load-more button")
+        expect(page.locator(RECORD_ROWS)).to_have_count(20)
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=3")).to_be_hidden()  # Category
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=0")).to_be_visible()  # checkbox
+    finally:
+        _clear_views(page)
+
+
+def test_view_density_compact_persists(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        table = page.locator("#records table")
+        expect(table).not_to_have_class(re.compile("table-sm"))
+        page.click(VIEW_TOGGLE)
+        page.get_by_label("Compact").check()
+        expect(table).to_have_class(re.compile("table-sm"))
+        page.reload()
+        expect(page.locator("#records table")).to_have_class(re.compile("gth-table-compact"))
+    finally:
+        _clear_views(page)
+
+
+def test_view_menu_by_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    try:
+        page.locator(VIEW_TOGGLE).focus()
+        page.keyboard.press("Enter")
+        expect(page.locator(VIEW_TOGGLE)).to_have_attribute("aria-expanded", "true")
+        page.keyboard.press("Tab")  # into the menu: the first column's checkbox
+        expect(_col_toggle(page, "id")).to_be_focused()
+        page.keyboard.press("Space")
+        expect(_header(page, "id")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(page.locator(VIEW_TOGGLE)).to_have_attribute("aria-expanded", "false")
+    finally:
+        _clear_views(page)
+
+
+# ── TableState.export_url ─────────────────────────────────────────────────
+
+def test_export_link_follows_filters_and_sort_and_downloads(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    export = page.locator("#records .gth-table-export")
+    expect(export).to_have_attribute("href", "/tables/export.csv")
+    page.click(".gth-table-filter label:has-text('Board')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    price = page.locator("#records th:has-text('Price')")
+    price.locator("button").click()
+    expect(price).to_have_attribute("aria-sort", "ascending")
+    expect(export).to_have_attribute(
+        "href", "/tables/export.csv?category=Board&sort=price&dir=asc")
+
+    with page.expect_download() as info:
+        export.click()
+    download = info.value
+    assert download.suggested_filename == "records.csv"
+    lines = Path(download.path()).read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "ID,Name,Category,Stock,Price,Added"
+    assert len(lines) == 31 and all(",Board," in line for line in lines[1:])
+
+
 # ── gth-badge / gth-tabs / gth-chips / gth-switch ─────────────────────────
 
 
@@ -404,6 +649,244 @@ def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
     expect(checked).to_be_visible()
     unchecked = page.locator("#chips-demo label:has-text('Motors') .gth-chip-check")
     expect(unchecked).to_be_hidden()
+
+
+# ── gth-form-field extras ────────────────────────────────────────────────
+
+NOTES = "#gth-field-notes"
+NOTES_COUNTER = "#gth-field-notes-counter"
+COUNTER_STATUS = "#gth-char-counter-status"
+
+
+def test_form_field_counter_tracks_typing_and_announces_thresholds(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    counter = page.locator(NOTES_COUNTER)
+    expect(counter).to_have_text("0 / 140")
+    page.fill(NOTES, "Hello")
+    expect(counter).to_have_text("5 / 140")
+    expect(counter).not_to_have_class(re.compile("is-near"))
+
+    page.fill(NOTES, "x" * 125)
+    page.locator(NOTES).press("End")
+    page.keyboard.type("y")  # 126 = 90% of 140
+    expect(counter).to_have_text("126 / 140")
+    expect(counter).to_have_class(re.compile("is-near"))
+    expect(page.locator(COUNTER_STATUS)).to_have_text("14 characters left")
+
+    page.keyboard.type("z" * 20)  # the browser stops at maxlength
+    expect(counter).to_have_text("140 / 140")
+    expect(counter).to_have_class(re.compile("is-full"))
+    assert len(page.locator(NOTES).input_value()) == 140
+    expect(page.locator(COUNTER_STATUS)).to_have_text("Character limit reached")
+
+    # The server re-renders the value and the count (counter set before JS runs).
+    page.click("#form-demo-container button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved budget")
+    expect(page.locator(NOTES_COUNTER)).to_have_text("140 / 140")
+
+
+def test_form_field_affixes_wrap_the_input_and_errors_sit_below(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    group = page.locator("#form-demo-container .input-group").first
+    expect(group.locator(".input-group-text").first).to_have_text("$")
+    expect(group.locator(".input-group-text").last).to_have_text("AUD")
+    described = page.locator("#gth-field-budget").get_attribute("aria-describedby")
+    assert "gth-field-budget-prefix" in described and "gth-field-budget-suffix" in described
+    page.fill("#gth-field-budget", "-5")
+    page.click("#form-demo-container button[type=submit]")
+    expect(page.locator("#gth-field-budget")).to_have_class(re.compile("is-invalid"))
+    expect(page.locator("#gth-field-budget-error")).to_be_visible()
+    expect(page.locator("#form-demo-container .input-group.has-validation")).to_have_count(1)
+
+
+def test_form_field_counter_handles_any_field_name(page, playground_url):
+    # A name with a quote makes an id that's an invalid CSS selector unless escaped.
+    page.goto(f"{playground_url}/forms")
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.evaluate("""() => {
+        const form = document.getElementById("form-demo-container");
+        form.insertAdjacentHTML("beforeend",
+            '<input id=\\'gth-field-a"b\\' maxlength="5">' +
+            '<div id="odd-counter" data-gth-counter-for=\\'gth-field-a"b\\'>0 / 5</div>');
+    }""")
+    page.locator("[maxlength='5']").type("hi")
+    expect(page.locator("#odd-counter")).to_have_text("2 / 5")
+    assert errors == []
+
+
+# ── no script errors anywhere ─────────────────────────────────────────────
+
+def test_no_console_errors_on_any_page(page, playground_url):
+    """Every gth-ui script loads on every page (shell_globals), so each must
+    run cleanly where its component is absent. Missing-resource noise (e.g.
+    DevTools fetching vendored .map files) isn't a script error."""
+    errors = []
+    page.on("pageerror", lambda e: errors.append(f"{page.url}: {e}"))
+    page.on("console", lambda m: errors.append(f"{page.url}: {m.text}")
+            if m.type == "error" and "Failed to load resource" not in m.text else None)
+    for path in [*PAGES, "/tables?mode=load_more", "/tables?mode=infinite&scroll=1"]:
+        page.goto(f"{playground_url}{path}")
+        _htmx_idle(page)
+    # Swaps re-run every script's htmx:load hook.
+    page.goto(f"{playground_url}/tables?mode=pages")
+    page.click(".gth-table-filter label:has-text('Cable')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    page.click("#records .gth-table-pager a[aria-label='Page 2']")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+    assert errors == []
+
+
+# ── gth-date-range ────────────────────────────────────────────────────────
+
+DR = "#date-range-demo"
+
+
+def test_date_range_presets_fill_inputs_and_fire_one_change(page, playground_url):
+    page.clock.set_fixed_time(datetime(2026, 3, 15, 10))
+    posts = []
+    page.on("request", lambda r: posts.append(r) if r.url.endswith("/demo/date-range") else None)
+    page.goto(f"{playground_url}/forms")
+    result = page.locator("#date-range-demo-result")
+    month = page.locator(f"{DR} [data-preset=month]")
+    expect(month).to_be_visible()  # rendered hidden, shown by date-range.js
+
+    month.click()
+    expect(result).to_have_text("date_from=2026-03-01, date_to=2026-03-31")
+    expect(month).to_have_attribute("aria-pressed", "true")
+    expect(month.locator(".gth-chip-check")).to_be_visible()
+    assert len(posts) == 1
+
+    page.click(f"{DR} [data-preset=fy]")
+    expect(result).to_have_text("date_from=2025-07-01, date_to=2026-06-30")
+    expect(month).to_have_attribute("aria-pressed", "false")
+    page.click(f"{DR} [data-preset=last_fy]")
+    expect(result).to_have_text("date_from=2024-07-01, date_to=2025-06-30")
+    page.click(f"{DR} [data-preset=today]")
+    expect(result).to_have_text("date_from=2026-03-15, date_to=2026-03-15")
+    assert len(posts) == 4
+
+    # Editing a date by hand clears the pressed chip.
+    page.fill("#gth-field-date_from", "2026-03-01")
+    expect(page.locator(f"{DR} [data-preset=today]")).to_have_attribute("aria-pressed", "false")
+
+
+def test_date_range_filters_the_data_table(page, playground_url):
+    page.clock.set_fixed_time(datetime(2026, 3, 15, 10))
+    page.goto(f"{playground_url}/tables?mode=pages&page=3")
+    page.click(".gth-table-filter [data-preset=fy]")
+    summary = page.locator("#records .gth-table-summary")
+    expect(summary).to_contain_text("1–10 of 73")
+    assert "date_from=2025-07-01" in page.url and "date_to=2026-06-30" in page.url
+    # The filter bar isn't swapped, so the chip stays pressed.
+    fy_chip = page.locator(".gth-table-filter [data-preset=fy]")
+    expect(fy_chip).to_have_attribute("aria-pressed", "true")
+
+
+# ── gth-file-drop ─────────────────────────────────────────────────────────
+
+FD = "#upload-demo [data-gth-file-drop]"
+FD_INPUT = "#gth-field-files"
+CSV = {"name": "a.csv", "mimeType": "text/csv", "buffer": b"x,y\n1,2\n"}
+
+
+def _picked(page):
+    return page.eval_on_selector(FD_INPUT, "el => [...el.files].map(f => f.name)")
+
+
+def test_file_drop_lists_picks_and_rejects_bad_files(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.set_input_files(FD_INPUT, [CSV])
+    files = page.locator(f"{FD} .gth-file-drop-file")
+    expect(files).to_have_count(1)
+    expect(files.first).to_contain_text("a.csv")
+    expect(files.first.locator(".gth-file-drop-size")).to_have_text("8 B")
+
+    page.set_input_files(FD_INPUT, [
+        {"name": "notes.txt", "mimeType": "text/plain", "buffer": b"hi"},
+        {"name": "big.csv", "mimeType": "text/csv", "buffer": b"x" * (1024 * 1024 + 1)},
+        CSV,
+    ])
+    errors = page.locator(f"{FD} .gth-file-drop-errors li")
+    expect(errors).to_have_text(["notes.txt — not an accepted file type",
+                                 "big.csv — larger than 1 MB"])
+    expect(files).to_have_count(1)
+    assert _picked(page) == ["a.csv"]
+    expect(page.locator(FD_INPUT)).to_have_attribute("aria-invalid", "true")
+
+    page.set_input_files(FD_INPUT, [CSV])  # a clean pick clears the errors
+    expect(errors).to_have_count(0)
+    expect(page.locator(FD_INPUT)).not_to_have_attribute("aria-invalid", "true")
+
+
+def test_file_drop_accepts_a_drop(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    zone = page.locator(f"{FD} .gth-file-drop-zone")
+    zone.evaluate("""zone => {
+        const dt = new DataTransfer();
+        dt.items.add(new File(["a,b"], "dropped.csv", {type: "text/csv"}));
+        const init = {dataTransfer: dt, bubbles: true, cancelable: true};
+        zone.dispatchEvent(new DragEvent("dragover", init));
+        window.__gthDragover = zone.classList.contains("is-dragover");
+        zone.dispatchEvent(new DragEvent("drop", init));
+    }""")
+    assert page.evaluate("window.__gthDragover") is True
+    expect(zone).not_to_have_class(re.compile("is-dragover"))
+    assert _picked(page) == ["dropped.csv"]
+    expect(page.locator(f"{FD} .gth-file-drop-file")).to_contain_text("dropped.csv")
+
+
+def test_file_drop_uploads_with_progress_then_result(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    # Nothing chosen: the server's 422 is swapped in.
+    page.click("#upload-demo button[type=submit]")
+    expect(page.locator(f"{FD} .gth-file-drop-errors li")).to_have_text("Choose at least one file.")
+
+    page.set_input_files(FD_INPUT, [CSV])
+    page.click("#upload-demo button[type=submit]")
+    progress = page.locator(f"{FD} .gth-file-drop-progress")
+    expect(progress).to_be_visible()  # the demo server waits ~1s
+    expect(page.locator("#upload-demo-result")).to_have_text("Uploaded: a.csv (8 B)")
+    expect(page.locator(f"{FD} .gth-file-drop-progress")).to_be_hidden()
+
+
+def _xhr(loaded, total):
+    return {"lengthComputable": True, "loaded": loaded, "total": total}
+
+
+def test_file_drop_progress_bar_follows_xhr_progress(page, playground_url):
+    # Localhost uploads finish before a real progress event can be watched, so
+    # drive the bar with the events htmx would fire.
+    page.goto(f"{playground_url}/forms")
+    page.set_input_files(FD_INPUT, [CSV])
+    fire = """([name, detail]) => {
+        const form = document.getElementById("upload-demo");
+        form.dispatchEvent(new CustomEvent(name, {bubbles: true, detail: {elt: form, ...detail}}));
+    }"""
+    progress = page.locator(f"{FD} .gth-file-drop-progress")
+    page.evaluate(fire, ["htmx:beforeRequest", {}])
+    expect(progress).to_be_visible()
+    expect(progress).to_have_attribute("aria-valuenow", "0")
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(50, 100)])
+    expect(progress).to_have_attribute("aria-valuenow", "50")
+    assert progress.locator(".progress-bar").evaluate("el => el.style.width") == "50%"
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(100, 100)])
+    expect(progress).to_have_attribute("aria-valuetext", "Processing…")
+    expect(progress.locator(".progress-bar")).to_have_text("Processing…")
+    # The response download's own progress events don't move the bar back.
+    page.evaluate(fire, ["htmx:xhr:progress", _xhr(10, 900)])
+    expect(progress).to_have_attribute("aria-valuetext", "Processing…")
+    page.evaluate(fire, ["htmx:afterRequest", {}])
+    expect(progress).to_be_hidden()
+
+
+def test_file_drop_input_is_keyboard_reachable(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.locator(FD_INPUT).focus()
+    zone = page.locator(f"{FD} .gth-file-drop-zone")
+    shadow = zone.evaluate("el => getComputedStyle(el).boxShadow")
+    assert shadow != "none"  # the hidden input's focus ring is drawn on the zone
 
 
 # ── gth-multiselect ──────────────────────────────────────────────────────

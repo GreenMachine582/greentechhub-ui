@@ -19,6 +19,7 @@ from greentechhub_ui._paths import (
     templates_path,
     theme_path,
 )
+from greentechhub_ui.formatting import FILTERS
 from greentechhub_ui.shell import shell_globals
 
 _INSTALLED = "_greentechhub_ui_installed"
@@ -45,8 +46,10 @@ def install(env: Environment, **shell_kwargs: Any) -> Environment:
     """Make gth-ui's templates loadable from `env` — after the env's own
     loader, so an app template of the same name wins — and, given
     shell_globals() keyword arguments (service_name, nav_items, layout, …),
-    install those globals too. Safe to call twice (the loader is added once).
-    Returns env, for Django's `environment` callable:
+    install those globals too. Also registers the money / number / date
+    filters (greentechhub_ui.formatting), leaving any filter of the same name
+    the app already registered in place. Safe to call twice (the loader is
+    added once). Returns env, for Django's `environment` callable:
 
         def environment(**options):
             return greentechhub_ui.install(Environment(**options), service_name="…", nav_items=[…])
@@ -55,6 +58,8 @@ def install(env: Environment, **shell_kwargs: Any) -> Environment:
         ui_loaders = [FileSystemLoader(str(path)) for path in template_dirs()]
         env.loader = ChoiceLoader([env.loader, *ui_loaders] if env.loader else ui_loaders)
         setattr(env, _INSTALLED, True)
+    for name, fn in FILTERS.items():
+        env.filters.setdefault(name, fn)
     if shell_kwargs:
         env.globals.update(shell_globals(**shell_kwargs))
     return env

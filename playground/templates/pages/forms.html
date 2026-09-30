@@ -1,6 +1,7 @@
 {% extends "page.html" %}
 {% from "busy_button.html" import gth_busy_button %}
 {% from "chips.html" import gth_chips, gth_switch %}
+{% from "date_range.html" import gth_date_range %}
 {% from "record_picker.html" import gth_record_picker %}
 
 {% block page %}
@@ -26,6 +27,22 @@
         help_text="Unchecked switches submit nothing.") }}
     <p class="text-secondary small mb-0">Submitted: <code id="chips-demo-result">tags=motor, alerts=on</code></p>
   </form>
+</section>
+
+<section class="mb-5" id="date-range">
+  <h2 class="h4">gth-date-range</h2>
+  <form id="date-range-demo" hx-post="/demo/date-range" hx-target="#date-range-demo-result" hx-trigger="change">
+    {{ gth_date_range(help_text="A chip fills both dates and fires one change. FY starts in July (fy_start_month=7).") }}
+    <p class="text-secondary small mb-0">Submitted: <code id="date-range-demo-result">nothing yet</code></p>
+  </form>
+  <p class="text-secondary small mt-2 mb-0">Also filtering the <a href="/tables">data table</a> by date added.</p>
+</section>
+
+<section class="mb-5" id="file-drop">
+  <h2 class="h4">gth-file-drop</h2>
+  {% with accept=upload_accept, max_size=upload_max_size, errors=[], uploaded=none %}
+    {% include "_upload_form.html" %}
+  {% endwith %}
 </section>
 
 <section class="mb-5" id="multiselect">

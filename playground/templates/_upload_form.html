@@ -1,0 +1,11 @@
+{% from "form.html" import gth_form %}
+{% from "file_drop.html" import gth_file_drop %}
+{% call gth_form("/demo/upload", form_attrs={"hx-post": "/demo/upload", "hx-encoding": "multipart/form-data",
+    "hx-target": "this", "hx-swap": "outerHTML", "hx-disabled-elt": "find button[type=submit]", "id": "upload-demo"}) %}
+  {{ gth_file_drop("files", "Spreadsheets", accept=accept, max_size=max_size, multiple=True,
+      errors=errors, help_text="Try a .txt or a file over 1 MB. The server re-checks both and waits ~1s so “Processing…” shows.") }}
+  <div class="d-flex align-items-center gap-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-upload" aria-hidden="true"></i> Upload</button>
+    {% if uploaded %}<span class="text-secondary small" id="upload-demo-result">Uploaded: <code>{{ uploaded }}</code></span>{% endif %}
+  </div>
+{% endcall %}

@@ -40,7 +40,7 @@ framework-neutral helpers, each framework adapter the small framework-specific h
 
 | Need | gth-ui (any framework) | FastAPI (`greentechhub-fastapi`) | Django |
 |---|---|---|---|
-| Templates loadable | `greentechhub_ui.install(env, **shell_globals kwargs)` — adds gth-ui's loaders *after* the app's own and installs `shell_globals()` | `install(templates.env, service_name=…, nav_items=…)` on `Jinja2Templates` | `install()` inside the Jinja2 backend's `environment` callable; or `template_dirs()` in `TEMPLATES[...]["DIRS"]` |
+| Templates loadable | `greentechhub_ui.install(env, **shell_globals kwargs)` — adds gth-ui's loaders *after* the app's own, installs `shell_globals()`, and registers the `money` / `number` / `date` filters (never replacing an app's own) | `install(templates.env, service_name=…, nav_items=…)` on `Jinja2Templates` | `install()` inside the Jinja2 backend's `environment` callable; or `template_dirs()` in `TEMPLATES[...]["DIRS"]` |
 | Static files served | `static_dirs()` — `{"/gth-assets": static_path, "/gth-static": theme_path}`, the same prefixes `shell_globals()` renders URLs for | `mount_static_dirs(app, greentechhub_ui.static_dirs())` | `STATICFILES_DIRS = [(p.strip("/"), d) for p, d in static_dirs().items()]` |
 | `current_path` per request | — | `Jinja2Templates(..., context_processors=[ui_context])` | gth-django's context processor (see its `docs/context.md`) |
 | htmx: fragment or page? | `greentechhub_ui.htmx.wants_fragment(request.headers)`, `hx_target(...)`, `TableState.is_own_swap(...)` | same (Starlette headers are a Mapping) | same (`request.headers`) |
@@ -80,6 +80,11 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
+| `date_range_js_url` | none (no script rendered) — shows and drives `gth-date-range`'s preset chips (v0.11) |
+| `file_drop_js_url` | none (no script rendered) — drag-and-drop, client checks and upload progress for `gth-file-drop` (v0.11) |
+| `table_select_js_url` | none (no script rendered) — row selection and the bulk bar of `gth-data-table(bulk_actions=...)` (v0.11) |
+| `table_view_js_url` | none (no script rendered) — the View menu of `gth-data-table(view_options=True)`: hidden columns and density (v0.11) |
+| `char_counter_js_url` | none — `gth_form_field(maxlength=...)`'s counter then shows the server-rendered starting count only (v0.11) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
 | `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |

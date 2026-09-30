@@ -241,6 +241,90 @@ th[aria-sort] .gth-table-sort .bi {
   z-index: 1;
   background: var(--bs-body-bg);
 }
+/* Bulk selection: a narrow checkbox column, selected rows tinted with the
+   brand, and a bar that sticks to the viewport bottom while the table is in
+   view (it sits after the table, so it rests under it when scrolled past). */
+.gth-table-select {
+  width: 1%;
+  white-space: nowrap;
+}
+.gth-table-select .form-check-input {
+  margin-top: 0;
+  vertical-align: middle;
+}
+.gth-table-select .form-check-input:checked,
+.gth-table-select .form-check-input:indeterminate {
+  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-color-primary-dark);
+}
+.gth-table-select .form-check-input:focus {
+  border-color: var(--gth-color-primary);
+  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
+}
+.gth-data-table .table > tbody > tr.table-active > * {
+  --bs-table-bg-state: var(--gth-brand-subtle-bg);
+}
+.gth-table-bulk {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--gth-brand-subtle-border);
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 -0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+}
+.gth-table-bulk[hidden] {
+  display: none;
+}
+.gth-table-bulk-count {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+/* View options: the "View" menu above the table, hidden columns, compact rows. */
+.gth-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.gth-table-view-menu {
+  min-width: 13rem;
+}
+.gth-table-view-menu fieldset {
+  margin: 0;
+}
+.gth-table-view-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.gth-table-view-menu .form-check-input {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+.gth-table-view-menu .form-check-input:checked {
+  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-color-primary-dark);
+}
+.gth-table-view-menu .dropdown-item:has(:disabled) {
+  cursor: default;
+  color: var(--bs-secondary-color);
+}
+.gth-col-hidden {
+  display: none !important;
+}
+.gth-table-compact {
+  font-size: 0.875rem;
+}
 .gth-table-footer {
   padding-top: var(--gth-space-sm);
 }
@@ -281,8 +365,94 @@ th[aria-sort] .gth-table-sort .bi {
   display: none;
   margin-right: 0.25rem;
 }
-.btn-check:checked + .gth-chip .gth-chip-check {
+.btn-check:checked + .gth-chip .gth-chip-check,
+.gth-chip[aria-pressed="true"] .gth-chip-check {
   display: inline-block;
+}
+/* Toggle-button chips (gth-date-range presets) use aria-pressed, not a btn-check. */
+.gth-chip[aria-pressed="true"] {
+  color: var(--bs-btn-active-color);
+  background-color: var(--bs-btn-active-bg);
+  border-color: var(--bs-btn-active-border-color);
+}
+
+/* gth-file-drop — a dashed zone labelling a visually hidden file input; the
+   input's focus ring is drawn on the zone (input + label siblings). */
+.gth-file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  border: 2px dashed var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.gth-file-drop-zone:hover,
+.gth-file-drop-zone.is-dragover {
+  border-color: var(--gth-brand-fg);
+  background-color: var(--gth-brand-subtle-bg);
+}
+.gth-file-drop-input:focus-visible + .gth-file-drop-zone {
+  border-color: var(--gth-color-primary);
+  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
+}
+.gth-file-drop-zone.is-invalid {
+  border-color: var(--bs-form-invalid-border-color);
+}
+.gth-file-drop-input:disabled + .gth-file-drop-zone {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.gth-file-drop-icon {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--gth-brand-fg);
+}
+.gth-file-drop-hint {
+  font-size: 0.875em;
+  color: var(--bs-secondary-color);
+}
+.gth-file-drop-files,
+.gth-file-drop-errors {
+  margin: 0.5rem 0 0;
+  font-size: 0.875em;
+}
+.gth-file-drop-errors:empty {
+  display: none;
+}
+.gth-file-drop-file {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  overflow-wrap: anywhere;
+}
+.gth-file-drop-size {
+  flex-shrink: 0;
+  color: var(--bs-secondary-color);
+}
+.gth-file-drop-errors {
+  color: var(--bs-form-invalid-color);
+}
+.gth-file-drop-progress {
+  margin-top: 0.5rem;
+  --bs-progress-bar-bg: var(--gth-color-primary-dark);
+}
+
+/* gth-form-field character counter: right-aligned "N / max", amber from 90%,
+   red at the limit (the emphasis tokens keep contrast in both color modes). */
+.gth-char-counter {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gth-char-counter.is-near {
+  color: var(--bs-warning-text-emphasis);
+}
+.gth-char-counter.is-full {
+  color: var(--bs-danger-text-emphasis);
+  font-weight: 600;
 }
 
 /* gth-switch — brand color instead of Bootstrap's blue. */

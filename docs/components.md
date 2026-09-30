@@ -10,7 +10,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-card` | Standard bordered content container |
 | `gth-stat-card` | Dashboard KPI tile (label, value, delta, icon) |
 | `gth-table` | Table shell + body with a built-in empty state; the `<tbody>` can be swapped by an HTMX partial (filter/sort controls are the consumer's own — headers render as plain text) |
-| `gth-form` | Form wrapper with consistent label/validation-error layout |
+| `gth-form` | Form wrapper with consistent label/validation-error layout; `gth_form_field` adds prefix/suffix add-ons, a character counter and textarea (v0.11) |
 | `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Toasts over `HX-Trigger` (`greentechhub_ui.toast()`) and server-side `flashes` in one markup: kinds, title, icon, action link, duration/sticky, surface or solid (v0.8 look) |
@@ -20,7 +20,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
-| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7) |
+| `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
 | `gth-badge` | Status pill with good/bad/warn/info/neutral/brand tones, contrast-safe in both modes (v0.7) |
@@ -28,6 +28,8 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
+| `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
+| `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
 | `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
 | `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
@@ -521,3 +523,214 @@ TableState.is_own_swap(headers) -> bool                           # HX-Target is
   shows once, so a failing poll or a burst of lazy loads doesn't stack toasts.
 - A 401 carrying `HX-Redirect` (gth-fastapi's `require_page_identity`) never toasts: htmx navigates to the
   login page first.
+
+## Shipped signatures (v0.11)
+
+### Date range
+
+```jinja
+{# date_range.html — behaviour in static/js/date-range.js (date_range_js_url) #}
+gth_date_range(name_from="date_from", name_to="date_to", value_from=None, value_to=None,
+               label="Date range", hide_label=False, presets=("today", "month", "fy", "last_fy"),
+               fy_start_month=7, errors=None, help_text=None, field_class="mb-3")
+{# Two native <input type="date">s submitting YYYY-MM-DD (empty = open end).
+   presets picks and orders the chips; unknown keys are skipped, () renders
+   none. fy_start_month (1-12) sets the financial year: 7 = 1 Jul – 30 Jun.
+   The chips render hidden and date-range.js shows them, so without JS the
+   inputs still work. A chip fills both inputs from the browser's local date
+   and fires one bubbling `change`; the chip matching the current inputs is
+   aria-pressed. errors/help_text describe both inputs. #}
+```
+
+Inside a `gth_table_filter` slot it re-queries the table from page 1 on a chip click or a date edit; add both
+names to `filter_params` and parse them yourself (`TableState` keeps filters as strings):
+
+```jinja
+{% call gth_table_filter(table) %}
+  {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
+      hide_label=True, field_class="mb-0") }}
+{% endcall %}
+```
+
+### File drop
+
+```jinja
+{# file_drop.html — behaviour in static/js/file-drop.js (file_drop_js_url) #}
+gth_file_drop(name, label, accept=None, max_size=None, multiple=False, errors=None,
+              help_text=None, prompt=None, field_class="mb-3", input_attrs=None)
+{# A dashed drop zone labelling a real <input type="file"> (visually hidden, still
+   focusable — its focus ring is drawn on the zone). accept: ".csv,.xlsx" or a
+   sequence; max_size: bytes. Both become the hint ("CSV, XLSX · up to 5 MB") and
+   the client-side check on every pick or drop: a rejected file is removed from
+   the input and gets its own line in the error list ("big.csv — larger than
+   5 MB"). Without multiple, extra dropped files are rejected the same way.
+   errors: server messages, shown in the same list until the next pick. #}
+```
+
+The enclosing form sends the upload, so give it `hx-encoding="multipart/form-data"` (or `enctype`). While
+that request runs, the progress bar follows `htmx:xhr:progress`. htmx 1.9 fires that event for the response
+download as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
+stays there until `htmx:afterRequest`.
+
+**The server still has to check type and size**, because the client check is only a convenience. When
+nothing was chosen, the browser still sends an empty file part. Starlette parses that as a `str`, so
+`list[UploadFile] = File()` answers with FastAPI's JSON 422. Instead, take `UploadFile | None = File(None)`
+or read `await request.form()` and keep only the parts with a filename, as the playground's `/demo/upload`
+does. Then return the form re-rendered with `errors` and a 422, which `app.html` swaps in:
+
+```jinja
+{% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-encoding": "multipart/form-data",
+    "hx-target": "this", "hx-swap": "outerHTML"}) %}
+  {{ gth_file_drop("file", "File", accept=(".csv", ".xlsx"), max_size=5 * 1024 * 1024, errors=errors) }}
+  <button type="submit" class="btn btn-primary">Import</button>
+{% endcall %}
+```
+
+### Bulk selection
+
+```jinja
+{# table.html — behaviour in static/js/table-select.js (table_select_js_url) #}
+gth_data_table(state, headers, rows, ..., bulk_actions=None, select_name="ids")
+gth_table_select_cell(value, label)    {# first <td> of each row: a checkbox for `value`, "Select <label>" #}
+{# bulk_actions: [{"label", "url", "icon"?, "style"? (default "btn-outline-secondary"),
+                   "confirm"? (hx-confirm), "attrs"? (extra attributes)}]
+   A non-empty list adds a checkbox column (a tri-state select-all in the header,
+   headers and colspans shift by one) and a bar under the table that sticks to the
+   viewport bottom while anything is selected: "3 selected (1 on other pages)",
+   one button per action, and "Clear selection". Each button hx-posts every
+   selected value as `select_name` (repeated) with hx-swap="none". #}
+```
+
+The selection is a set of row values that table-select.js keeps per table id. It lasts through sorting, the
+pager, the page size, load-more and infinite appends, and `refresh_event` re-queries. It's cleared when the
+filters change, so an action never reaches rows the current filter hides. It's also cleared after an action
+succeeds, by "Clear selection", and by Esc. It isn't kept across a full page reload. Shift+click selects a
+range of the rows shown.
+
+Answer the action with an `HX-Trigger`, since nothing is swapped. Usually that's a toast carrying the table's
+`refresh_event`, so the table re-queries with its sort and filters:
+
+```python
+@app.post("/stocks/archive")
+async def archive(request: Request):
+    ids = (await request.form()).getlist("ids")
+    n = await repo.archive(ids)
+    return hx_response(toast(f"Archived {n} stocks.", events=["stocksChanged"]))
+```
+
+```jinja
+{% call(s) gth_data_table(table, headers, stocks, refresh_event="stocksChanged",
+    bulk_actions=[{"label": "Archive", "url": "/stocks/archive", "icon": "archive"},
+                  {"label": "Delete", "url": "/stocks/delete", "style": "btn-outline-danger",
+                   "confirm": "Delete the selected stocks?"}]) %}
+<tr>{{ gth_table_select_cell(s.id, s.symbol) }}<td>{{ s.symbol }}</td>…</tr>
+{% endcall %}
+```
+
+### Column visibility and density
+
+```jinja
+{# table.html — behaviour in static/js/table-view.js (table_view_js_url) #}
+gth_data_table(state, headers, rows, ..., view_options=False)
+{# view_options=True adds a "View" menu above the table: a checkbox per column,
+   Comfortable/Compact density (Bootstrap's table-sm), and "Reset view".
+   Header dicts gain:
+     "key"       the column's stored name (default: sort_key, then label)
+     "hideable"  False pins the column: always shown, its checkbox disabled
+     "hidden"    True hides it until the user shows it #}
+```
+
+The choice is stored in `localStorage["gth-table-view:<pathname>#<table id>"]`, so it's per browser, per page and
+per table. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
+load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
+cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
+so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
+column always stays shown. Without JS the menu stays hidden and every column shows.
+
+### Export
+
+```python
+TableState.from_query(..., export_base_url=None)   # the consumer's CSV endpoint, e.g. "/stocks/export.csv"
+TableState.export_url -> str | None                # that endpoint + the current filters and sort; never page/size
+```
+
+```jinja
+gth_data_table(state, headers, rows, ..., export_label="Export CSV")
+{# With state.export_url set, an `export_label` download link sits in the toolbar above
+   the table (next to the View menu). It's inside the table's wrapper, so every sort,
+   filter and refresh_event swap re-renders it with the current URL. It's a plain
+   <a download>, so it works without JS. #}
+```
+
+gth-ui builds the URL, and the consumer writes the CSV. Build the export's state with **the same
+`from_query` arguments** as the table, so it takes the same allow-listed filters and sort. Then fetch every
+matching row and ignore `offset`/`limit`:
+
+```python
+def _stocks_state(query, **kw):
+    return TableState.from_query(query, id="stocks", base_url="/stocks", sortable=("symbol", "price"),
+                                 filter_params=("q", "market"), export_base_url="/stocks/export.csv", **kw)
+
+@app.get("/stocks/export.csv")
+async def export_stocks(request: Request):
+    state = _stocks_state(request.query_params, mode="none")
+    rows = await repo.list(sort=state.sort, direction=state.direction, **state.filters)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Symbol", "Name", "Price"])
+    writer.writerows((r.symbol, r.name, r.price) for r in rows)
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="stocks.csv"'})
+```
+
+For very large tables, stream the rows with `StreamingResponse` instead of building one string.
+
+### Form field extras
+
+```jinja
+{# form.html — the counter's behaviour in static/js/char-counter.js (char_counter_js_url) #}
+gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors=None, input_attrs=None,
+               prefix=None, suffix=None, maxlength=None, counter=None, rows=3)
+{# prefix / suffix: Bootstrap input-group add-ons — "$", "%", "AUD", "kg". They're in the
+   field's aria-describedby, so they're read with it; errors stay below the group.
+   maxlength: the native limit. With it, counter defaults on: an "N / max" line under the
+   field (right without JS — the server renders the starting count), amber from 90% and
+   red at the limit. counter=False keeps the limit without the line.
+   type="textarea": a <textarea rows=rows> with the same label, ids, help, errors and
+   counter; step/min/max don't apply. #}
+```
+
+```jinja
+{{ gth_form_field("budget", "Budget", value=budget, type="number", step="0.01", prefix="$", suffix="AUD") }}
+{{ gth_form_field("notes", "Notes", value=notes, type="textarea", maxlength=140, help_text="Optional.") }}
+```
+
+A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must
+still check the length and answer with `errors`. The counter measures what the browser measures, UTF-16 units,
+so an emoji counts as 2, the same as `maxlength` does.
+
+### Formatting filters
+
+`install()` registers three filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+that the app already registered**, so an app's own `money` wins.
+
+```jinja
+{{ value|money(symbol="$", places=2) }}   {# 1234.5 → $1,234.50 · -1234.5 → -$1,234.50 · |money("") → 1,234.50 #}
+{{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
+{{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
+```
+
+- **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
+  filter never raises and breaks the page.
+- **Floats are safe:** values go through `str()` before `Decimal`, so `0.1|number` is `0.1`, not the float's
+  binary expansion. There's no need for PyFinBot's old `|string|qty` dance.
+- **`money`:** rounds half-up (`2.675` → `$2.68`), puts the sign before the symbol, and never shows `-$0.00`.
+  `number(places=n)` gives fixed decimals the same way.
+- **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
+  avoids `%-d`, which Windows doesn't support.
+
+They're plain functions too, e.g. for a CSV export:
+
+```python
+from greentechhub_ui.formatting import format_date, money, number
+```

@@ -97,11 +97,19 @@ def test_app_shell_has_modal_host():
 
 def test_app_shell_optional_component_scripts():
     html = _env().get_template("app.html").render(**_context())
-    assert "modal-host.js" not in html and "combobox.js" not in html
+    assert "modal-host.js" not in html and "combobox.js" not in html and "date-range.js" not in html
 
     html = _env().get_template("app.html").render(**_context(
         modal_host_js_url="/a/js/modal-host.js", combobox_js_url="/a/js/combobox.js",
+        date_range_js_url="/a/js/date-range.js", file_drop_js_url="/a/js/file-drop.js",
+        table_select_js_url="/a/js/table-select.js", table_view_js_url="/a/js/table-view.js",
+        char_counter_js_url="/a/js/char-counter.js",
     ))
+    assert '<script src="/a/js/char-counter.js"></script>' in html
+    assert '<script src="/a/js/table-view.js"></script>' in html
+    assert '<script src="/a/js/table-select.js"></script>' in html
+    assert '<script src="/a/js/date-range.js"></script>' in html
+    assert '<script src="/a/js/file-drop.js"></script>' in html
     assert '<script src="/a/js/modal-host.js"></script>' in html
     assert '<script src="/a/js/combobox.js"></script>' in html
 

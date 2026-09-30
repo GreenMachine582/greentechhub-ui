@@ -7,11 +7,14 @@ stays at the Jinja-render level and is faster for catching macro drift.
 """
 
 import asyncio
+import csv
+import io
 import json
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
+from playground import app as playground_app
 from playground.app import app
 
 
@@ -179,6 +182,89 @@ def test_tables_sort_and_filter():
                                              "q": "part"}, headers=HX))
     assert 'aria-sort="descending"' in response.text
     assert "Sensor" not in response.text.split("<tbody")[1]
+
+
+def test_tables_date_range_filter():
+    fy = {"date_from": "2025-07-01", "date_to": "2026-06-30"}
+    assert "of 73" in _run(_get("/tables", params=fy, headers=HX)).text
+    assert "of 36" in _run(_get("/tables", params={"date_to": "2025-06-30"}, headers=HX)).text
+    # A malformed date is ignored, not a 500.
+    assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
+
+
+def test_demo_upload_rechecks_type_and_size(monkeypatch):
+    monkeypatch.setattr(playground_app, "UPLOAD_DELAY", 0)
+
+    def upload(files):
+        return _run(_post("/demo/upload", files=files))
+
+    csv = ("a.csv", b"x,y\n1,2\n", "text/csv")
+    ok = upload([("files", csv)])
+    assert ok.status_code == 200 and "Uploaded: <code>a.csv (8 B)</code>" in ok.text
+
+    bad = upload([("files", ("n.txt", b"hi", "text/plain")),
+                  ("files", ("big.csv", b"x" * (1024 * 1024 + 1), "text/csv"))])
+    assert bad.status_code == 422
+    assert "n.txt — not an accepted file type" in bad.text
+    assert "big.csv — larger than 1 MB" in bad.text
+
+    # A browser submits an empty file part when nothing was chosen.
+    empty = upload([("files", ("", b"", "application/octet-stream"))])
+    assert empty.status_code == 422 and "Choose at least one file." in empty.text
+
+
+def test_bulk_record_actions_then_reset():
+    records = playground_app.RECORDS
+    before = (records[0]["stock"], records[1]["stock"], records[2]["stock"])
+    try:
+        response = _run(_post("/demo/records/restock", data={"ids": ["1", "2", "x"]}))
+        trigger = json.loads(response.headers["HX-Trigger"])
+        assert trigger["showToast"]["message"] == "Restocked 2 records."
+        assert "recordsChanged" in trigger
+        assert (records[0]["stock"], records[1]["stock"]) == (before[0] + 50, before[1] + 50)
+        assert records[2]["stock"] == before[2]
+
+        _run(_post("/demo/records/sold-out", data={"ids": "3"}))
+        assert records[2]["stock"] == 0
+    finally:
+        _run(_post("/demo/reset"))
+    assert (records[0]["stock"], records[1]["stock"], records[2]["stock"]) == before
+
+
+def test_tables_export_csv_honours_filters_and_sort_not_paging():
+    params = {"category": "Cable", "sort": "price", "dir": "desc", "page": "3", "size": "10"}
+    response = _run(_get("/tables/export.csv", params=params))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-disposition"] == 'attachment; filename="records.csv"'
+    lines = list(csv.reader(io.StringIO(response.text)))
+    assert lines[0] == ["ID", "Name", "Category", "Stock", "Price", "Added"]
+    rows = lines[1:]
+    assert len(rows) == 30 and {r[2] for r in rows} == {"Cable"}
+    prices = [float(r[4]) for r in rows]
+    assert prices == sorted(prices, reverse=True)
+
+
+def test_tables_page_links_the_export_with_the_current_filters():
+    page = _run(_get("/tables", params={"category": "Motor", "sort": "stock", "page": "2"})).text
+    assert 'href="/tables/export.csv?category=Motor&amp;sort=stock&amp;dir=asc" download>' in page
+
+
+def test_form_demo_keeps_notes_and_rechecks_their_length():
+    ok = _run(_post("/form-demo", data={"budget": "250", "notes": "Hello"}))
+    assert ok.status_code == 200 and ">Hello</textarea>" in ok.text
+    assert ">5 / 140</div>" in ok.text
+    long = _run(_post("/form-demo", data={"budget": "250", "notes": "x" * 141}))
+    assert long.status_code == 422 and "Keep notes to 140 characters." in long.text
+
+
+def test_formatting_filters_render_in_the_playground():
+    data = _run(_get("/data")).text
+    for out in ("$1,234.50", "-$1,234.50", "€100", "100.5", "1,234,567.891", "2.50", "5 Feb 2025",
+                "05/02/2025 10:30", "(empty)"):
+        assert out in data, out
+    table = _run(_get("/tables", params={"sort": "name"}, headers=HX)).text
+    assert "$36.79" in table and "31 Jan 2025" in table  # money / date in the records table
 
 
 def test_tables_infinite_rows_only_append():

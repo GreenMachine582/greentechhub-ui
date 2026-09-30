@@ -1,0 +1,19 @@
+
+<div class="mb-3 gth-form-field gth-file-drop" data-gth-file-drop>
+  <span class="form-label d-block" id="gth-field-file-label">File</span>
+  <input type="file" class="visually-hidden gth-file-drop-input" id="gth-field-file" name="file"
+    aria-labelledby="gth-field-file-label"
+    aria-describedby="gth-field-file-error">
+  <label class="gth-file-drop-zone" for="gth-field-file">
+    <i class="bi bi-cloud-arrow-up gth-file-drop-icon" aria-hidden="true"></i>
+    <span class="gth-file-drop-prompt">Drop a file here or browse</span>
+    
+  </label>
+  <ul class="gth-file-drop-files list-unstyled" hidden></ul>
+  <ul class="gth-file-drop-errors list-unstyled" id="gth-field-file-error" aria-live="polite"></ul>
+  <div class="progress gth-file-drop-progress" role="progressbar" aria-label="Upload progress"
+    aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+    <div class="progress-bar" style="width: 0%"></div>
+  </div>
+  
+</div>
