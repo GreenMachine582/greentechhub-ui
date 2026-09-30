@@ -5,6 +5,24 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.11.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.10.0...v0.11.0) (2026-09-30)
+
+
+### Features
+
+* **forms:** gth_date_range with preset chips ([#19](https://github.com/GreenMachine582/greentechhub-ui/issues/19)) ([1fbde73](https://github.com/GreenMachine582/greentechhub-ui/commit/1fbde7382e2183685d1e3c2589f536c0d2cb1629))
+* **forms:** gth_file_drop with upload progress ([#20](https://github.com/GreenMachine582/greentechhub-ui/issues/20)) ([9e06c10](https://github.com/GreenMachine582/greentechhub-ui/commit/9e06c10be2f305ce4d70fe53e2882d851f901f70))
+* **forms:** gth_form_field prefix/suffix, character counter, textarea ([#25](https://github.com/GreenMachine582/greentechhub-ui/issues/25)) ([5a36ed9](https://github.com/GreenMachine582/greentechhub-ui/commit/5a36ed98477c60d467c828e98c4dd1e46d8c9013))
+* money, number and date template filters ([#26](https://github.com/GreenMachine582/greentechhub-ui/issues/26)) ([f2caedf](https://github.com/GreenMachine582/greentechhub-ui/commit/f2caedf1cbfbd59eaecf327b61baee01b6711c56))
+* **table:** column visibility and density toggle ([#23](https://github.com/GreenMachine582/greentechhub-ui/issues/23)) ([985a8a8](https://github.com/GreenMachine582/greentechhub-ui/commit/985a8a8325c5e28cf07a523921044be1733ea95c))
+* **table:** gth_data_table bulk selection ([#21](https://github.com/GreenMachine582/greentechhub-ui/issues/21)) ([32c7184](https://github.com/GreenMachine582/greentechhub-ui/commit/32c7184678c23796d345b27adb605455fdb64e2c))
+* **table:** TableState.export_url and export button ([#24](https://github.com/GreenMachine582/greentechhub-ui/issues/24)) ([4af6957](https://github.com/GreenMachine582/greentechhub-ui/commit/4af69573eabbf6996d8ab6db238ab5f2460eb9a6))
+
+
+### Bug Fixes
+
+* **forms:** character counter handles any field name ([#27](https://github.com/GreenMachine582/greentechhub-ui/issues/27)) ([b285041](https://github.com/GreenMachine582/greentechhub-ui/commit/b28504185a54120bb2cd0d26c2ec2175646cf2ac))
+
 ## [0.10.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.9.0...v0.10.0) (2026-09-25)
 
 
