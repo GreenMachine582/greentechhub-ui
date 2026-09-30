@@ -35,6 +35,30 @@
   {% endcall %}
 </section>
 
+<section class="mb-5" id="formatting">
+  <h2 class="h4">Formatting filters: money, number, date</h2>
+  <p class="text-secondary small">Registered by <code>install()</code>, unless the app already has a filter of that
+    name. <code>None</code> and <code>""</code> render nothing, and anything unparseable renders as-is.</p>
+  {% set examples = [
+    ("{{ 1234.5|money }}", 1234.5|money),
+    ("{{ -1234.5|money }}", -1234.5|money),
+    ('{{ 1234.5|money("") }}', 1234.5|money("")),
+    ('{{ 99.5|money("€", places=0) }}', 99.5|money("€", places=0)),
+    ('{{ "100.500"|number }}', "100.500"|number),
+    ("{{ 0.1|number }}", 0.1|number),
+    ("{{ 1234567.891|number }}", 1234567.891|number),
+    ("{{ 2.5|number(places=2) }}", 2.5|number(places=2)),
+    ('{{ "2025-02-05"|date }}', "2025-02-05"|date),
+    ('{{ "2025-02-05T10:30"|date("%d/%m/%Y %H:%M") }}', "2025-02-05T10:30"|date("%d/%m/%Y %H:%M")),
+    ("{{ none|money }}", none|money),
+  ] %}
+  {% call gth_table(["Template", "Output"], table_class="table-sm w-auto") %}
+    {% for expr, out in examples %}
+    <tr><td><code>{{ expr }}</code></td><td class="font-monospace">{{ out if out else "(empty)" }}</td></tr>
+    {% endfor %}
+  {% endcall %}
+</section>
+
 <div class="row g-3 mb-5">
   <div class="col-md-6">
     {% call gth_card(title='<i class="bi bi-grid-3x3 me-2" aria-hidden="true"></i>gth-data-table'|safe, card_class="h-100") %}

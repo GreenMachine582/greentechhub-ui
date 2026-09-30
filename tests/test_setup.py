@@ -105,3 +105,16 @@ def test_page_base_template_header_crumbs_and_actions():
     # No current_path (or no nav helpers): just the title, no breadcrumbs.
     bare = env.get_template("bare.html").render(page_title="Plain", **ctx)
     assert "Plain" in bare and 'aria-label="breadcrumb"' not in bare
+
+
+def test_install_registers_formatting_filters_without_replacing_the_apps():
+    env = install(Environment())
+    out = env.from_string("{{ 1234.5|money }} | {{ 100.50|number }} | {{ d|date }}")
+    assert out.render(d="2025-02-05") == "$1,234.50 | 100.5 | 5 Feb 2025"
+
+    env = Environment()
+    env.filters["money"] = lambda v: f"custom {v}"
+    install(env)
+    install(env)
+    assert env.from_string("{{ 3|money }}").render() == "custom 3"
+    assert env.from_string("{{ 3|number }}").render() == "3"

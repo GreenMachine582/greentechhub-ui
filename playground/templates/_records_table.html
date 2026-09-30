@@ -18,7 +18,7 @@
   <td>{{ r.name }}</td>
   <td>{{ r.category }}</td>
   <td class="text-end">{{ r.stock }}</td>
-  <td class="text-end">${{ "%.2f"|format(r.price) }}</td>
-  <td>{{ r.added.isoformat() }}</td>
+  <td class="text-end">{{ r.price|money }}</td>
+  <td class="text-nowrap">{{ r.added|date }}</td>
 </tr>
 {% endcall %}

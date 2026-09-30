@@ -708,3 +708,29 @@ gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors
 A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must
 still check the length and answer with `errors`. The counter measures what the browser measures, UTF-16 units,
 so an emoji counts as 2, the same as `maxlength` does.
+
+### Formatting filters
+
+`install()` registers three filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+that the app already registered**, so an app's own `money` wins.
+
+```jinja
+{{ value|money(symbol="$", places=2) }}   {# 1234.5 → $1,234.50 · -1234.5 → -$1,234.50 · |money("") → 1,234.50 #}
+{{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
+{{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
+```
+
+- **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
+  filter never raises and breaks the page.
+- **Floats are safe:** values go through `str()` before `Decimal`, so `0.1|number` is `0.1`, not the float's
+  binary expansion. There's no need for PyFinBot's old `|string|qty` dance.
+- **`money`:** rounds half-up (`2.675` → `$2.68`), puts the sign before the symbol, and never shows `-$0.00`.
+  `number(places=n)` gives fixed decimals the same way.
+- **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
+  avoids `%-d`, which Windows doesn't support.
+
+They're plain functions too, e.g. for a CSV export:
+
+```python
+from greentechhub_ui.formatting import format_date, money, number
+```

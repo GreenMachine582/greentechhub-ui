@@ -258,6 +258,15 @@ def test_form_demo_keeps_notes_and_rechecks_their_length():
     assert long.status_code == 422 and "Keep notes to 140 characters." in long.text
 
 
+def test_formatting_filters_render_in_the_playground():
+    data = _run(_get("/data")).text
+    for out in ("$1,234.50", "-$1,234.50", "€100", "100.5", "1,234,567.891", "2.50", "5 Feb 2025",
+                "05/02/2025 10:30", "(empty)"):
+        assert out in data, out
+    table = _run(_get("/tables", params={"sort": "name"}, headers=HX)).text
+    assert "$36.79" in table and "31 Jan 2025" in table  # money / date in the records table
+
+
 def test_tables_infinite_rows_only_append():
     response = _run(_get("/tables", params={"mode": "infinite", "page": 12, "partial": "rows"},
                          headers=HX))
