@@ -699,6 +699,45 @@ def test_form_field_affixes_wrap_the_input_and_errors_sit_below(page, playground
     expect(page.locator("#form-demo-container .input-group.has-validation")).to_have_count(1)
 
 
+def test_form_field_counter_handles_any_field_name(page, playground_url):
+    # A name with a quote makes an id that's an invalid CSS selector unless escaped.
+    page.goto(f"{playground_url}/forms")
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.evaluate("""() => {
+        const form = document.getElementById("form-demo-container");
+        form.insertAdjacentHTML("beforeend",
+            '<input id=\\'gth-field-a"b\\' maxlength="5">' +
+            '<div id="odd-counter" data-gth-counter-for=\\'gth-field-a"b\\'>0 / 5</div>');
+    }""")
+    page.locator("[maxlength='5']").type("hi")
+    expect(page.locator("#odd-counter")).to_have_text("2 / 5")
+    assert errors == []
+
+
+# ── no script errors anywhere ─────────────────────────────────────────────
+
+def test_no_console_errors_on_any_page(page, playground_url):
+    """Every gth-ui script loads on every page (shell_globals), so each must
+    run cleanly where its component is absent. Missing-resource noise (e.g.
+    DevTools fetching vendored .map files) isn't a script error."""
+    errors = []
+    page.on("pageerror", lambda e: errors.append(f"{page.url}: {e}"))
+    page.on("console", lambda m: errors.append(f"{page.url}: {m.text}")
+            if m.type == "error" and "Failed to load resource" not in m.text else None)
+    for path in [*PAGES, "/tables?mode=load_more", "/tables?mode=infinite&scroll=1"]:
+        page.goto(f"{playground_url}{path}")
+        _htmx_idle(page)
+    # Swaps re-run every script's htmx:load hook.
+    page.goto(f"{playground_url}/tables?mode=pages")
+    page.click(".gth-table-filter label:has-text('Cable')")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("of 30")
+    _htmx_idle(page)
+    page.click("#records .gth-table-pager a[aria-label='Page 2']")
+    expect(page.locator("#records .gth-table-summary")).to_contain_text("11–20")
+    assert errors == []
+
+
 # ── gth-date-range ────────────────────────────────────────────────────────
 
 DR = "#date-range-demo"
