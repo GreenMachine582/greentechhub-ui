@@ -15,10 +15,40 @@
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
 - [ ] Command-palette actions — not just navigation (e.g. "New task", "Toggle theme"), registered like nav items
-- [ ] Sidebar: pinned/favourite items and a user menu in the footer slot, once a consumer has auth
+- [ ] Sidebar: pinned/favourite items (the footer-slot user menu moves to Settings & permissions #8)
 - [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
+
+### Settings & permissions
+Rendering for `greentechhub-core`'s planned settings and role resolution (design:
+[core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
+opt-in: new behaviour turns on only when the optional context keys (`theme_save_url`, `granted`, `user_settings`)
+are present, so it isn't breaking. Macros duck-type attributes, so there's no runtime import of core. Each PR updates
+any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4 and fastapi #5 come first.
+- [ ] **#6 `feat(components): gth_select and settings field rendering`**
+  - `gth_select`.
+  - `gth_setting_field(setting, value, errors)`: bool → switch, choice with 4 or fewer options → segmented,
+    other choices → select, int/str → form field.
+  - `gth_settings_section`.
+  - Snapshots, a playground `pages/settings.html`, and `docs/components.md`.
+- [ ] **#7 `feat(theme): server-persisted theme preference`**
+  - The optional `theme_mode` context seeds the anti-FOUC script.
+  - `theme-toggle.js` POSTs to an optional `theme_save_url`.
+  - localStorage stays as the fallback.
+  - Docs: reword `docs/theming.md` (localStorage is no longer the only store); add the optional key to
+    `docs/contract.md`.
+- [ ] **#8 `feat(navigation): permission-aware nav and navbar user menu`**
+  - `filter_by_scope(..., granted=None)` checks `required_permission`, with `required_scope` kept as an alias.
+  - A navbar and sidebar-footer user menu (Settings, Logout) driven by `current_user`.
+  - Docs: README Navigation row, `docs/extensibility.md`, `docs/components.md`, `navigation.py` docstring.
+- [ ] **#10 `feat(formatting): honour timezone, date format and page size`**
+  - `format_date`/`format_datetime` read `locale.timezone`/`locale.date_format`.
+  - The `TableState` default page size comes from `ui.page_size`.
+- [ ] **#12 `docs: scope additional shared settings`** (with core)
+  - Compact density for forms and tables, reduced motion, number/currency format, landing page, sidebar default,
+    notification preferences.
+  - The outcome is newly registered items.
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
@@ -77,6 +107,7 @@
   registers (its own assignments after `install()` win until they're removed). `|string|qty` becomes `|number`, since
   floats are handled. **`money` now prints `$`** (`$1,234.50`), so check the stat cards and report columns and use
   `|money("")` where a `$` is already in the heading. `_fy` stays PyFinBot's own
+- [ ] Pass `theme_save_url`/`granted`/`user_settings` (via fastapi's `register_settings` context) once #7/#8 ship, replacing any hand-rolled theme or nav gating
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
