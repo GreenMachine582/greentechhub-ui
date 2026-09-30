@@ -250,6 +250,14 @@ def test_tables_page_links_the_export_with_the_current_filters():
     assert 'href="/tables/export.csv?category=Motor&amp;sort=stock&amp;dir=asc" download>' in page
 
 
+def test_form_demo_keeps_notes_and_rechecks_their_length():
+    ok = _run(_post("/form-demo", data={"budget": "250", "notes": "Hello"}))
+    assert ok.status_code == 200 and ">Hello</textarea>" in ok.text
+    assert ">5 / 140</div>" in ok.text
+    long = _run(_post("/form-demo", data={"budget": "250", "notes": "x" * 141}))
+    assert long.status_code == 422 and "Keep notes to 140 characters." in long.text
+
+
 def test_tables_infinite_rows_only_append():
     response = _run(_get("/tables", params={"mode": "infinite", "page": 12, "partial": "rows"},
                          headers=HX))

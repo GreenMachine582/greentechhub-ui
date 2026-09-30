@@ -84,6 +84,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `file_drop_js_url` | none (no script rendered) — drag-and-drop, client checks and upload progress for `gth-file-drop` (v0.11) |
 | `table_select_js_url` | none (no script rendered) — row selection and the bulk bar of `gth-data-table(bulk_actions=...)` (v0.11) |
 | `table_view_js_url` | none (no script rendered) — the View menu of `gth-data-table(view_options=True)`: hidden columns and density (v0.11) |
+| `char_counter_js_url` | none — `gth_form_field(maxlength=...)`'s counter then shows the server-rendered starting count only (v0.11) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
 | `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |

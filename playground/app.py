@@ -384,19 +384,21 @@ async def pagination_list(request: Request, offset: int = 0):
     return templates.TemplateResponse(request, "_pagination_list.html", _paginate_widgets(offset))
 
 
+NOTES_MAX = 140
+
+
 @app.post("/form-demo", response_class=HTMLResponse)
-async def form_demo(request: Request, budget: float = Form(...)):
-    errors = _validate_budget(budget)
-    if errors:
-        resp = templates.TemplateResponse(request, "_form_demo.html", {
-            "field_errors": {"budget": errors},
-            "budget_value": budget,
-        }, status_code=422)
-        return resp
-    resp = templates.TemplateResponse(request, "_form_demo.html", {
-        "field_errors": {},
-        "budget_value": budget,
-    })
+async def form_demo(request: Request, budget: float = Form(...), notes: str = Form("")):
+    field_errors = {}
+    if errors := _validate_budget(budget):
+        field_errors["budget"] = errors
+    # maxlength stops the browser; the server still has to check.
+    if len(notes) > NOTES_MAX:
+        field_errors["notes"] = [f"Keep notes to {NOTES_MAX} characters."]
+    context = {"field_errors": field_errors, "budget_value": budget, "notes_value": notes}
+    if field_errors:
+        return templates.TemplateResponse(request, "_form_demo.html", context, status_code=422)
+    resp = templates.TemplateResponse(request, "_form_demo.html", context)
     resp.headers["HX-Trigger"] = greentechhub_ui.toast(f"Saved budget: ${budget:.2f}")
     return resp
 

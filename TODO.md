@@ -21,7 +21,6 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Data & forms
-- [ ] `gth_form_field` extras — input prefix/suffix (`$`, `%`, units), help text, character counter
 - [ ] Formatting filters registered by `install()` — `money`, `number` (full precision, trailing zeros trimmed) and
   `date`, upstreamed from PyFinBot's `money`/`qty` filters
 

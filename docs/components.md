@@ -10,7 +10,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-card` | Standard bordered content container |
 | `gth-stat-card` | Dashboard KPI tile (label, value, delta, icon) |
 | `gth-table` | Table shell + body with a built-in empty state; the `<tbody>` can be swapped by an HTMX partial (filter/sort controls are the consumer's own — headers render as plain text) |
-| `gth-form` | Form wrapper with consistent label/validation-error layout |
+| `gth-form` | Form wrapper with consistent label/validation-error layout; `gth_form_field` adds prefix/suffix add-ons, a character counter and textarea (v0.11) |
 | `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Toasts over `HX-Trigger` (`greentechhub_ui.toast()`) and server-side `flashes` in one markup: kinds, title, icon, action link, duration/sticky, surface or solid (v0.8 look) |
@@ -684,3 +684,27 @@ async def export_stocks(request: Request):
 ```
 
 For very large tables, stream the rows with `StreamingResponse` instead of building one string.
+
+### Form field extras
+
+```jinja
+{# form.html — the counter's behaviour in static/js/char-counter.js (char_counter_js_url) #}
+gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors=None, input_attrs=None,
+               prefix=None, suffix=None, maxlength=None, counter=None, rows=3)
+{# prefix / suffix: Bootstrap input-group add-ons — "$", "%", "AUD", "kg". They're in the
+   field's aria-describedby, so they're read with it; errors stay below the group.
+   maxlength: the native limit. With it, counter defaults on: an "N / max" line under the
+   field (right without JS — the server renders the starting count), amber from 90% and
+   red at the limit. counter=False keeps the limit without the line.
+   type="textarea": a <textarea rows=rows> with the same label, ids, help, errors and
+   counter; step/min/max don't apply. #}
+```
+
+```jinja
+{{ gth_form_field("budget", "Budget", value=budget, type="number", step="0.01", prefix="$", suffix="AUD") }}
+{{ gth_form_field("notes", "Notes", value=notes, type="textarea", maxlength=140, help_text="Optional.") }}
+```
+
+A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must
+still check the length and answer with `errors`. The counter measures what the browser measures, UTF-16 units,
+so an emoji counts as 2, the same as `maxlength` does.

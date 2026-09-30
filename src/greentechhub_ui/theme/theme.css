@@ -441,6 +441,20 @@ th[aria-sort] .gth-table-sort .bi {
   --bs-progress-bar-bg: var(--gth-color-primary-dark);
 }
 
+/* gth-form-field character counter: right-aligned "N / max", amber from 90%,
+   red at the limit (the emphasis tokens keep contrast in both color modes). */
+.gth-char-counter {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gth-char-counter.is-near {
+  color: var(--bs-warning-text-emphasis);
+}
+.gth-char-counter.is-full {
+  color: var(--bs-danger-text-emphasis);
+  font-weight: 600;
+}
+
 /* gth-switch — brand color instead of Bootstrap's blue. */
 .gth-switch .form-check-input:checked {
   background-color: var(--gth-color-primary-dark);

@@ -651,6 +651,54 @@ def test_chips_and_switch_submit_like_checkboxes(page, playground_url):
     expect(unchecked).to_be_hidden()
 
 
+# ── gth-form-field extras ────────────────────────────────────────────────
+
+NOTES = "#gth-field-notes"
+NOTES_COUNTER = "#gth-field-notes-counter"
+COUNTER_STATUS = "#gth-char-counter-status"
+
+
+def test_form_field_counter_tracks_typing_and_announces_thresholds(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    counter = page.locator(NOTES_COUNTER)
+    expect(counter).to_have_text("0 / 140")
+    page.fill(NOTES, "Hello")
+    expect(counter).to_have_text("5 / 140")
+    expect(counter).not_to_have_class(re.compile("is-near"))
+
+    page.fill(NOTES, "x" * 125)
+    page.locator(NOTES).press("End")
+    page.keyboard.type("y")  # 126 = 90% of 140
+    expect(counter).to_have_text("126 / 140")
+    expect(counter).to_have_class(re.compile("is-near"))
+    expect(page.locator(COUNTER_STATUS)).to_have_text("14 characters left")
+
+    page.keyboard.type("z" * 20)  # the browser stops at maxlength
+    expect(counter).to_have_text("140 / 140")
+    expect(counter).to_have_class(re.compile("is-full"))
+    assert len(page.locator(NOTES).input_value()) == 140
+    expect(page.locator(COUNTER_STATUS)).to_have_text("Character limit reached")
+
+    # The server re-renders the value and the count (counter set before JS runs).
+    page.click("#form-demo-container button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved budget")
+    expect(page.locator(NOTES_COUNTER)).to_have_text("140 / 140")
+
+
+def test_form_field_affixes_wrap_the_input_and_errors_sit_below(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    group = page.locator("#form-demo-container .input-group").first
+    expect(group.locator(".input-group-text").first).to_have_text("$")
+    expect(group.locator(".input-group-text").last).to_have_text("AUD")
+    described = page.locator("#gth-field-budget").get_attribute("aria-describedby")
+    assert "gth-field-budget-prefix" in described and "gth-field-budget-suffix" in described
+    page.fill("#gth-field-budget", "-5")
+    page.click("#form-demo-container button[type=submit]")
+    expect(page.locator("#gth-field-budget")).to_have_class(re.compile("is-invalid"))
+    expect(page.locator("#gth-field-budget-error")).to_be_visible()
+    expect(page.locator("#form-demo-container .input-group.has-validation")).to_have_count(1)
+
+
 # ── gth-date-range ────────────────────────────────────────────────────────
 
 DR = "#date-range-demo"

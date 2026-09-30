@@ -20,6 +20,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["file_drop_js_url"] == "/gth-assets/js/file-drop.js"
     assert g["table_select_js_url"] == "/gth-assets/js/table-select.js"
     assert g["table_view_js_url"] == "/gth-assets/js/table-view.js"
+    assert g["char_counter_js_url"] == "/gth-assets/js/char-counter.js"
 
 
 def test_every_asset_url_exists_in_the_package():
