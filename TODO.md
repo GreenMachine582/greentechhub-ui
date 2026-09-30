@@ -20,10 +20,6 @@
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
-### Data & forms
-- [ ] Formatting filters registered by `install()` — `money`, `number` (full precision, trailing zeros trimmed) and
-  `date`, upstreamed from PyFinBot's `money`/`qty` filters
-
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
@@ -77,6 +73,10 @@
 - [ ] Swap `import.html`'s plain file field for `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
   max_size=…)` in the same release, giving drag-and-drop, the type/size check before upload and progress for big
   spreadsheets. The upload route's `File(None)` already avoids the empty-submit JSON 422
+- [ ] Drop `templating.py`'s `_money` / `_qty` for the shared `money` / `number` filters that `install()` now
+  registers (its own assignments after `install()` win until they're removed). `|string|qty` becomes `|number`, since
+  floats are handled. **`money` now prints `$`** (`$1,234.50`), so check the stat cards and report columns and use
+  `|money("")` where a `$` is already in the heading. `_fy` stays PyFinBot's own
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

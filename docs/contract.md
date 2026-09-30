@@ -40,7 +40,7 @@ framework-neutral helpers, each framework adapter the small framework-specific h
 
 | Need | gth-ui (any framework) | FastAPI (`greentechhub-fastapi`) | Django |
 |---|---|---|---|
-| Templates loadable | `greentechhub_ui.install(env, **shell_globals kwargs)` — adds gth-ui's loaders *after* the app's own and installs `shell_globals()` | `install(templates.env, service_name=…, nav_items=…)` on `Jinja2Templates` | `install()` inside the Jinja2 backend's `environment` callable; or `template_dirs()` in `TEMPLATES[...]["DIRS"]` |
+| Templates loadable | `greentechhub_ui.install(env, **shell_globals kwargs)` — adds gth-ui's loaders *after* the app's own, installs `shell_globals()`, and registers the `money` / `number` / `date` filters (never replacing an app's own) | `install(templates.env, service_name=…, nav_items=…)` on `Jinja2Templates` | `install()` inside the Jinja2 backend's `environment` callable; or `template_dirs()` in `TEMPLATES[...]["DIRS"]` |
 | Static files served | `static_dirs()` — `{"/gth-assets": static_path, "/gth-static": theme_path}`, the same prefixes `shell_globals()` renders URLs for | `mount_static_dirs(app, greentechhub_ui.static_dirs())` | `STATICFILES_DIRS = [(p.strip("/"), d) for p, d in static_dirs().items()]` |
 | `current_path` per request | — | `Jinja2Templates(..., context_processors=[ui_context])` | gth-django's context processor (see its `docs/context.md`) |
 | htmx: fragment or page? | `greentechhub_ui.htmx.wants_fragment(request.headers)`, `hx_target(...)`, `TableState.is_own_swap(...)` | same (Starlette headers are a Mapping) | same (`request.headers`) |
