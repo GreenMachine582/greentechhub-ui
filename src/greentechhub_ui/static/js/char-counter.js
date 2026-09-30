@@ -21,7 +21,9 @@
   }
 
   function counterFor(field) {
-    return field.id ? document.querySelector('[data-gth-counter-for="' + field.id + '"]') : null;
+    // Escaped: an id from a field name with a quote or backslash would
+    // otherwise be an invalid selector and throw on every keystroke.
+    return field.id ? document.querySelector('[data-gth-counter-for="' + CSS.escape(field.id) + '"]') : null;
   }
 
   function update(field, speak) {
