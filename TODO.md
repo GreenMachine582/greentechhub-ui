@@ -21,17 +21,12 @@
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
 
 ### Settings & permissions
-Rendering for `greentechhub-core`'s planned settings and role resolution (design:
+Rendering for `greentechhub-core`'s settings and role resolution (design:
 [core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
 opt-in: new behaviour turns on only when the optional context keys (`theme_save_url`, `granted`, `user_settings`)
 are present, so it isn't breaking. Macros duck-type attributes, so there's no runtime import of core. Each PR updates
-any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4 and fastapi #5 come first.
-- [ ] **#6 `feat(components): gth_select and settings field rendering`**
-  - `gth_select`.
-  - `gth_setting_field(setting, value, errors)`: bool → switch, choice with 4 or fewer options → segmented,
-    other choices → select, int/str → form field.
-  - `gth_settings_section`.
-  - Snapshots, a playground `pages/settings.html`, and `docs/components.md`.
+any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4, fastapi #5 and ui #6
+(`gth_select`, `gth_setting_field`, `gth_settings_section`) have shipped.
 - [ ] **#7 `feat(theme): server-persisted theme preference`**
   - The optional `theme_mode` context seeds the anti-FOUC script.
   - `theme-toggle.js` POSTs to an optional `theme_save_url`.

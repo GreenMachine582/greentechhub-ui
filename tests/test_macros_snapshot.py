@@ -1111,3 +1111,136 @@ def test_file_drop_with_errors():
     assert rendered.count("<li data-server>") == 2 and "Drop a file here" in rendered
     assert 'aria-invalid="true"' in rendered
     assert 'class="gth-file-drop-zone is-invalid"' in rendered
+
+
+# settings rendering — settings are duck-typed (plain dicts here, core's Setting in services)
+
+_THEME = {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
+          "help_text": "Light, dark, or follow your device.", "group": "Appearance",
+          "choices": [("light", "Light"), ("dark", "Dark"), ("system", "System")]}
+_TIMEZONE = {"key": "locale.timezone", "type": "choice", "label": "Timezone", "default": "UTC",
+             "group": "Locale", "choices": [(z, z) for z in
+                                            ["Australia/Sydney", "Europe/London", "UTC",
+                                             "America/New_York", "Asia/Tokyo"]]}
+_PAGE_SIZE = {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
+              "min": 5, "max": 200, "group": "Tables"}
+_BANNER = {"key": "site.banner", "type": "str", "label": "Banner", "default": ""}
+_MAINTENANCE = {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode",
+                "default": False, "help_text": "Shows the banner to everyone."}
+
+
+def test_select():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("size", "Size", [{"value": "s", "label": "Small"}, ("m", "Medium"), "l"],
+            value="m", help_text="Pick one.") }}"""
+    )
+    assert_snapshot(rendered, "select")
+
+
+def test_select_with_placeholder_and_errors():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("n", "Number", [10, 25, 50], value=None, placeholder="Choose…",
+            errors=["Pick a number.", "Really."], input_attrs={"hx-post": "/save"}) }}"""
+    )
+    assert_snapshot(rendered, "select_with_placeholder_and_errors")
+
+
+def test_select_matches_values_as_strings():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("n", "Number", [10, 25, 50], value=25) }}"""
+    )
+    assert '<option value="25" selected>25</option>' in rendered
+    assert rendered.count(" selected") == 1
+
+
+def test_segmented_with_help_and_errors():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("mode", [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}],
+            value="b", label="Mode", help_text="Either.", errors=["Not that one."]) }}"""
+    )
+    assert_snapshot(rendered, "segmented_with_help_and_errors")
+
+
+def test_switch_with_off_value_and_errors():
+    rendered = _render(
+        """{% from "chips.html" import gth_switch %}
+        {{ gth_switch("alerts", "Alerts", checked=True, value="true", off_value="false",
+            errors=["Can't turn alerts on yet."]) }}"""
+    )
+    assert_snapshot(rendered, "switch_with_off_value_and_errors")
+
+
+def test_setting_field_picks_the_widget_by_type():
+    def field(setting, **kw):
+        return _render(
+            """{% from "settings.html" import gth_setting_field %}
+            {{ gth_setting_field(setting, **kw) }}""",
+            setting=setting, kw=kw,
+        )
+
+    assert "gth-segmented" in field(_THEME)
+    assert "gth-select" in field(_TIMEZONE)
+    assert 'type="number"' in field(_PAGE_SIZE) and 'min="5"' in field(_PAGE_SIZE)
+    assert 'type="text"' in field(_BANNER)
+    switch = field(_MAINTENANCE)
+    assert 'role="switch"' in switch
+    assert '<input type="hidden" name="site.maintenance" value="false">' in switch
+
+
+def test_setting_field_falls_back_to_the_default():
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting) }}""",
+        setting=_THEME,
+    )
+    assert 'value="system"\n      id="gth-field-ui.theme-3" autocomplete="off" checked' in rendered
+
+
+def test_setting_field_segmented_threshold_is_configurable():
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, segmented_max=2) }}""",
+        setting=_THEME,
+    )
+    assert "gth-select" in rendered
+
+
+def test_setting_field_accepts_enum_like_types():
+    class SettingType:
+        def __str__(self):
+            return "SettingType.BOOL"
+
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting) }}""",
+        setting=_MAINTENANCE | {"type": SettingType()},
+    )
+    assert 'role="switch"' in rendered
+
+
+def test_settings_section_with_form():
+    rendered = _render(
+        """{% from "settings.html" import gth_settings_section %}
+        {{ gth_settings_section("prefs", "Preferences", settings,
+            values={"ui.theme": "dark", "ui.page_size": 50},
+            errors={"ui.page_size": ["Must be at most 200."]},
+            action="/settings/preferences", description="Only you see these.",
+            form_attrs={"hx-post": "/settings/preferences", "hx-target": "#gth-settings-prefs",
+                        "hx-swap": "outerHTML"}) }}""",
+        settings=[_BANNER, _THEME, _TIMEZONE, _PAGE_SIZE],
+    )
+    assert_snapshot(rendered, "settings_section_with_form")
+
+
+def test_settings_section_without_action():
+    rendered = _render(
+        """{% from "settings.html" import gth_settings_section %}
+        {{ gth_settings_section("app", "App", settings, error="Couldn't save.") }}""",
+        settings=[_MAINTENANCE, _BANNER],
+    )
+    assert_snapshot(rendered, "settings_section_without_action")
+    assert "<form" not in rendered and "<button" not in rendered

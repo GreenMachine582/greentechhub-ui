@@ -182,6 +182,10 @@ PLAYGROUND_NAV = [
         {"label": "Breadcrumbs", "url": "/navigation#breadcrumbs"},
         {"label": "Command palette", "url": "/navigation#command-palette"},
     ]},
+    {"label": "Settings", "url": "/settings", "icon": "sliders", "children": [
+        {"label": "Preferences", "url": "/settings#gth-settings-preferences"},
+        {"label": "App", "url": "/settings#gth-settings-app"},
+    ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
 ]
 
@@ -198,6 +202,8 @@ PAGES = {
     "navigation": ("Navigation", "The sidebar this page uses, breadcrumbs derived from it, and the "
                    "command palette."),
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
+    "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
+                 "own widget."),
 }
 
 greentechhub_ui.install(
@@ -264,6 +270,95 @@ def _page(request: Request, name: str, **context):
     title, subtitle = PAGES.get(name, ("greentechhub-ui playground", ""))
     return templates.TemplateResponse(request, f"pages/{name}.html", {
         "page_title": title, "page_subtitle": subtitle, **context,
+    })
+
+
+# ── Settings demo ─────────────────────────────────────────────────────────────
+# Plain dicts shaped like greentechhub-core's Setting (key, type, label, default,
+# help_text, choices, min, max, group): the macros duck-type, so a service passes
+# core's Setting objects and Settings.effective() values the same way. The coercion
+# below stands in for core's registry.coerce(key, raw).
+
+SETTINGS_DEMO = {
+    "preferences": ("Preferences", "Only you see these.", [
+        {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
+         "help_text": "Light, dark, or follow your device.", "group": "Appearance",
+         "choices": [("light", "Light"), ("dark", "Dark"), ("system", "System")]},
+        {"key": "locale.timezone", "type": "choice", "label": "Timezone", "default": "UTC",
+         "help_text": "More than four choices, so a select.", "group": "Locale",
+         "choices": [(z, z) for z in ("UTC", "Australia/Sydney", "Australia/Perth",
+                                      "Europe/London", "America/New_York", "Asia/Tokyo")]},
+        {"key": "locale.date_format", "type": "choice", "label": "Date format", "default": "iso",
+         "group": "Locale", "choices": [("iso", "2026-01-31"), ("dmy", "31/01/2026"),
+                                        ("mdy", "01/31/2026"), ("long", "31 Jan 2026")]},
+        {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
+         "min": 5, "max": 200, "help_text": "5 to 200.", "group": "Tables"},
+    ]),
+    "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
+        {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
+         "help_text": "Leave empty for no banner."},
+        {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
+         "help_text": "An unchecked switch still submits \"false\" (off_value)."},
+    ]),
+}
+SETTINGS_VALUES: dict[str, object] = {}
+
+
+def _coerce_setting(setting: dict, raw: str | None) -> object:
+    if setting["type"] == "bool":
+        if raw in ("true", "false"):
+            return raw == "true"
+        raise ValueError("Choose on or off.")
+    if setting["type"] == "int":
+        try:
+            value = int((raw or "").strip())
+        except ValueError:
+            raise ValueError("Enter a whole number.") from None
+        if not setting["min"] <= value <= setting["max"]:
+            raise ValueError(f"Must be between {setting['min']} and {setting['max']}.")
+        return value
+    if setting["type"] == "choice" and raw not in [v for v, _ in setting["choices"]]:
+        raise ValueError("Pick one of the options.")
+    return raw or ""
+
+
+def _settings_section(section: str, *, errors=None, values=None) -> Markup:
+    title, description, settings = SETTINGS_DEMO[section]
+    return _macro("settings.html", "gth_settings_section", section, title, settings,
+                  values=values if values is not None else SETTINGS_VALUES, errors=errors,
+                  action=f"/settings-demo/{section}", description=description,
+                  form_attrs={"hx-post": f"/settings-demo/{section}",
+                              "hx-target": f"#gth-settings-{section}", "hx-swap": "outerHTML"})
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    return _page(request, "settings", sections=[_settings_section(s) for s in SETTINGS_DEMO])
+
+
+@app.post("/settings-demo/{section}", response_class=HTMLResponse)
+async def settings_demo_save(request: Request, section: str):
+    """The flow core's Settings facade expects: coerce every field, then 422 with
+    the section re-rendered around its field errors, or save and toast."""
+    if section not in SETTINGS_DEMO:
+        return HTMLResponse("Unknown section", status_code=404)
+    form = await request.form()
+    _, _, settings = SETTINGS_DEMO[section]
+    submitted, errors = {}, {}
+    for setting in settings:
+        raw = form.get(setting["key"])
+        try:
+            submitted[setting["key"]] = _coerce_setting(setting, raw)
+        except ValueError as exc:
+            errors[setting["key"]] = [str(exc)]
+            submitted[setting["key"]] = raw
+    if errors:
+        return HTMLResponse(_settings_section(section, errors=errors,
+                                              values=SETTINGS_VALUES | submitted),
+                            status_code=422)
+    SETTINGS_VALUES.update(submitted)
+    return HTMLResponse(_settings_section(section), headers={
+        "HX-Trigger": greentechhub_ui.toast(f"{SETTINGS_DEMO[section][0]} saved"),
     })
 
 

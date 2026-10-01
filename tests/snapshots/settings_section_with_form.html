@@ -1,0 +1,81 @@
+
+        <section class="gth-settings-section mb-4" id="gth-settings-prefs" aria-labelledby="gth-settings-prefs-title">
+  <h2 class="h5 mb-1" id="gth-settings-prefs-title">Preferences</h2>
+  <p class="text-secondary small mb-3">Only you see these.</p>
+  <form method="post" action="/settings/preferences" class="gth-form" novalidate hx-post="/settings/preferences" hx-target="#gth-settings-prefs" hx-swap="outerHTML">
+  
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-site.banner">Banner</label>
+  <input type="text" id="gth-field-site.banner" name="site.banner"
+    class="form-control"
+    value=""
+    
+    
+    
+    
+    
+    >
+  
+  
+</div>
+
+  <h3 class="h6 text-secondary mt-3 mb-2">Appearance</h3>
+  
+
+
+<div class="mb-3 gth-form-field gth-segmented">
+  <span class="form-label d-block" id="gth-field-ui.theme-label">Theme</span>
+  <div class="btn-group w-100" role="group" aria-labelledby="gth-field-ui.theme-label" aria-describedby="gth-field-ui.theme-help">
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="light"
+      id="gth-field-ui.theme-1" autocomplete="off">
+    <label class="btn btn-outline-primary" for="gth-field-ui.theme-1">Light</label>
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="dark"
+      id="gth-field-ui.theme-2" autocomplete="off" checked>
+    <label class="btn btn-outline-primary" for="gth-field-ui.theme-2">Dark</label>
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="system"
+      id="gth-field-ui.theme-3" autocomplete="off">
+    <label class="btn btn-outline-primary" for="gth-field-ui.theme-3">System</label>
+    
+  </div>
+  <div class="form-text" id="gth-field-ui.theme-help">Light, dark, or follow your device.</div>
+</div>
+
+  <h3 class="h6 text-secondary mt-3 mb-2">Locale</h3>
+  <div class="mb-3 gth-form-field gth-select">
+  <label class="form-label" for="gth-field-locale.timezone">Timezone</label>
+  <select id="gth-field-locale.timezone" name="locale.timezone" class="form-select">
+    <option value="Australia/Sydney">Australia/Sydney</option>
+    <option value="Europe/London">Europe/London</option>
+    <option value="UTC" selected>UTC</option>
+    <option value="America/New_York">America/New_York</option>
+    <option value="Asia/Tokyo">Asia/Tokyo</option>
+  </select>
+</div>
+
+  <h3 class="h6 text-secondary mt-3 mb-2">Tables</h3>
+  
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-ui.page_size">Rows per page</label>
+  <input type="number" id="gth-field-ui.page_size" name="ui.page_size"
+    class="form-control is-invalid"
+    value="50"
+    step="1"
+    min="5"
+    max="200"
+    aria-invalid="true"
+    aria-describedby=" gth-field-ui.page_size-error"
+    >
+  
+  
+  <div class="invalid-feedback d-block" id="gth-field-ui.page_size-error">
+    Must be at most 200.
+  </div>
+  
+</div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</section>
