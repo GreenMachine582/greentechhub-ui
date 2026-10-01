@@ -437,6 +437,43 @@ def test_segmented():
     assert_snapshot(rendered, "segmented")
 
 
+def test_segmented_variant_defaults_to_track_without_styles():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("theme", [{"value": "light", "label": "Light"},
+                                   {"value": "dark", "label": "Dark"}],
+            value="dark", label="Theme") }}"""
+    )
+    assert 'class="gth-segmented-track"' in rendered and "btn-group" not in rendered
+    assert rendered.count('class="btn gth-segmented-option"') == 2
+    assert_snapshot(rendered, "segmented_track")
+
+
+def test_segmented_with_a_style_keeps_the_buttons_variant():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("t", [{"value": "a", "label": "A"},
+                               {"value": "b", "label": "B", "style": "btn-outline-warning"}]) }}"""
+    )
+    assert 'class="btn-group w-100"' in rendered
+    assert 'class="btn btn-outline-primary"' in rendered
+    assert 'class="btn btn-outline-warning"' in rendered
+
+
+def test_segmented_explicit_variant_wins():
+    buttons = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("t", [{"value": "a", "label": "A"}], variant="buttons") }}"""
+    )
+    track = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("t", [{"value": "a", "label": "A", "style": "btn-outline-danger"}],
+            variant="track") }}"""
+    )
+    assert 'class="btn-group w-100"' in buttons
+    assert 'class="gth-segmented-track"' in track and "btn-outline-danger" not in track
+
+
 def test_segmented_defaults_to_first_option():
     rendered = _render(
         """{% from "segmented.html" import gth_segmented %}

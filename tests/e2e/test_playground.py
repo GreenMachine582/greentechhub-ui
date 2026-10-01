@@ -328,6 +328,42 @@ def test_choice_buttons_show_hover(page, playground_url):
     expect(chip).not_to_have_css("background-color", resting)
 
 
+def test_segmented_track_style(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    field = page.locator("#gth-settings-preferences .gth-segmented").first  # Theme
+    track = field.locator(".gth-segmented-track")
+    checked = field.locator(".btn-check:checked + .gth-segmented-option")
+    unchecked = field.locator(".btn-check:not(:checked) + .gth-segmented-option").first
+
+    brand = page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--gth-brand-fg').trim()")
+    brand_rgb = page.evaluate(
+        """c => { const el = document.createElement('span'); el.style.color = c;
+                  document.body.append(el); const v = getComputedStyle(el).color; el.remove();
+                  return v; }""", brand)
+    expect(checked).to_have_css("color", brand_rgb)
+    assert checked.evaluate("el => getComputedStyle(el).backgroundColor") != track.evaluate(
+        "el => getComputedStyle(el).backgroundColor")
+
+    resting = unchecked.evaluate("el => getComputedStyle(el).backgroundColor")
+    unchecked.hover()
+    expect(unchecked).not_to_have_css("background-color", resting)
+
+    # sized to its content, not stretched across the form
+    form_width = page.locator("#gth-settings-preferences form").evaluate("el => el.clientWidth")
+    assert track.evaluate("el => el.getBoundingClientRect().width") < form_width
+
+    # keyboard: native radios, so arrows move the selection; the focus ring shows
+    checked_input = field.locator(".btn-check:checked")
+    checked_input.focus()
+    before = checked_input.get_attribute("value")
+    page.keyboard.press("ArrowRight")
+    focused = page.evaluate("document.activeElement.value")
+    assert focused != before
+    ring = page.evaluate("getComputedStyle(document.activeElement.nextElementSibling).boxShadow")
+    assert ring != "none"
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

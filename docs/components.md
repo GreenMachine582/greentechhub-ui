@@ -19,7 +19,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
-| `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7); help text and errors (v0.12) |
+| `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
@@ -174,10 +174,17 @@ gth_combobox_empty(message="No matches")
    form), Esc closes the panel (not an enclosing modal), Tab closes. #}
 
 {# segmented.html #}
-gth_segmented(name, options, value=None, label=None, field_class="mb-3")
-{# options: [{"value", "label", "style"?, "icon"?}] — style is a
-   btn-outline-* class (default btn-outline-primary). Checked = value, or the
-   first option. Submits name=<value> like any radio group. #}
+gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_text=None, errors=None,
+              variant=None)
+{# options: [{"value", "label", "style"?, "icon"?}]. Checked = value, or the
+   first option. Submits name=<value> like any radio group (arrow keys move
+   the selection).
+   variant (v0.12): "track" — a muted rounded track sized to its content, the
+   checked option a raised thumb in the brand colour, with hover and a brand
+   focus ring — or "buttons", the joined full-width Bootstrap group where each
+   option's style (a btn-outline-* class, default btn-outline-primary) applies.
+   None picks "buttons" when any option sets a style, so per-option colours
+   (e.g. Buy/Sell) keep their meaning, and "track" otherwise. #}
 ```
 
 ```python
