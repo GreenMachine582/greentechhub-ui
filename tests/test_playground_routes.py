@@ -10,6 +10,7 @@ import asyncio
 import csv
 import io
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -36,6 +37,14 @@ async def _post(path, **kwargs):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         return await client.post(path, **kwargs)
+
+
+async def _as(persona, method, path, **kwargs):
+    """One request as a playground persona (its cookie set on the client)."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                 cookies={"playground-user": persona}) as client:
+        return await client.request(method, path, **kwargs)
 
 
 def test_index_returns_200():
@@ -352,7 +361,7 @@ def test_playground_pages_get_current_path_from_the_context_processor():
 
 
 def test_settings_page_renders_each_widget():
-    page = _run(_get("/settings"))
+    page = _run(_as("admin", "GET", "/settings"))  # the App section needs settings.manage
     assert page.status_code == 200
     for marker in ('id="gth-settings-preferences"', 'id="gth-settings-app"', "gth-segmented",
                    "gth-select", 'type="number"', 'role="switch"'):
@@ -386,10 +395,10 @@ def test_settings_demo_unchecked_switch_submits_false():
     playground_app.SETTINGS_VALUES.clear()
     # what the browser sends for an unchecked gth_switch(off_value="false"): only the hidden input
     unchecked = {"site.banner": "", "site.maintenance": "false"}
-    response = _run(_post("/settings-demo/app", data=unchecked))
+    response = _run(_as("admin", "POST", "/settings-demo/app", data=unchecked))
     assert response.status_code == 200
     assert playground_app.SETTINGS_VALUES["site.maintenance"] is False
-    checked = _run(_post("/settings-demo/app",
+    checked = _run(_as("admin", "POST", "/settings-demo/app",
                          data={"site.banner": "Back soon", "site.maintenance": ["false", "true"]}))
     assert checked.status_code == 200
     assert playground_app.SETTINGS_VALUES["site.maintenance"] is True
@@ -512,8 +521,11 @@ def test_roles_demo_admin_only_and_assign_set_remove():
     playground_app.ROLE_GRANTS.clear()
     try:
         denied, denied_post, viewer_page, page, bad, added, changed, removed = _run(flow())
-        assert (denied.status_code, denied_post.status_code, viewer_page.status_code) == (
-            403, 403, 403)
+        # a page sends you to pick a persona; a POST can't redirect, so it's a 403
+        persona_url = "/personas?next=%2Froles&need=settings.manage"
+        assert (denied.status_code, denied.headers["location"]) == (303, persona_url)
+        assert (viewer_page.status_code, viewer_page.headers["location"]) == (303, persona_url)
+        assert denied_post.status_code == 403
         assert page.status_code == 200 and 'id="gth-roles"' in page.text
         assert bad.status_code == 422
         assert "Enter a user ID." in bad.text and "Pick at least one role." in bad.text
@@ -524,3 +536,77 @@ def test_roles_demo_admin_only_and_assign_set_remove():
         assert playground_app.ROLE_GRANTS == {}
     finally:
         playground_app.ROLE_GRANTS.clear()
+
+
+def test_personas_impersonate_and_return_to_next():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            picker = await client.get("/personas?next=/roles&need=settings.manage")
+            as_admin = await client.post("/demo/sign-in", data={"as": "admin", "next": "/roles"})
+            roles = await client.get("/roles")
+            current = await client.get("/personas")
+            htmx = await client.get("/roles", headers={"HX-Request": "true"})
+            out = await client.post("/demo/sign-in", data={"as": "anonymous"})
+            after = await client.get("/personas")
+            return picker, as_admin, roles, current, htmx, out, after
+
+    picker, as_admin, roles, current, htmx, out, after = _run(flow())
+    assert picker.status_code == 200
+    assert 'id="gth-persona-need"' in picker.text and "settings.manage" in picker.text
+    assert '<input type="hidden" name="next" value="/roles">' in picker.text
+    assert 'data-persona="anonymous"' in picker.text and 'data-persona="admin"' in picker.text
+    assert (as_admin.status_code, as_admin.headers["location"]) == (303, "/roles")
+    assert roles.status_code == 200 and htmx.status_code == 200
+    assert 'Switch persona' in current.text  # the user menu's item
+    assert re.search(r'data-persona="admin">.*?Current', current.text, re.S)
+    assert (out.status_code, out.headers["location"]) == (303, "/personas")
+    assert "gth-user-menu" not in after.text
+
+
+def test_persona_next_must_stay_on_site():
+    for evil in ("//evil.example/x", "https://evil.example", "/\\evil.example", "roles"):
+        response = _run(_post("/demo/sign-in", data={"as": "viewer", "next": evil}))
+        assert response.headers["location"] == "/personas", evil
+    picker = _run(_get("/personas", params={"next": "//evil.example"}))
+    assert 'name="next"' not in picker.text
+
+
+def test_viewer_htmx_or_post_to_a_gated_page_is_a_403():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as client:
+            return (await client.get("/roles", headers={"HX-Request": "true"}),
+                    await client.delete("/roles/carol"))
+
+    htmx, delete = _run(flow())
+    assert (htmx.status_code, delete.status_code) == (403, 403)
+
+
+def test_app_settings_section_needs_settings_manage():
+    playground_app.SETTINGS_VALUES.clear()
+    data = {"site.banner": "Viewer was here", "site.maintenance": "true"}
+    try:
+        for persona in ("anonymous", "viewer"):
+            page = _run(_as(persona, "GET", "/settings"))
+            assert 'id="gth-settings-preferences"' in page.text, persona
+            assert 'id="gth-settings-app"' not in page.text, persona
+            denied = _run(_as(persona, "POST", "/settings-demo/app", data=data))
+            assert denied.status_code == 403, persona
+        assert playground_app.SETTINGS_VALUES == {}
+        assert 'id="gth-settings-app"' in _run(_as("admin", "GET", "/settings")).text
+        assert _run(_as("admin", "POST", "/settings-demo/app", data=data)).status_code == 200
+        assert playground_app.SETTINGS_VALUES["site.banner"] == "Viewer was here"
+    finally:
+        playground_app.SETTINGS_VALUES.clear()
+
+
+def test_personas_only_send_a_persona_back_to_a_page_it_can_open():
+    html = _run(_get("/personas", params={"next": "/roles", "need": "settings.manage"})).text
+    cards = {key: html.split(f'data-persona="{key}"', 1)[1].split("</form>", 1)[0]
+             for key in ("anonymous", "viewer", "admin")}
+    assert 'name="next" value="/roles"' in cards["admin"]
+    for key in ("anonymous", "viewer"):
+        assert 'name="next"' not in cards[key], key
+        assert "Can&#39;t open" in cards[key] or "Can't open" in cards[key], key

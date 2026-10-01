@@ -150,29 +150,72 @@ def theme_context(request: Request) -> dict:
     return {"theme_save_url": "/demo/theme", "theme_mode": mode if mode in THEME_MODES else None}
 
 
-# Demo sign-in: the playground has no auth, so a cookie stands in for the
-# session. A service's settings wiring (greentechhub-fastapi's register_settings)
-# supplies the same keys: current_user (core's Identity), granted (RoleResolver),
-# user_menu_items and logout_url.
+# Personas: the playground has no auth, so you impersonate one (ServiceNow
+# style) on /personas, and a cookie stands in for the session. A service's
+# settings wiring (greentechhub-fastapi's register_settings) supplies the same
+# keys: current_user (core's Identity), granted (RoleResolver), user_menu_items
+# and logout_url.
 USER_COOKIE = "playground-user"
-DEMO_USERS = {
-    "viewer": ({"username": "viewer", "email": "viewer@example.com"}, frozenset()),
-    "admin": ({"username": "admin", "email": "admin@example.com"},
-              frozenset({"settings.manage"})),
+PERSONAS = {
+    "anonymous": {"user": None, "granted": frozenset(), "icon": "incognito",
+                  "description": "Signed out. No user menu; permission-gated pages send you here."},
+    "viewer": {"user": {"username": "viewer", "email": "viewer@example.com"},
+               "granted": frozenset(), "icon": "person",
+               "description": "Signed in with no permissions: the user menu and Preferences, "
+                              "but not Settings \u203a App or Roles."},
+    "admin": {"user": {"username": "admin", "email": "admin@example.com"},
+              "granted": frozenset({"settings.manage"}), "icon": "person-gear",
+              "description": "Holds settings.manage: Settings \u203a App and the Roles page "
+                             "appear in the sidebar."},
 }
 
 
+def _persona(request: Request) -> str:
+    key = request.cookies.get(USER_COOKIE, "")
+    return key if key in PERSONAS and PERSONAS[key]["user"] else "anonymous"
+
+
 def user_context(request: Request) -> dict:
-    who = DEMO_USERS.get(request.cookies.get(USER_COOKIE, ""))
-    if who is None:
+    persona = PERSONAS[_persona(request)]
+    if persona["user"] is None:
         return {"current_user": None}
-    user, granted = who
     return {
-        "current_user": user,
-        "granted": granted,
-        "user_menu_items": [{"label": "Settings", "url": "/settings", "icon": "sliders"}],
+        "current_user": persona["user"],
+        "granted": persona["granted"],
+        "user_menu_items": [{"label": "Settings", "url": "/settings", "icon": "sliders"},
+                            {"label": "Switch persona", "url": "/personas",
+                             "icon": "person-badge"}],
         "logout_url": "/demo/logout",
     }
+
+
+# What the admin persona holds: Settings › App and the Roles page need it.
+MANAGE_PERMISSION = "settings.manage"
+
+
+def _has(request: Request, permission: str) -> bool:
+    return permission in user_context(request).get("granted", ())
+
+
+def _local_path(url: str | None) -> str | None:
+    """`url` if it's a path on this site, else None — so ?next= can't send
+    anyone off-site (no //host, no scheme, no backslash tricks)."""
+    if not url or not url.startswith("/") or url.startswith("//") or "\\" in url:
+        return None
+    return url
+
+
+def _require_persona(request: Request, permission: str) -> Response | None:
+    """None when the impersonated persona holds `permission`. Otherwise a page
+    request is sent to /personas to pick one that does (like
+    require_page_permission's login redirect), and htmx / non-GET calls get a
+    plain 403 (like require_permission) — a fragment can't redirect sensibly."""
+    if _has(request, permission):
+        return None
+    if request.method != "GET" or request.headers.get("HX-Request"):
+        return Response(status_code=403)
+    query = urlencode({"next": request.url.path, "need": permission})
+    return Response(status_code=303, headers={"Location": f"/personas?{query}"})
 
 
 PREFS_COOKIE = "playground-prefs"
@@ -252,6 +295,7 @@ PLAYGROUND_NAV = [
          "required_permission": "settings.manage"},
     ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
+    {"label": "Personas", "url": "/personas", "icon": "person-badge"},
     # Only the demo admin (sign in on /extensibility) sees this.
     {"label": "Roles", "url": "/roles", "icon": "people",
      "required_permission": "settings.manage"},
@@ -270,6 +314,8 @@ PAGES = {
     "navigation": ("Navigation", "The sidebar this page uses, breadcrumbs derived from it, and the "
                    "command palette."),
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
+    "personas": ("Personas", "Impersonate a persona to see the playground as they would: the user "
+                             "menu, permission-filtered nav and gated pages."),
     "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
                  "own widget."),
 }
@@ -415,6 +461,12 @@ def _render_section(request: Request, section: dict, **kwargs) -> HTMLResponse:
                                       **kwargs)
 
 
+def _visible_sections(request: Request) -> list[str]:
+    """Preferences for everyone; App only with settings.manage — as
+    greentechhub-fastapi's SettingsViews gates it on manage_permission."""
+    return [s for s in SETTINGS_DEMO if s != "app" or _has(request, MANAGE_PERMISSION)]
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
@@ -424,7 +476,7 @@ async def settings_page(request: Request):
             "gth_setting_field picks the widget from the setting's type: a switch for bool, "
             "segmented buttons for four or fewer choices, a select for more, number and text "
             "fields for int and str. Save a page size of 500 to see the 422 path."),
-        "settings_sections": [_settings_section(request, s) for s in SETTINGS_DEMO],
+        "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
     })
 
 
@@ -434,6 +486,8 @@ async def settings_demo_save(request: Request, section: str):
     the section re-rendered around its field errors, or save and toast."""
     if section not in SETTINGS_DEMO:
         return HTMLResponse("Unknown section", status_code=404)
+    if section == "app" and (denied := _require_persona(request, MANAGE_PERMISSION)):
+        return denied  # a POST, so a 403
     form = await request.form()
     _, _, settings = SETTINGS_DEMO[section]
     submitted, errors = {}, {}
@@ -522,13 +576,22 @@ async def extensibility_page(request: Request):
                  extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
 
 
+@app.get("/personas", response_class=HTMLResponse)
+async def personas_page(request: Request, next: str | None = None, need: str | None = None):
+    return _page(request, "personas", personas=PERSONAS, current=_persona(request),
+                 next=_local_path(next), need=need)
+
+
 @app.post("/demo/sign-in")
-async def demo_sign_in(as_: str = Form(..., alias="as")):
-    """Demo sign-in for the user menu and permission-filtered nav."""
-    if as_ not in DEMO_USERS:
+async def demo_sign_in(as_: str = Form(..., alias="as"), next: str | None = Form(None)):
+    """Impersonate a persona (anonymous signs out), then go back to `next`."""
+    if as_ not in PERSONAS:
         return Response(status_code=422)
-    response = Response(status_code=303, headers={"Location": "/extensibility#user-menu"})
-    response.set_cookie(USER_COOKIE, as_, samesite="lax")
+    response = Response(status_code=303, headers={"Location": _local_path(next) or "/personas"})
+    if PERSONAS[as_]["user"] is None:
+        response.delete_cookie(USER_COOKIE)
+    else:
+        response.set_cookie(USER_COOKIE, as_, samesite="lax")
     return response
 
 
@@ -542,8 +605,6 @@ ROLE_OPTIONS = [{"value": "viewer", "label": "Viewer"}, {"value": "editor", "lab
 ROLE_GRANTS: dict[str, set[str]] = {}
 
 
-def _is_demo_admin(request: Request) -> bool:
-    return "settings.manage" in user_context(request).get("granted", ())
 
 
 def _roles_context(**extra) -> dict:
@@ -566,16 +627,16 @@ def _picked_roles(form) -> list[str]:
 
 @app.get("/roles", response_class=HTMLResponse)
 async def roles_page(request: Request):
-    if not _is_demo_admin(request):
-        return HTMLResponse("Forbidden — sign in as admin on /extensibility", status_code=403)
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
     return templates.TemplateResponse(request, "roles_page.html", _roles_context(
         page_title="Roles", page_subtitle="gth-ui's roles_page.html over a stand-in GrantStore."))
 
 
 @app.post("/roles", response_class=HTMLResponse)
 async def roles_assign(request: Request):
-    if not _is_demo_admin(request):
-        return Response(status_code=403)
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
     form = await request.form()
     subject, roles = (form.get("subject") or "").strip(), _picked_roles(form)
     errors = {}
@@ -592,8 +653,8 @@ async def roles_assign(request: Request):
 
 @app.post("/roles/{subject}", response_class=HTMLResponse)
 async def roles_set(request: Request, subject: str):
-    if not _is_demo_admin(request):
-        return Response(status_code=403)
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
     roles = _picked_roles(await request.form())
     if roles:
         ROLE_GRANTS[subject] = set(roles)
@@ -604,8 +665,8 @@ async def roles_set(request: Request, subject: str):
 
 @app.delete("/roles/{subject}", response_class=HTMLResponse)
 async def roles_remove(request: Request, subject: str):
-    if not _is_demo_admin(request):
-        return Response(status_code=403)
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
     ROLE_GRANTS.pop(subject, None)
     return _roles_section(request, f"Removed {subject}'s roles")
 
@@ -613,7 +674,7 @@ async def roles_remove(request: Request, subject: str):
 @app.post("/demo/logout")
 async def demo_logout():
     """The user menu's Log out (logout_url) — a POST, like greentechhub-fastapi's LoginViews."""
-    response = Response(status_code=303, headers={"Location": "/extensibility#user-menu"})
+    response = Response(status_code=303, headers={"Location": "/personas"})
     response.delete_cookie(USER_COOKIE)
     return response
 

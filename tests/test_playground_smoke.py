@@ -27,7 +27,8 @@ def test_app_is_a_fastapi_instance():
 def test_every_template_compiles():
     for name in ["pages/overview.html", "pages/layout.html", "pages/data.html", "pages/forms.html",
                  "pages/feedback.html", "pages/overlays.html", "pages/navigation.html",
-                 "pages/extensibility.html", "settings_page.html", "settings_section.html",
+                 "pages/extensibility.html", "pages/personas.html", "settings_page.html",
+                 "settings_section.html",
                  "_tasks_tbody.html",
                  "_pagination_list.html",
                  "_form_demo.html",
