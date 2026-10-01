@@ -10,9 +10,9 @@ current logo file, not a copy of it. Two variants: logo.png is tuned for
 gth-navbar's hardcoded dark background; logo-light.png has a much stronger
 outline for the unpredictable (often light) background of a browser's
 chrome, so gth_navbar uses it in light mode (logo_light_url). favicon.png is
-logo-light.png cropped to the mark and squared at 64x64
-(scripts/make_favicon.py): the 512px canvas's padding made the tab icon look
-smaller than other sites'.
+logo-light.png's mark on a dark rounded-square tile, 64x64
+(scripts/make_favicon.py): the mark is portrait, so even cropped tight it
+looked narrow in a tab; the tile fills the square on any tab strip.
 """
 
 BRAND_NAME = "GreenTechHub"
@@ -35,8 +35,9 @@ def brand_context(
     `show_logo` defaults to False so adopting this doesn't change any
     existing consumer's rendered output until they opt in (same pattern as
     gth_navbar's show_theme_toggle). logo_url (dark navbar), logo_light_url
-    (light navbar) and favicon_url (the tab icon, a tight square crop of the
-    light variant) point at three assets — see the module docstring.
+    (light navbar) and favicon_url (the tab icon, the light variant's mark on
+    a dark rounded-square tile) point at three assets — see the module
+    docstring.
     """
     if show_logo:
         logo_url = f"{static_url_prefix}/{LOGO_ASSET_PATH}"

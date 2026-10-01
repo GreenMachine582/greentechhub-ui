@@ -25,7 +25,7 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
 }
 ```
 
-`brand.logo_url`/`brand.logo_light_url`/`brand.favicon_url` (`logo/favicon.png`, a 64×64 tight crop) are populated by `theme.brand_context(show_logo=True, static_url_prefix=...)`
+`brand.logo_url`/`brand.logo_light_url`/`brand.favicon_url` (`logo/favicon.png`, 64×64, the mark on a dark rounded-square tile) are populated by `theme.brand_context(show_logo=True, static_url_prefix=...)`
 — a Python-side opt-in (both `None` by default), distinct from the `*_url` Jinja globals below, which a consumer
 sets directly as template defaults rather than through a Python function argument.
 
