@@ -270,3 +270,37 @@ def test_unknown_or_missing_preferences_add_nothing():
     assert _html_tag(user_settings={}) == bare
     assert _html_tag(user_settings={"ui.density": "huge", "ui.motion": 1}) == bare
     assert _html_tag(user_settings="nope") == bare
+
+
+# ── v0.12: ui.sidebar_default seeds the rail ──────────────────────────────
+
+
+def _sidebar_script(**context) -> str:
+    html = _env().get_template("app.html").render(**_context(layout="sidebar", **context))
+    start = html.index("gth_sidebar's icon rail")
+    return html[start:html.index("</script>", start)]
+
+
+def test_sidebar_default_is_passed_to_the_pre_paint_script():
+    rail = _sidebar_script(user_settings={"ui.sidebar_default": "rail"})
+    assert 'var preferred = "rail";' in rail
+    expanded = _sidebar_script(user_settings={"ui.sidebar_default": "expanded"})
+    assert 'var preferred = "expanded";' in expanded
+
+
+def test_unknown_or_missing_sidebar_default_is_null():
+    for context in ({}, {"user_settings": {}}, {"user_settings": {"ui.sidebar_default": "wide"}},
+                    {"user_settings": "nope"}):
+        assert "var preferred = null;" in _sidebar_script(**context), context
+
+
+def test_the_stored_toggle_still_wins_in_the_script():
+    script = _sidebar_script(user_settings={"ui.sidebar_default": "rail"})
+    assert 'stored === "rail" || (stored !== "full" && preferred === "rail")' in script
+
+
+def test_navbar_layout_has_no_sidebar_script():
+    html = _env().get_template("app.html").render(
+        **_context(user_settings={"ui.sidebar_default": "rail"}))
+    assert "gth-sidebar-mode" not in html
+

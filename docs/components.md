@@ -395,7 +395,9 @@ gth_sidebar_rail_toggle()
    opens the groups holding matches; clearing restores. From 992px the rail
    toggle collapses it to icons (tooltips; badges as dots; groups open as
    flyouts, closed by Esc / a click elsewhere), remembered in localStorage and
-   applied before first paint. Below 992px it's Bootstrap's offcanvas-lg drawer
+   applied before first paint. Until this browser toggles it, the starting
+   state is the viewer's ui.sidebar_default from user_settings (v0.12;
+   "rail" or "expanded"). Below 992px it's Bootstrap's offcanvas-lg drawer
    (a link click closes it). sidebar.js also remembers which groups were
    opened by hand. {% block sidebar_extra %} fills the footer. #}
 

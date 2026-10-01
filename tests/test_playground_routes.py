@@ -626,3 +626,18 @@ def test_saved_density_and_motion_reach_the_html_tag():
     assert saved.status_code == 200
     tag = page.text[page.text.index("<html"):page.text.index(">", page.text.index("<html"))]
     assert 'data-gth-density="compact"' in tag and 'data-gth-motion="reduce"' in tag
+
+
+def test_saved_sidebar_default_reaches_the_pre_paint_script():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            before = await client.get("/forms")
+            await client.post("/settings-demo/preferences", data={"ui.sidebar_default": "rail"})
+            after = await client.get("/forms")
+            return before, after
+
+    before, after = _run(flow())
+    assert "var preferred = null;" in before.text
+    assert 'var preferred = "rail";' in after.text
+

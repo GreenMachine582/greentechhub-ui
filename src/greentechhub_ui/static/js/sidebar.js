@@ -9,7 +9,8 @@
 //   cleared.
 // - Icon rail ([data-gth-sidebar-rail] toggle; data-gth-sidebar="rail" on
 //   <html>, persisted in localStorage["gth-sidebar-mode"] and applied
-//   before first paint by app.html). ≥992px only. In the rail a top-level
+//   before first paint by app.html; with nothing stored, app.html starts
+//   from the viewer's ui.sidebar_default instead, v0.12). ≥992px only. In the rail a top-level
 //   group opens as a flyout beside its icon; Esc or a click elsewhere
 //   closes it.
 // - A link click inside the off-canvas drawer (below 992px) closes the
