@@ -108,6 +108,10 @@ mode; `"dark"` pins it dark.
 | `show_command_palette` | include the palette (and a navbar search button) in the default layout |
 | `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
 
+**User settings (v0.12)** — optional `user_settings`, the viewer's effective setting values keyed by
+greentechhub-core key (greentechhub-fastapi's `settings_context` supplies it). The `date` and `datetime` filters read
+`locale.date_format`, `locale.timezone` and `locale.time_format` from it; without it they render as before.
+
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in

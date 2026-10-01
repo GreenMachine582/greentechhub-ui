@@ -24,12 +24,10 @@
 Rendering for `greentechhub-core`'s settings and role resolution (design:
 [core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
 opt-in: new behaviour turns on only when the optional context keys (`theme_mode`/`theme_save_url`, `granted`,
-`user_menu_items`/`logout_url`) are present, so it isn't breaking. Macros duck-type attributes, so there's no runtime import of core. Each PR updates
-any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4, fastapi #5 and ui #6–#8
-(settings rendering, server-saved theme, permission-aware nav and the user menu) have shipped.
-- [ ] **#10 `feat(formatting): honour timezone, date format and page size`**
-  - `format_date`/`format_datetime` read `locale.timezone`/`locale.date_format`.
-  - The `TableState` default page size comes from `ui.page_size`.
+`user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
+there's no runtime import of core. Each PR updates any doc it would otherwise contradict. The numbers are the
+cross-repo order: core #1–#4, fastapi #5 and #9, and ui #6–#8 and #10 (settings rendering, server-saved theme,
+permission-aware nav and the user menu, dates and table page size following the viewer's settings) have shipped.
 - [ ] **#12 `docs: scope additional shared settings`** (with core)
   - Compact density for forms and tables, reduced motion, number/currency format, landing page, sidebar default,
     notification preferences.
