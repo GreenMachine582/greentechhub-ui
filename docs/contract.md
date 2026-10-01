@@ -108,6 +108,11 @@ mode; `"dark"` pins it dark.
 | `show_command_palette` | include the palette (and a navbar search button) in the default layout |
 | `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
 
+**Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
+(greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
+`settings_intro`, and `section` for the single-section fragment. A section's shape is in
+[docs/components.md](components.md#settings).
+
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:
 

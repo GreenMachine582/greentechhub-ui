@@ -1,0 +1,22 @@
+{#- settings_section.html — one settings section, from a `section` mapping
+    shaped like gth_settings_section's parameters:
+      id, title, settings, values?, errors?, error?, action?, description?,
+      submit_label?, form_attrs?
+    settings_page.html includes it once per section, and a save response
+    renders it alone: 200 with a toast, or 422 with `errors`.
+    With an `action` and no `form_attrs`, the form posts over htmx and swaps
+    this section in place (hx-target "#gth-settings-<id>", outerHTML), so a
+    service passes data only. -#}
+{% from "settings.html" import gth_settings_section %}
+{%- set action = section.action|default(none) %}
+{%- set form_attrs = section.form_attrs|default(none) %}
+{#- section.values on a dict is dict.values, and a missing "values" key falls
+    back to it too: only a real mapping counts. #}
+{%- set values = section["values"] if section["values"] is mapping else none %}
+{%- if form_attrs is none and action %}
+{%- set form_attrs = {"hx-post": action, "hx-target": "#gth-settings-" ~ section.id, "hx-swap": "outerHTML"} %}
+{%- endif %}
+{{ gth_settings_section(section.id, section.title, section.settings,
+    values=values, errors=section.errors|default(none), action=action,
+    description=section.description|default(none), error=section.error|default(none),
+    submit_label=section.submit_label|default("Save"), form_attrs=form_attrs) }}
