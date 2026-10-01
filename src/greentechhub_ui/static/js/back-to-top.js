@@ -1,7 +1,8 @@
 // gth-back-to-top — see components/back_to_top.html (v0.8).
 // Shown past the button's data-threshold px of window scroll (a passive,
 // rAF-throttled listener); a click scrolls to the top (smooth, or instant
-// under prefers-reduced-motion) and moves focus to <main>. While shown,
+// under prefers-reduced-motion — or the viewer's ui.motion, <html
+// data-gth-motion="reduce|full">, v0.12) and moves focus to <main>. While shown,
 // <html> carries .gth-back-to-top-shown so the toast stack lifts above it.
 (function () {
   var ticking = false;
@@ -27,7 +28,9 @@
 
   document.addEventListener("click", function (evt) {
     if (!(evt.target.closest && evt.target.closest("[data-gth-back-to-top]"))) return;
-    window.scrollTo({ top: 0, behavior: reduce.matches ? "auto" : "smooth" });
+    var motion = document.documentElement.getAttribute("data-gth-motion");
+    var instant = motion === "reduce" || (motion !== "full" && reduce.matches);
+    window.scrollTo({ top: 0, behavior: instant ? "auto" : "smooth" });
     // Focus the page's main content (not the button, which is about to hide)
     // without cutting the smooth scroll short.
     var main = document.querySelector("main");

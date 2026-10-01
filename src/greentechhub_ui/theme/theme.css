@@ -747,13 +747,14 @@ body.gth-picker-modal-open {
 .gth-toast.fade:not(.show) {
   transform: translateY(0.5rem);
 }
+/* The OS setting, unless the viewer chose ui.motion="full" (v0.12). */
 @media (prefers-reduced-motion: reduce) {
-  .gth-toast.fade,
-  .gth-toast.fade:not(.show) {
+  :root:not([data-gth-motion="full"]) .gth-toast.fade,
+  :root:not([data-gth-motion="full"]) .gth-toast.fade:not(.show) {
     transform: none;
     transition: none;
   }
-  .gth-toast-progress > span {
+  :root:not([data-gth-motion="full"]) .gth-toast-progress > span {
     animation: none;
     transform: scaleX(0.5);
   }
@@ -1166,4 +1167,74 @@ body.gth-picker-modal-open {
 }
 .gth-tree-loading .gth-skeleton .placeholder {
   margin-bottom: 0 !important;
+}
+
+/* ── Viewer preferences (v0.12): greentechhub-core's ui.motion / ui.density,
+   set on <html> by app.html from user_settings ─────────────────────────── */
+
+/* ui.motion="reduce": no transitions or animations anywhere — Bootstrap's
+   fades, toasts, the sidebar rail, smooth scrolling. ("system" follows
+   prefers-reduced-motion; "full" keeps gth's own animations even when the OS
+   asks for less, though Bootstrap's built-in reduced-motion rules still
+   follow the OS.) */
+:root[data-gth-motion="reduce"] {
+  scroll-behavior: auto !important;
+}
+:root[data-gth-motion="reduce"] *,
+:root[data-gth-motion="reduce"] *::before,
+:root[data-gth-motion="reduce"] *::after {
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+:root[data-gth-motion="reduce"] .gth-toast.fade:not(.show) {
+  transform: none;
+}
+:root[data-gth-motion="reduce"] .gth-toast-progress > span {
+  animation: none !important;
+  transform: scaleX(0.5);
+}
+
+/* ui.density="compact": Bootstrap's -sm sizing for fields, tighter spacing in
+   forms and cards, and table-sm cells everywhere (gth_data_table's own
+   density toggle still overrides it per table). */
+:root[data-gth-density="compact"] .form-control,
+:root[data-gth-density="compact"] .form-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  border-radius: var(--bs-border-radius-sm);
+}
+:root[data-gth-density="compact"] .form-select {
+  padding-right: 2rem;
+}
+:root[data-gth-density="compact"] .gth-segmented .btn,
+:root[data-gth-density="compact"] .gth-form .btn:not(.btn-sm):not(.btn-lg) {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+:root[data-gth-density="compact"] .input-group-text {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+:root[data-gth-density="compact"] .gth-form-field,
+:root[data-gth-density="compact"] form .mb-3 {
+  margin-bottom: 0.5rem !important;
+}
+:root[data-gth-density="compact"] .form-label {
+  margin-bottom: 0.25rem;
+}
+:root[data-gth-density="compact"] .card-body {
+  padding: 0.75rem;
+}
+:root[data-gth-density="compact"] .table > :not(caption) > * > * {
+  padding: 0.25rem 0.25rem;
+}
+:root[data-gth-density="compact"] .table:not(.gth-table-comfortable) {
+  font-size: 0.875rem;
+}
+:root[data-gth-density="compact"] .table.gth-table-comfortable > :not(caption) > * > * {
+  padding: 0.5rem 0.5rem;
 }

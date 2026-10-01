@@ -610,3 +610,19 @@ def test_personas_only_send_a_persona_back_to_a_page_it_can_open():
     for key in ("anonymous", "viewer"):
         assert 'name="next"' not in cards[key], key
         assert "Can&#39;t open" in cards[key] or "Can't open" in cards[key], key
+
+
+def test_saved_density_and_motion_reach_the_html_tag():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # a partial form: fields that weren't submitted keep their saved values
+            saved = await client.post("/settings-demo/preferences",
+                                      data={"ui.density": "compact", "ui.motion": "reduce"})
+            page = await client.get("/forms")
+            return saved, page
+
+    saved, page = _run(flow())
+    assert saved.status_code == 200
+    tag = page.text[page.text.index("<html"):page.text.index(">", page.text.index("<html"))]
+    assert 'data-gth-density="compact"' in tag and 'data-gth-motion="reduce"' in tag

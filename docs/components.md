@@ -654,7 +654,8 @@ gth_data_table(state, headers, rows, ..., view_options=False)
 ```
 
 The choice is stored in `localStorage["gth-table-view:<pathname>#<table id>"]`, so it's per browser, per page and
-per table. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
+per table. With nothing stored, density starts from the viewer's `ui.density` (`<html data-gth-density>`, v0.12), and
+Comfortable on a compact page keeps comfortable cells. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
 load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
 cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
 so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one

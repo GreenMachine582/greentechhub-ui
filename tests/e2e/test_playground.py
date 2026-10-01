@@ -225,6 +225,40 @@ def test_roles_page_assign_change_remove(page, playground_url):
     expect(page.locator("body")).not_to_have_class(re.compile("modal-open"))
 
 
+def test_density_and_motion_preferences(page, playground_url):
+    def padding_top(selector):
+        return page.eval_on_selector(selector, "el => parseFloat(getComputedStyle(el).paddingTop)")
+
+    page.goto(f"{playground_url}/settings")
+    html = page.locator("html")
+    field = "[id='gth-field-ui.page_size']"
+    comfortable = padding_top(field)
+
+    prefs = "#gth-settings-preferences"
+    page.click(f"{prefs} label:has-text('Compact')")
+    page.click(f"{prefs} label:has-text('Reduce')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    page.reload()
+    expect(html).to_have_attribute("data-gth-density", "compact")
+    expect(html).to_have_attribute("data-gth-motion", "reduce")
+    assert padding_top(field) < comfortable
+    # the sidebar's width transition (0.15s) is cut to ~0
+    duration = page.eval_on_selector(
+        "#gth-sidebar", "el => getComputedStyle(el).transitionDuration")
+    assert all(float(d.rstrip("s")) < 0.001 for d in duration.split(", ")), duration
+
+    # a data table with nothing stored starts compact; its own toggle still wins
+    page.goto(f"{playground_url}/tables")
+    table = page.locator("table.gth-table").first
+    expect(table).to_have_class(re.compile(r"\btable-sm\b"))
+    page.click("#records-view-toggle")
+    page.click("input[name=records-density][value=comfortable]")
+    expect(table).not_to_have_class(re.compile(r"\btable-sm\b"))
+    page.reload()
+    expect(page.locator("table.gth-table").first).not_to_have_class(re.compile(r"\btable-sm\b"))
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")
