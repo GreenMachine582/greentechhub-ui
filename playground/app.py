@@ -65,8 +65,9 @@ RECORDS = [
 # POST /demo/reset trims it back and restores the stock.
 _RECORDS_INITIAL = len(RECORDS)
 _RECORDS_STOCK = [r["stock"] for r in RECORDS]
-CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
-    {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
+# No per-option "style", so gth_segmented draws its brand track (v0.12).
+CATEGORY_OPTIONS = [{"value": "", "label": "All"}] + [
+    {"value": c, "label": c} for c in RECORD_CATEGORIES
 ]
 PAGINATION_PAGE_SIZE = 5
 
