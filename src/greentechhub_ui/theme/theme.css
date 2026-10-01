@@ -36,6 +36,164 @@
   --gth-on-light-display: inline-block;
 }
 
+/* ── Brand accent (v0.12) ─────────────────────────────────────────────────
+   One accent for everything "primary": Bootstrap's own primary, links and
+   focus rings are remapped to it, and the gth components share it, so a
+   service gets the brand without restyling Bootstrap. Fills pair the accent
+   with a text colour that clears WCAG AA (white on the bright #1FBE1E is only
+   2.49:1, so dark mode puts near-black text on it instead):
+     light: #127a13 + white   5.5:1   (hover #0f6b10, 6.7:1)
+     dark:  #1FBE1E + #0b1f0b 6.95:1  (hover #3fcf3e, 8.4:1)
+   Override per service by setting --gth-accent* on [data-bs-theme]. Like the
+   brand colours above, these are inherited from the NEAREST [data-bs-theme],
+   so a dark-pinned region on a light page resolves to the dark values. */
+[data-bs-theme="dark"] {
+  --gth-accent: #1FBE1E;
+  --gth-accent-hover: #3fcf3e;
+  --gth-accent-active: #57d556;
+  --gth-accent-rgb: 31, 190, 30;
+  --gth-on-accent: #0b1f0b;
+  --gth-focus-ring: rgba(31, 190, 30, 0.4);
+  --gth-link-rgb: 166, 235, 166;
+  --gth-link-hover-rgb: 31, 190, 30;
+  --gth-check-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%230b1f0b' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  --gth-indeterminate-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%230b1f0b' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+  --gth-radio-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%230b1f0b'/%3e%3c/svg%3e");
+  --gth-switch-on-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%230b1f0b'/%3e%3c/svg%3e");
+}
+[data-bs-theme="light"] {
+  --gth-accent: #127a13;
+  --gth-accent-hover: #0f6b10;
+  --gth-accent-active: #0c5a0d;
+  --gth-accent-rgb: 18, 122, 19;
+  --gth-on-accent: #ffffff;
+  --gth-focus-ring: rgba(18, 122, 19, 0.35);
+  --gth-link-rgb: 18, 122, 19;
+  --gth-link-hover-rgb: 15, 107, 16;
+  --gth-check-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  --gth-indeterminate-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+  --gth-radio-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+  --gth-switch-on-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+/* Bootstrap's globals: utilities (text-/bg-/border-primary, .focus-ring),
+   links and anything built on --bs-link-color follow the accent. */
+[data-bs-theme="dark"],
+[data-bs-theme="light"] {
+  --bs-primary: var(--gth-accent);
+  --bs-primary-rgb: var(--gth-accent-rgb);
+  --bs-primary-text-emphasis: var(--gth-brand-fg);
+  --bs-primary-bg-subtle: var(--gth-brand-subtle-bg);
+  --bs-primary-border-subtle: var(--gth-brand-subtle-border);
+  --bs-link-color: var(--gth-brand-fg);
+  --bs-link-color-rgb: var(--gth-link-rgb);
+  --bs-link-hover-color: var(--gth-brand-fg-hover);
+  --bs-link-hover-color-rgb: var(--gth-link-hover-rgb);
+  --bs-focus-ring-color: var(--gth-focus-ring);
+}
+/* Components whose blues Bootstrap compiles in rather than reading the
+   globals above. */
+.btn-primary {
+  --bs-btn-color: var(--gth-on-accent);
+  --bs-btn-bg: var(--gth-accent);
+  --bs-btn-border-color: var(--gth-accent);
+  --bs-btn-hover-color: var(--gth-on-accent);
+  --bs-btn-hover-bg: var(--gth-accent-hover);
+  --bs-btn-hover-border-color: var(--gth-accent-hover);
+  --bs-btn-focus-shadow-rgb: var(--gth-accent-rgb);
+  --bs-btn-active-color: var(--gth-on-accent);
+  --bs-btn-active-bg: var(--gth-accent-active);
+  --bs-btn-active-border-color: var(--gth-accent-active);
+  --bs-btn-disabled-color: var(--gth-on-accent);
+  --bs-btn-disabled-bg: var(--gth-accent);
+  --bs-btn-disabled-border-color: var(--gth-accent);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--gth-brand-fg);
+  --bs-btn-border-color: var(--gth-brand-fg);
+  --bs-btn-hover-color: var(--gth-on-accent);
+  --bs-btn-hover-bg: var(--gth-accent);
+  --bs-btn-hover-border-color: var(--gth-accent);
+  --bs-btn-focus-shadow-rgb: var(--gth-accent-rgb);
+  --bs-btn-active-color: var(--gth-on-accent);
+  --bs-btn-active-bg: var(--gth-accent);
+  --bs-btn-active-border-color: var(--gth-accent);
+  --bs-btn-disabled-color: var(--gth-brand-fg);
+  --bs-btn-disabled-border-color: var(--gth-brand-fg);
+}
+.btn-link {
+  --bs-btn-focus-shadow-rgb: var(--gth-accent-rgb);
+}
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--gth-accent);
+  box-shadow: 0 0 0 0.25rem var(--gth-focus-ring);
+}
+.form-check-input:checked,
+.form-check-input[type="checkbox"]:indeterminate {
+  background-color: var(--gth-accent);
+  border-color: var(--gth-accent);
+}
+.form-check-input:checked[type="checkbox"] {
+  --bs-form-check-bg-image: var(--gth-check-icon);
+}
+.form-check-input:checked[type="radio"] {
+  --bs-form-check-bg-image: var(--gth-radio-icon);
+}
+.form-check-input[type="checkbox"]:indeterminate {
+  --bs-form-check-bg-image: var(--gth-indeterminate-icon);
+}
+/* Switches: the checked knob contrasts with the accent track (dark knob in
+   dark mode); Bootstrap's blue unchecked-focus knob becomes the accent. */
+.form-switch .form-check-input:checked {
+  --bs-form-switch-bg: var(--gth-switch-on-icon);
+}
+.form-switch .form-check-input:focus:not(:checked) {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231FBE1E'/%3e%3c/svg%3e");
+}
+.form-range::-webkit-slider-thumb {
+  background-color: var(--gth-accent);
+}
+.form-range::-moz-range-thumb {
+  background-color: var(--gth-accent);
+}
+.form-range:focus::-webkit-slider-thumb,
+.form-range:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 1px var(--bs-body-bg), 0 0 0 0.25rem var(--gth-focus-ring);
+}
+.nav-link:focus-visible,
+.page-link:focus,
+.btn-close:focus {
+  box-shadow: 0 0 0 0.25rem var(--gth-focus-ring);
+}
+.pagination {
+  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem var(--gth-focus-ring);
+  --bs-pagination-active-color: var(--gth-on-accent);
+  --bs-pagination-active-bg: var(--gth-accent);
+  --bs-pagination-active-border-color: var(--gth-accent);
+}
+.dropdown-menu {
+  --bs-dropdown-link-active-color: var(--gth-on-accent);
+  --bs-dropdown-link-active-bg: var(--gth-accent);
+}
+.nav-pills {
+  --bs-nav-pills-link-active-color: var(--gth-on-accent);
+  --bs-nav-pills-link-active-bg: var(--gth-accent);
+}
+.list-group {
+  --bs-list-group-active-color: var(--gth-on-accent);
+  --bs-list-group-active-bg: var(--gth-accent);
+  --bs-list-group-active-border-color: var(--gth-accent);
+}
+.progress,
+.progress-stacked {
+  --bs-progress-bar-color: var(--gth-on-accent);
+  --bs-progress-bar-bg: var(--gth-accent);
+}
+.text-bg-primary {
+  color: var(--gth-on-accent) !important;
+}
+
 /* Secondary buttons. Bootstrap's dark mode keeps its light-mode greys, so
    .btn-outline-secondary text is #6c757d on #212529 — 3.3:1, below WCAG AA.
    Dark mode gets lighter text and borders (text ≥ 4.5:1, borders ≥ 3:1);
@@ -252,15 +410,7 @@ th[aria-sort] .gth-table-sort .bi {
   margin-top: 0;
   vertical-align: middle;
 }
-.gth-table-select .form-check-input:checked,
-.gth-table-select .form-check-input:indeterminate {
-  background-color: var(--gth-color-primary-dark);
-  border-color: var(--gth-color-primary-dark);
-}
-.gth-table-select .form-check-input:focus {
-  border-color: var(--gth-color-primary);
-  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
-}
+/* Checked/indeterminate/focus come from the brand accent (top of file). */
 .gth-data-table .table > tbody > tr.table-active > * {
   --bs-table-bg-state: var(--gth-brand-subtle-bg);
 }
@@ -311,10 +461,6 @@ th[aria-sort] .gth-table-sort .bi {
   margin-top: 0;
   flex-shrink: 0;
 }
-.gth-table-view-menu .form-check-input:checked {
-  background-color: var(--gth-color-primary-dark);
-  border-color: var(--gth-color-primary-dark);
-}
 .gth-table-view-menu .dropdown-item:has(:disabled) {
   cursor: default;
   color: var(--bs-secondary-color);
@@ -359,7 +505,7 @@ th[aria-sort] .gth-table-sort .bi {
   --bs-btn-active-color: var(--gth-brand-fg);
   --bs-btn-active-bg: var(--gth-brand-subtle-bg);
   --bs-btn-active-border-color: var(--gth-brand-fg);
-  --bs-btn-focus-shadow-rgb: 31, 190, 30;
+  --bs-btn-focus-shadow-rgb: var(--gth-accent-rgb);
 }
 .gth-chip .gth-chip-check {
   display: none;
@@ -414,7 +560,7 @@ th[aria-sort] .gth-table-sort .bi {
   --bs-btn-active-bg: var(--bs-body-bg);
   --bs-btn-active-border-color: var(--gth-brand-fg);
   --bs-btn-disabled-opacity: 0.5;
-  --bs-btn-focus-shadow-rgb: 31, 190, 30;
+  --bs-btn-focus-shadow-rgb: var(--gth-accent-rgb);
   border-radius: var(--bs-border-radius);
 }
 .btn-check:checked + .gth-segmented-option {
@@ -455,8 +601,8 @@ th[aria-sort] .gth-table-sort .bi {
   background-color: var(--gth-brand-subtle-bg);
 }
 .gth-file-drop-input:focus-visible + .gth-file-drop-zone {
-  border-color: var(--gth-color-primary);
-  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
+  border-color: var(--gth-accent);
+  box-shadow: 0 0 0 0.25rem var(--gth-focus-ring);
 }
 .gth-file-drop-zone.is-invalid {
   border-color: var(--bs-form-invalid-border-color);
@@ -497,7 +643,7 @@ th[aria-sort] .gth-table-sort .bi {
 }
 .gth-file-drop-progress {
   margin-top: 0.5rem;
-  --bs-progress-bar-bg: var(--gth-color-primary-dark);
+  --bs-progress-bar-bg: var(--gth-accent);
 }
 
 /* gth-form-field character counter: right-aligned "N / max", amber from 90%,
@@ -514,20 +660,8 @@ th[aria-sort] .gth-table-sort .bi {
   font-weight: 600;
 }
 
-/* gth-switch — brand color instead of Bootstrap's blue. */
-.gth-switch .form-check-input:checked {
-  background-color: var(--gth-color-primary-dark);
-  border-color: var(--gth-color-primary-dark);
-}
-.gth-switch .form-check-input:focus {
-  border-color: var(--gth-color-primary);
-  box-shadow: 0 0 0 0.25rem rgba(31, 190, 30, 0.25);
-}
-/* Bootstrap swaps the unchecked knob to a #86b7fe (blue) circle on focus;
-   same SVG, brand primary. Checked keeps Bootstrap's white knob. */
-.gth-switch .form-check-input:focus:not(:checked) {
-  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231FBE1E'/%3e%3c/svg%3e");
-}
+/* gth-switch — every .form-switch takes the brand accent (top of file):
+   accent track, a knob that contrasts with it, the accent focus ring. */
 
 /* gth-multiselect — a form-control-looking box holding chips + a bare
    input; the box takes the focus ring its input would have had. */
@@ -538,8 +672,8 @@ th[aria-sort] .gth-table-sort .bi {
   padding-bottom: 0.25rem;
 }
 .gth-multiselect-control:focus-within {
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  border-color: var(--gth-accent);
+  box-shadow: 0 0 0 0.25rem var(--gth-focus-ring);
 }
 .gth-multiselect-control.is-invalid:focus-within {
   border-color: var(--bs-form-invalid-border-color);
@@ -1198,8 +1332,8 @@ body.gth-picker-modal-open {
 }
 .gth-tree-item[aria-checked="true"] > .gth-tree-row .gth-tree-check,
 .gth-tree-item[aria-checked="mixed"] > .gth-tree-row .gth-tree-check {
-  border-color: var(--gth-color-primary-dark);
-  background-color: var(--gth-color-primary-dark);
+  border-color: var(--gth-accent);
+  background-color: var(--gth-accent);
 }
 .gth-tree-item[aria-checked="true"] > .gth-tree-row .gth-tree-check::after {
   content: "";
@@ -1208,7 +1342,7 @@ body.gth-picker-modal-open {
   left: 0.3rem;
   width: 0.3rem;
   height: 0.55rem;
-  border: solid #fff;
+  border: solid var(--gth-on-accent);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -1218,7 +1352,7 @@ body.gth-picker-modal-open {
   top: calc(50% - 1px);
   left: 0.2rem;
   right: 0.2rem;
-  border-top: 2px solid #fff;
+  border-top: 2px solid var(--gth-on-accent);
 }
 .gth-tree-loading {
   padding: 0.35rem 0.5rem;
