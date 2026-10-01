@@ -11,11 +11,12 @@ Every one returns "" for None or "", and the value as a string when it can't
 be parsed, rather than raising and breaking the page. Floats go through
 str() first, so 0.1 stays 0.1 instead of Decimal(0.1)'s binary expansion.
 
-date and datetime follow the viewer's preferences (v0.12): the filters read
-greentechhub-core's locale.date_format / locale.timezone / locale.time_format
-from the template's optional `user_settings` (greentechhub-fastapi's
-settings_context supplies it). Without it, or with an explicit fmt, they
-render exactly as before.
+The filters follow the viewer's preferences (v0.12), from the template's
+optional `user_settings` (greentechhub-fastapi's settings_context supplies
+it): date and datetime read greentechhub-core's locale.date_format /
+locale.timezone / locale.time_format, money and number read
+locale.number_format. Without it, or with explicit arguments, they render
+exactly as before — and so do the plain functions, e.g. for CSV.
 """
 
 from collections.abc import Mapping
@@ -38,9 +39,25 @@ def _quantize(d: Decimal, places: int) -> Decimal:
     return d.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP)
 
 
-def money(value, symbol: str = "$", places: int = 2) -> str:
+# greentechhub-core's locale.number_format codes → (thousands, decimal)
+# separators. The space form uses a non-breaking space so a number never wraps.
+NUMBER_FORMATS = {"comma_dot": (",", "."), "dot_comma": (".", ","), "space_comma": ("\u00a0", ",")}
+
+
+def _separate(text: str, number_format: str | None) -> str:
+    """Python's "1,234.56" with the separators of `number_format`; an unknown
+    or missing format keeps comma_dot."""
+    thousands, decimal = NUMBER_FORMATS.get(number_format or "", (",", "."))
+    if (thousands, decimal) == (",", "."):
+        return text
+    return "".join(thousands if c == "," else decimal if c == "." else c for c in text)
+
+
+def money(value, symbol: str = "$", places: int = 2, *, number_format: str | None = None) -> str:
     """1234.5 → "$1,234.50"; -1234.5 → "-$1,234.50" (sign before the
-    symbol); rounded half-up, and never "-$0.00". symbol="" for none."""
+    symbol); rounded half-up, and never "-$0.00". symbol="" for none.
+    number_format: core's locale.number_format code — comma_dot (the default),
+    dot_comma ("$1.234,50") or space_comma ("$1 234,50")."""
     if value is None or value == "":
         return ""
     d = _decimal(value)
@@ -48,13 +65,14 @@ def money(value, symbol: str = "$", places: int = 2) -> str:
         return str(value)
     d = _quantize(d, places)
     sign = "-" if d < 0 else ""  # a rounded-away negative is zero, unsigned
-    return f"{sign}{symbol}{abs(d):,.{places}f}"
+    return f"{sign}{symbol}{_separate(f'{abs(d):,.{places}f}', number_format)}"
 
 
-def number(value, places: int | None = None) -> str:
+def number(value, places: int | None = None, *, number_format: str | None = None) -> str:
     """Full stored precision with trailing zeros dropped and thousands
     separators: Decimal("100.500") → "100.5", 100 → "100" (never "1E+2"),
-    1234567.891 → "1,234,567.891". places=n gives n fixed decimals instead."""
+    1234567.891 → "1,234,567.891". places=n gives n fixed decimals instead.
+    number_format as for money."""
     if value is None or value == "":
         return ""
     d = _decimal(value)
@@ -62,9 +80,9 @@ def number(value, places: int | None = None) -> str:
         return str(value)
     if places is not None:
         d = _quantize(d, places)
-        return f"{d + 0:,.{places}f}"  # + 0 turns -0.00 into 0.00
+        return _separate(f"{d + 0:,.{places}f}", number_format)  # + 0 turns -0.00 into 0.00
     d = d.normalize()
-    return f"{d + 0:,f}"
+    return _separate(f"{d + 0:,f}", number_format)
 
 
 # greentechhub-core's locale.date_format codes. Not "%-d": Windows' strftime
@@ -167,5 +185,20 @@ def datetime_filter(context, value, fmt: str | None = None, **options) -> str:
     return format_datetime(value, fmt, **options)
 
 
-FILTERS = {"money": money, "number": number, "date": date_filter,
+@pass_context
+def money_filter(context, value, symbol: str = "$", places: int = 2, **options) -> str:
+    """{{ value|money }}: money, defaulting number_format to the viewer's
+    locale.number_format from `user_settings`."""
+    options.setdefault("number_format", _preferences(context).get("locale.number_format"))
+    return money(value, symbol, places, **options)
+
+
+@pass_context
+def number_filter(context, value, places: int | None = None, **options) -> str:
+    """{{ value|number }}: number, defaulting number_format as money_filter does."""
+    options.setdefault("number_format", _preferences(context).get("locale.number_format"))
+    return number(value, places, **options)
+
+
+FILTERS = {"money": money_filter, "number": number_filter, "date": date_filter,
            "datetime": datetime_filter}

@@ -27,16 +27,10 @@ opt-in: new behaviour turns on only when the optional context keys (`theme_mode`
 `user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
 there's no runtime import of core. Each PR updates any doc it would otherwise contradict.
 
-Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10, #15 (density and
-motion) and #16 (sidebar default), plus the ready-made settings and role-assignment page templates. ui's half of #12
-is done: it registered #15–#17, which make ui honour core #13's shared settings. They read the values from
-`user_settings` (greentechhub-fastapi's `settings_context` supplies it), so they need no new context keys.
-- [ ] **#17 `feat(formatting): number format preference`**
-  - `number` / `money` gain `number_format=`: `comma_dot` (1,234.56), `dot_comma` (1.234,56), `space_comma` (1 234,56,
-    with a non-breaking space).
-  - The filters read `locale.number_format` from `user_settings`, like `date` does. The plain functions' defaults are
-    unchanged, so CSV exports stay `comma_dot` unless told otherwise.
-  - Docs: `docs/components.md` "Formatting filters".
+Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15–#17 (density
+and motion, sidebar default, number format), plus the ready-made settings and role-assignment page templates. ui's
+half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. Every ui item
+here has shipped; the only open roadmap item is core #14 (the landing page, on hold).
 
 Notes, not items:
 - `locale.time_format` already shipped with #10 (`|datetime`).

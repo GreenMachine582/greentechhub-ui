@@ -752,8 +752,12 @@ that the app already registered**, so an app's own `money` wins.
     Naive datetimes and plain dates are left alone, and an unknown zone is ignored;
   - `locale.time_format`: `24h` (13:45) or `12h` (1:45 pm).
 
+  `money` and `number` follow `locale.number_format`: `comma_dot` (1,234.56), `dot_comma` (1.234,56) or
+  `space_comma` (1 234,56, with a non-breaking space so a number never wraps). Only the digits change; the sign and
+  symbol stay put (`-$1.234,50`).
+
   Without `user_settings` they render as before. An explicit `fmt`, or keyword (`|date(date_format="iso")`,
-  `|datetime(time_format="12h", tz="UTC")`), wins.
+  `|datetime(time_format="12h", tz="UTC")`, `|money(number_format="comma_dot")`), wins.
 
 They're plain functions too, e.g. for a CSV export:
 
@@ -762,7 +766,11 @@ from greentechhub_ui.formatting import format_date, format_datetime, money, numb
 
 format_date(value, fmt=None, *, date_format=None, tz=None)
 format_datetime(value, fmt=None, *, date_format=None, time_format=None, tz=None)
+money(value, symbol="$", places=2, *, number_format=None)
+number(value, places=None, *, number_format=None)
 ```
+
+The plain functions never read `user_settings`, so a CSV export keeps `1,234.56` unless you pass `number_format`.
 
 ## Shipped signatures (v0.12)
 
