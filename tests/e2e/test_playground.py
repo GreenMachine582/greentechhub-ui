@@ -278,6 +278,56 @@ def test_sidebar_default_until_this_browser_toggles(page, playground_url):
     expect(html).not_to_have_attribute("data-gth-sidebar", "rail")
 
 
+def _nav_state(page):
+    return page.evaluate("""() => {
+        const n = document.querySelector('.gth-sidebar-nav');
+        const a = n.querySelector('a[aria-current="page"]');
+        const r = a.getBoundingClientRect(), nr = n.getBoundingClientRect();
+        return {scroll: n.scrollTop, href: a.getAttribute('href'),
+                visible: r.top >= nr.top && r.bottom <= nr.bottom, pageY: window.scrollY};
+    }""")
+
+
+def test_sidebar_keeps_its_scroll_across_page_loads(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 500})
+    page.goto(f"{playground_url}/navigation")
+    page.evaluate("document.querySelectorAll('[data-gth-sidebar-group][aria-expanded=false]')"
+                  ".forEach(b => b.click())")
+    page.evaluate("document.querySelector('.gth-sidebar-nav').scrollTop = 99999")
+    page.locator("#gth-sidebar a[href='/personas']").click()
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    state = _nav_state(page)
+    assert state["href"] == "/personas" and state["visible"], state
+    assert state["scroll"] > 0 and state["pageY"] == 0, state
+
+
+def test_sidebar_brings_the_current_page_into_view_on_a_fresh_tab(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 400})
+    page.goto(f"{playground_url}/personas")  # no saved scroll in this tab
+    state = _nav_state(page)
+    assert state["visible"] and state["pageY"] == 0, state
+
+
+def test_choice_buttons_show_hover(page, playground_url):
+    def background(locator):
+        return locator.evaluate("el => getComputedStyle(el).backgroundColor")
+
+    page.goto(f"{playground_url}/tables")
+    segmented = page.locator(".gth-segmented").first
+    unchecked, checked = segmented.locator("label").nth(1), segmented.locator("label").nth(0)
+    resting, checked_bg = background(unchecked), background(checked)
+    unchecked.hover()
+    expect(unchecked).not_to_have_css("background-color", resting)
+    checked.hover()
+    expect(checked).to_have_css("background-color", checked_bg)
+
+    page.goto(f"{playground_url}/forms")
+    chip = page.locator(".gth-chips .btn-check:not(:checked) + .gth-chip").first
+    resting = background(chip)
+    chip.hover()
+    expect(chip).not_to_have_css("background-color", resting)
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

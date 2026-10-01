@@ -369,6 +369,20 @@ th[aria-sort] .gth-table-sort .bi {
 .gth-chip[aria-pressed="true"] .gth-chip-check {
   display: inline-block;
 }
+/* Hover for btn-check choice buttons (gth_segmented, gth_chips): Bootstrap 5.3
+   resets `.btn-check + .btn:hover` to the resting colours, so without this an
+   unchecked option gives no hover feedback. A subtle tint, never the solid
+   checked fill, so hover can't be mistaken for a selection. */
+.gth-segmented .btn-check:not(:checked):not(:disabled) + .btn:hover {
+  color: var(--bs-emphasis-color);
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-btn-hover-border-color);
+}
+.gth-chips .btn-check:not(:checked):not(:disabled) + .gth-chip:hover {
+  color: var(--bs-btn-hover-color);
+  background-color: var(--bs-btn-hover-bg);
+  border-color: var(--bs-btn-hover-border-color);
+}
 /* Toggle-button chips (gth-date-range presets) use aria-pressed, not a btn-check. */
 .gth-chip[aria-pressed="true"] {
   color: var(--bs-btn-active-color);

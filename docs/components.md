@@ -29,7 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
-| `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7); the switch takes errors and an `off_value` (v0.12) |
+| `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
@@ -399,7 +399,9 @@ gth_sidebar_rail_toggle()
    state is the viewer's ui.sidebar_default from user_settings (v0.12;
    "rail" or "expanded"). Below 992px it's Bootstrap's offcanvas-lg drawer
    (a link click closes it). sidebar.js also remembers which groups were
-   opened by hand. {% block sidebar_extra %} fills the footer. #}
+   opened by hand, and keeps the list's scroll position across page loads
+   (per tab), always bringing the current page's link into view — without
+   moving focus, which stays with the page. {% block sidebar_extra %} fills the footer. #}
 
 {# navbar.html #}
 gth_navbar(..., sidebar=False, show_search=False)
