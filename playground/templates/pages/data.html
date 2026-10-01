@@ -39,8 +39,9 @@
   <h2 class="h4">Formatting filters: money, number, date, datetime</h2>
   <p class="text-secondary small">Registered by <code>install()</code>, unless the app already has a filter of that
     name. <code>None</code> and <code>""</code> render nothing, and anything unparseable renders as-is.
-    <code>date</code> and <code>datetime</code> follow the viewer's date format, timezone and time format from
-    <code>user_settings</code> — save them under <a href="/settings">Settings</a> and the last two rows change.</p>
+    <code>date</code> and <code>datetime</code> follow the viewer's date format, timezone and time format, and
+    <code>money</code> and <code>number</code> their number format, from <code>user_settings</code> — save them
+    under <a href="/settings">Settings</a> and the rows change.</p>
   {% set examples = [
     ("{{ 1234.5|money }}", 1234.5|money),
     ("{{ -1234.5|money }}", -1234.5|money),

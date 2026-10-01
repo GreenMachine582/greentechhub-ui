@@ -141,3 +141,48 @@ def test_datetime_filter_reads_user_settings():
 
 def test_filters_ignore_a_non_mapping_user_settings():
     assert _render("{{ v|date }}", v=LATE_UTC, user_settings="nope") == "5 Feb 2025"
+
+
+# ── v0.12: locale.number_format ───────────────────────────────────────────
+
+NBSP = "\u00a0"
+
+
+@pytest.mark.parametrize(("code", "expected"), [
+    ("comma_dot", "1,234,567.891"), ("dot_comma", "1.234.567,891"),
+    ("space_comma", f"1{NBSP}234{NBSP}567,891"), (None, "1,234,567.891"),
+    ("unknown", "1,234,567.891"),
+])
+def test_number_formats(code, expected):
+    assert number(1234567.891, number_format=code) == expected
+
+
+def test_number_format_with_places_negatives_and_small_values():
+    assert number(-1234.5, 2, number_format="dot_comma") == "-1.234,50"
+    assert number(999, number_format="dot_comma") == "999"
+    assert number(0.5, number_format="space_comma") == "0,5"
+
+
+def test_money_formats_keep_the_sign_and_symbol_outside_the_digits():
+    assert money(-1234.5, number_format="dot_comma") == "-$1.234,50"
+    assert money(1234.5, "", number_format="space_comma") == f"1{NBSP}234,50"
+    assert money(1234.5, "€", places=0, number_format="dot_comma") == "€1.235"
+    assert money(1234.5) == "$1,234.50"  # defaults unchanged, e.g. for CSV
+
+
+def test_empty_and_garbage_are_unchanged_by_the_format():
+    assert number(None, number_format="dot_comma") == ""
+    assert money("", number_format="dot_comma") == ""
+    assert number("n/a", number_format="dot_comma") == "n/a"
+
+
+def test_money_and_number_filters_read_user_settings():
+    prefs = {"locale.number_format": "dot_comma"}
+    assert _render("{{ v|money }}", v=1234.5) == "$1,234.50"
+    assert _render("{{ v|money }}", v=1234.5, user_settings=prefs) == "$1.234,50"
+    assert _render('{{ v|money("€", places=0) }}', v=1234.5, user_settings=prefs) == "€1.235"
+    assert _render("{{ v|number(2) }}", v=1234.5, user_settings=prefs) == "1.234,50"
+    explicit = _render('{{ v|number(number_format="comma_dot") }}', v=1234.5,
+                       user_settings=prefs)
+    assert explicit == "1,234.5"
+    assert _render("{{ v|number }}", v=1234.5, user_settings="nope") == "1,234.5"

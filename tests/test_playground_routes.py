@@ -641,3 +641,18 @@ def test_saved_sidebar_default_reaches_the_pre_paint_script():
     assert "var preferred = null;" in before.text
     assert 'var preferred = "rail";' in after.text
 
+
+
+def test_saved_number_format_changes_money_and_number_for_that_browser():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/settings-demo/preferences",
+                              data={"locale.number_format": "dot_comma"})
+            mine = (await client.get("/data")).text
+        other = (await _get("/data")).text
+        return mine, other
+
+    mine, other = _run(flow())
+    assert "$1.234,50" in mine and "1.234.567,891" in mine
+    assert "$1,234.50" in other and "1,234,567.891" in other
