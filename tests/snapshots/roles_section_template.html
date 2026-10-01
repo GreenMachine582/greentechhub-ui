@@ -1,0 +1,188 @@
+
+
+
+
+
+<section class="gth-roles mb-4" id="gth-roles" aria-labelledby="gth-roles-title"
+  hx-target="#gth-roles" hx-swap="outerHTML">
+  <h2 class="h5 mb-1" id="gth-roles-title">Role assignments</h2>
+  <p class="text-secondary small mb-3">Roles given here add to any a user gets from directory groups or bootstrap
+    configuration, which aren't listed or editable here.</p>
+  <form method="post" action="/admin/roles" hx-post="/admin/roles" class="gth-form gth-roles-add mb-4" novalidate>
+    <h3 class="h6">Assign roles</h3>
+    
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-subject">User</label>
+  <input type="text" id="gth-field-subject" name="subject"
+    class="form-control"
+    value=""
+    
+    
+    
+    
+    aria-describedby="gth-field-subject-help"
+    >
+  <div class="form-text" id="gth-field-subject-help">The user's ID (their identity subject).</div>
+  
+</div>
+
+    
+
+
+<div class="mb-3 gth-form-field gth-chips">
+  <span class="form-label d-block" id="gth-roles-add-label">Roles</span>
+  <div class="d-flex flex-wrap gap-2" role="group" aria-labelledby="gth-roles-add-label">
+    
+    <input type="checkbox" class="btn-check" name="roles" value="viewer"
+      id="gth-roles-add-1" autocomplete="off">
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-add-1">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Viewer</label>
+    
+    <input type="checkbox" class="btn-check" name="roles" value="admin"
+      id="gth-roles-add-2" autocomplete="off">
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-add-2">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Admin</label>
+    
+  </div>
+</div>
+
+    <button type="submit" class="btn btn-primary">Assign</button>
+  </form>
+  
+<div class="table-responsive gth-table-wrapper">
+<table class="table table-hover align-middle gth-table align-middle">
+  <thead><tr><th scope="col">User</th><th scope="col">Roles</th><th scope="col"></th></tr></thead>
+  <tbody>
+    
+  <tr>
+    <th scope="row" class="fw-normal">alice</th>
+    <td>
+      <form method="post" action="/admin/roles/alice" hx-post="/admin/roles/alice"
+        class="d-flex flex-wrap align-items-center gap-2" aria-label="Roles for alice">
+        
+
+
+<div class="mb-0 gth-form-field gth-chips">
+  
+  <div class="d-flex flex-wrap gap-2" role="group">
+    
+    <input type="checkbox" class="btn-check" name="roles" value="viewer"
+      id="gth-roles-1-1" autocomplete="off">
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-1-1">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Viewer</label>
+    
+    <input type="checkbox" class="btn-check" name="roles" value="admin"
+      id="gth-roles-1-2" autocomplete="off" checked>
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-1-2">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Admin</label>
+    
+  </div>
+</div>
+
+        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+      </form>
+    </td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+        data-bs-target="#gth-roles-remove-1">Remove</button>
+      
+
+
+<div class="modal fade gth-modal" id="gth-roles-remove-1" tabindex="-1" aria-labelledby="gth-roles-remove-1-label" aria-hidden="true"
+  data-bs-backdrop="static">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5 gth-modal-title" id="gth-roles-remove-1-label">Delete alice's roles?</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body gth-modal-body">
+        
+<p class="gth-confirm-delete-message">This can't be undone.</p>
+<div class="d-flex justify-content-end gap-2">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+  <button type="button" class="btn btn-danger gth-confirm-delete-button"
+    hx-delete="/admin/roles/alice"
+    hx-target="#gth-roles"
+    data-bs-dismiss="modal">
+    Delete
+  </button>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    </td>
+  </tr>
+  <tr>
+    <th scope="row" class="fw-normal">bob/ops</th>
+    <td>
+      <form method="post" action="/admin/roles/bob%2Fops" hx-post="/admin/roles/bob%2Fops"
+        class="d-flex flex-wrap align-items-center gap-2" aria-label="Roles for bob/ops">
+        
+
+
+<div class="mb-0 gth-form-field gth-chips">
+  
+  <div class="d-flex flex-wrap gap-2" role="group">
+    
+    <input type="checkbox" class="btn-check" name="roles" value="viewer"
+      id="gth-roles-2-1" autocomplete="off" checked>
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-2-1">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Viewer</label>
+    
+    <input type="checkbox" class="btn-check" name="roles" value="admin"
+      id="gth-roles-2-2" autocomplete="off" checked>
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-roles-2-2">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>Admin</label>
+    
+  </div>
+</div>
+
+        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+      </form>
+    </td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+        data-bs-target="#gth-roles-remove-2">Remove</button>
+      
+
+
+<div class="modal fade gth-modal" id="gth-roles-remove-2" tabindex="-1" aria-labelledby="gth-roles-remove-2-label" aria-hidden="true"
+  data-bs-backdrop="static">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5 gth-modal-title" id="gth-roles-remove-2-label">Delete bob/ops's roles?</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body gth-modal-body">
+        
+<p class="gth-confirm-delete-message">This can't be undone.</p>
+<div class="d-flex justify-content-end gap-2">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+  <button type="button" class="btn btn-danger gth-confirm-delete-button"
+    hx-delete="/admin/roles/bob%2Fops"
+    hx-target="#gth-roles"
+    data-bs-dismiss="modal">
+    Delete
+  </button>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    </td>
+  </tr>
+  
+  </tbody>
+</table>
+</div>
+
+</section>

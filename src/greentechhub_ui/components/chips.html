@@ -1,17 +1,21 @@
-{% macro gth_chips(name, options, values=(), label=None, field_class="mb-3") %}
+{% macro gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None) %}
 {# Multi-select filter pills: btn-check checkboxes styled as chips (a
    check icon appears on selected ones, so state isn't color-only).
    options: [{"value", "label", "icon"?}]. values: the checked values.
    Submits name=<value> once per checked chip (FastAPI: list[str] =
-   Query/Form; Django: getlist). The gth_segmented of multi-choice. #}
+   Query/Form; Django: getlist). The gth_segmented of multi-choice.
+   id: the element-id prefix (default "gth-field-<name>") — set it when
+   several chip groups on one page share a field name, e.g. one per table
+   row, so ids stay unique and each label toggles its own checkbox. #}
 {% set checked = values|map("string")|list %}
+{%- set prefix = id or "gth-field-" ~ name %}
 <div class="{{ field_class }} gth-form-field gth-chips">
-  {% if label %}<span class="form-label d-block" id="gth-field-{{ name }}-label">{{ label }}</span>{% endif %}
-  <div class="d-flex flex-wrap gap-2" role="group"{% if label %} aria-labelledby="gth-field-{{ name }}-label"{% endif %}>
+  {% if label %}<span class="form-label d-block" id="{{ prefix }}-label">{{ label }}</span>{% endif %}
+  <div class="d-flex flex-wrap gap-2" role="group"{% if label %} aria-labelledby="{{ prefix }}-label"{% endif %}>
     {% for opt in options %}
     <input type="checkbox" class="btn-check" name="{{ name }}" value="{{ opt.value }}"
-      id="gth-field-{{ name }}-{{ loop.index }}" autocomplete="off"{% if opt.value|string in checked %} checked{% endif %}>
-    <label class="btn btn-sm rounded-pill gth-chip" for="gth-field-{{ name }}-{{ loop.index }}">
+      id="{{ prefix }}-{{ loop.index }}" autocomplete="off"{% if opt.value|string in checked %} checked{% endif %}>
+    <label class="btn btn-sm rounded-pill gth-chip" for="{{ prefix }}-{{ loop.index }}">
       <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>
       {%- if opt.icon %}<i class="bi bi-{{ opt.icon }} me-1" aria-hidden="true"></i>{% endif %}{{ opt.label -}}
     </label>

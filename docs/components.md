@@ -285,7 +285,9 @@ gth_tabs(id, tabs, active=None, tabs_class="mb-3")      {# optional {% call(key)
    renders caller(key). #}
 
 {# chips.html #}
-gth_chips(name, options, values=(), label=None, field_class="mb-3")
+gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None)
+# id (v0.12): element-id prefix, default "gth-field-<name>" — set it when several chip groups
+# share a field name (e.g. one per table row) so ids stay unique.
 {# options: [{"value", "label", "icon"?}]; btn-check checkboxes as pills, a check
    icon on checked ones. Submits name=<value> per checked chip (FastAPI
    list[str]; Django getlist). #}
@@ -879,3 +881,30 @@ items or `logout_url` it shows just the name. `app.html` passes these from the c
 in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
 
 The playground fakes sign-in on `/extensibility` to demo both.
+
+### Role assignments
+
+Two templates render a role-assignment admin page from data, over greentechhub-core's `GrantStore` (in-app role
+grants per user). greentechhub-fastapi's `RoleAdminViews` renders them by default:
+
+| Template | Renders |
+|---|---|
+| `roles_page.html` | extends `page.html` (`page_title`, `page_subtitle`) and includes the section |
+| `roles_section.html` | `<section id="gth-roles">`: an Assign form, then a table with one row per user — their roles as chips with Save, and Remove through `gth_confirm_delete`. Every save or remove returns this section |
+
+| Context | |
+|---|---|
+| `roles_url` | base url: `POST` it to assign; `POST` / `DELETE` `<roles_url>/<subject>` (urlencoded, `/` too) to set or remove a user's roles |
+| `roles_assignments` | `[{"subject", "roles": [role names]}]` |
+| `roles_options` | `[{"value", "label"}]` — the service's roles |
+| `roles_error` | optional banner |
+| `roles_form` | optional `{"subject", "roles", "errors": {"subject"/"roles": [messages]}}`, echoing the Assign form on a 422 |
+| `roles_title` | optional heading (default "Role assignments") |
+
+- `hx-target="#gth-roles"` and `hx-swap="outerHTML"` sit on the section, so the forms and the confirm modal's
+  `hx-delete` all swap it whole.
+- Save sets a user's roles to exactly the checked chips. Each row's chips get their own id prefix (`gth_chips(id=)`).
+- Roles from directory groups or `ROLE_BOOTSTRAP` aren't grants, so they aren't listed; the section says so.
+
+The playground's `/roles` page (sign in as admin on `/extensibility`) runs this flow over an in-memory stand-in for a
+`GrantStore`.

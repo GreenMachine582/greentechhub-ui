@@ -1,0 +1,9 @@
+{#- roles_page.html — a ready-made role assignment page: page.html's header
+    plus roles_section.html (see it for the context). greentechhub-fastapi's
+    RoleAdminViews renders this by default; any framework can, with the same
+    context. -#}
+{% extends "page.html" %}
+
+{% block page %}
+{% include "roles_section.html" %}
+{% endblock %}
