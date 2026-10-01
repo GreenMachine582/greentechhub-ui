@@ -136,7 +136,21 @@ EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
 # ui_context supplies current_path to every page: the sidebar's active trail
 # and nav_breadcrumbs need it.
-templates = Jinja2Templates(directory=_here / "templates", context_processors=[ui_context])
+THEME_COOKIE = "playground-theme"
+THEME_MODES = ("light", "dark", "system")
+
+
+def theme_context(request: Request) -> dict:
+    """What a service's settings wiring supplies (greentechhub-fastapi's
+    register_settings, later): the signed-in user's saved ui.theme as theme_mode,
+    and where the toggle saves. The playground has no users, so a cookie stands in
+    for the store — per browser, so e2e tests don't share a theme."""
+    mode = request.cookies.get(THEME_COOKIE)
+    return {"theme_save_url": "/demo/theme", "theme_mode": mode if mode in THEME_MODES else None}
+
+
+templates = Jinja2Templates(directory=_here / "templates",
+                            context_processors=[ui_context, theme_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -360,6 +374,16 @@ async def settings_demo_save(request: Request, section: str):
     return HTMLResponse(_settings_section(section), headers={
         "HX-Trigger": greentechhub_ui.toast(f"{SETTINGS_DEMO[section][0]} saved"),
     })
+
+
+@app.post("/demo/theme")
+async def demo_theme(theme: str = Form(...)):
+    """theme-toggle.js POSTs theme=<light|dark> here (theme_save_url)."""
+    if theme not in THEME_MODES:
+        return Response(status_code=422)
+    response = Response(status_code=204)
+    response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)

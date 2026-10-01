@@ -25,14 +25,8 @@ Rendering for `greentechhub-core`'s settings and role resolution (design:
 [core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
 opt-in: new behaviour turns on only when the optional context keys (`theme_save_url`, `granted`, `user_settings`)
 are present, so it isn't breaking. Macros duck-type attributes, so there's no runtime import of core. Each PR updates
-any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4, fastapi #5 and ui #6
-(`gth_select`, `gth_setting_field`, `gth_settings_section`) have shipped.
-- [ ] **#7 `feat(theme): server-persisted theme preference`**
-  - The optional `theme_mode` context seeds the anti-FOUC script.
-  - `theme-toggle.js` POSTs to an optional `theme_save_url`.
-  - localStorage stays as the fallback.
-  - Docs: reword `docs/theming.md` (localStorage is no longer the only store); add the optional key to
-    `docs/contract.md`.
+any doc it would otherwise contradict. The numbers are the cross-repo order: core #1–#4, fastapi #5 and ui #6–#7
+(settings rendering, server-saved theme) have shipped.
 - [ ] **#8 `feat(navigation): permission-aware nav and navbar user menu`**
   - `filter_by_scope(..., granted=None)` checks `required_permission`, with `required_scope` kept as an alias.
   - A navbar and sidebar-footer user menu (Settings, Logout) driven by `current_user`.

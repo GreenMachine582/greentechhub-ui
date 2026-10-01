@@ -152,3 +152,35 @@ def test_app_shell_back_to_top_only_when_configured():
     assert "gth-back-to-top" not in _env().get_template("app.html").render(**_context())
     html = _env().get_template("app.html").render(**_context(back_to_top_js_url="/a/js/b.js"))
     assert "data-gth-back-to-top" in html and '<script src="/a/js/b.js"></script>' in html
+
+
+def _render_shell(**overrides) -> str:
+    return _env().get_template("app.html").render(**_context(**overrides))
+
+
+def test_app_shell_without_theme_keys_keeps_the_local_only_behaviour():
+    html = _render_shell()
+    assert "var server = null;" in html
+    assert "data-gth-theme-save-url" not in html
+    assert '<html lang="en" data-bs-theme="dark">' in html
+
+
+def test_app_shell_seeds_the_anti_fouc_script_from_theme_mode():
+    html = _render_shell(theme_mode="light")
+    assert 'var server = "light";' in html
+
+
+def test_app_shell_renders_the_theme_save_url_on_html():
+    html = _render_shell(theme_save_url="/settings/theme")
+    assert '<html lang="en" data-bs-theme="dark" data-gth-theme-save-url="/settings/theme">' in html
+
+
+def test_app_shell_theme_mode_cannot_break_out_of_the_script():
+    html = _render_shell(theme_mode='</script><script>alert(1)</script>')
+    assert "<script>alert(1)" not in html
+    assert "\\u003c/script\\u003e" in html
+
+
+def test_app_shell_escapes_the_theme_save_url():
+    html = _render_shell(theme_save_url='/x" onload="alert(1)')
+    assert 'onload="alert(1)"' not in html

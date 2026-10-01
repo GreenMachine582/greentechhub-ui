@@ -386,3 +386,21 @@ def test_settings_demo_unchecked_switch_submits_false():
     assert checked.status_code == 200
     assert playground_app.SETTINGS_VALUES["site.maintenance"] is True
     playground_app.SETTINGS_VALUES.clear()
+
+
+def test_theme_demo_saves_to_a_cookie_and_seeds_the_next_page():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            first = await client.get("/forms")
+            saved = await client.post("/demo/theme", data={"theme": "light"})
+            second = await client.get("/forms")
+            bad = await client.post("/demo/theme", data={"theme": "purple"})
+            return first, saved, second, bad
+
+    first, saved, second, bad = _run(flow())
+    assert 'data-gth-theme-save-url="/demo/theme"' in first.text
+    assert "var server = null;" in first.text
+    assert saved.status_code == 204
+    assert 'var server = "light";' in second.text
+    assert bad.status_code == 422

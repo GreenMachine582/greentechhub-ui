@@ -1,14 +1,27 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="dark"{% if theme_save_url|default(none) %} data-gth-theme-save-url="{{ theme_save_url|e }}"{% endif %}>
 <head>
   <script>
-    // Anti-FOUC: only overrides the hardcoded default above if a consumer's
-    // toggle (gth_theme_toggle) has actually been used before — a consumer
-    // that never renders the toggle can never populate this key, so this is
-    // a no-op for them and today's always-dark default is fully preserved.
+    // Anti-FOUC: picks the theme before first paint. The server's theme_mode
+    // (the signed-in user's saved preference: light | dark | system) wins and
+    // is mirrored to localStorage; without it, a choice the toggle stored
+    // before applies. With neither — a consumer that sets no theme_mode and
+    // never renders the toggle — the hardcoded dark default above stays.
+    // "system" follows prefers-color-scheme (theme-toggle.js keeps following it).
     (function () {
-      var stored = localStorage.getItem("gth-theme-mode");
-      if (stored) document.documentElement.setAttribute("data-bs-theme", stored);
+      var root = document.documentElement;
+      var server = {{ theme_mode|default(none)|tojson }};
+      var mode = server;
+      try {
+        if (server) localStorage.setItem("gth-theme-mode", server);
+        else mode = localStorage.getItem("gth-theme-mode");
+      } catch (e) {}
+      if (mode !== "light" && mode !== "dark" && mode !== "system") return;
+      root.setAttribute("data-gth-theme-mode", mode);
+      if (mode === "system") {
+        mode = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      root.setAttribute("data-bs-theme", mode);
     })();
   </script>
   {%- if layout|default("navbar") == "sidebar" %}

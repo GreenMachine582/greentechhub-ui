@@ -108,6 +108,18 @@ mode; `"dark"` pins it dark.
 | `show_command_palette` | include the palette (and a navbar search button) in the default layout |
 | `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
 
+**Theme preference (v0.12)** — both optional, usually per-request context from the framework adapter's settings
+wiring (greentechhub-fastapi's `register_settings`), backed by core's `ui.theme` user preference:
+
+| Key | Meaning |
+|---|---|
+| `theme_mode` | the signed-in user's saved theme: `"light"`, `"dark"` or `"system"` (follows `prefers-color-scheme`). Applied before first paint and mirrored to localStorage; anything else is ignored |
+| `theme_save_url` | where `gth_theme_toggle` POSTs a new choice, as the form field `theme=light\|dark`. Expect a 2xx with no body (204) |
+
+Without them, nothing changes: the toggle keeps the choice in localStorage only. The save goes through `htmx.ajax`
+when htmx is loaded, so it carries the page's `hx-headers` (e.g. a CSRF token) and a failure gets the usual error
+toast. Without htmx it's a same-origin `fetch`.
+
 A per-request context value overrides a global of the same name — e.g. one page can render `layout="sidebar"`
 with its own `nav_items` (the playground's `/layouts/sidebar`).
 
