@@ -135,14 +135,19 @@ def test_theme_saved_from_settings_applies_without_reload_and_persists(page, pla
     expect(page.locator("[id='gth-field-ui.theme-2']")).to_be_checked()
 
 
+def _impersonate(page, playground_url, persona):
+    page.goto(f"{playground_url}/personas")
+    page.locator(f"[data-persona={persona}] button[type=submit]").click()
+    expect(page.locator(f"[data-persona={persona}] .badge")).to_have_text("Current")
+
+
 def test_user_menu_and_permissioned_nav(page, playground_url):
     app_link = "#gth-sidebar a[href='/settings#gth-settings-app']"
     page.goto(f"{playground_url}/extensibility")
     expect(page.locator(".gth-user-menu")).to_have_count(0)
     expect(page.locator(app_link)).to_have_count(0)
 
-    page.click("button[name=as][value=admin]")
-    expect(page.locator("#gth-user-demo-state")).to_contain_text("admin")
+    _impersonate(page, playground_url, "admin")
     expect(page.locator(app_link)).to_have_count(1)
 
     page.click(".gth-user-menu .dropdown-toggle")
@@ -151,13 +156,31 @@ def test_user_menu_and_permissioned_nav(page, playground_url):
 
     page.click(".gth-user-menu .dropdown-toggle")
     page.click(".gth-user-menu button:has-text('Log out')")
-    expect(page.locator("#gth-user-demo-state")).to_have_text("Signed out.")
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    expect(page.locator("[data-persona=anonymous] .badge")).to_have_text("Current")
     expect(page.locator(".gth-user-menu")).to_have_count(0)
 
 
+def test_gated_page_redirects_to_personas_and_back(page, playground_url):
+    roles_link = "#gth-sidebar a[href='/roles']"
+    page.goto(f"{playground_url}/roles")
+    expect(page).to_have_url(re.compile(r"/personas\?next=%2Froles&need=settings.manage$"))
+    expect(page.locator("#gth-persona-need")).to_contain_text("settings.manage")
+
+    page.locator("[data-persona=admin] button[type=submit]").click()
+    expect(page).to_have_url(re.compile(r"/roles$"))
+    expect(page.locator("#gth-roles")).to_be_visible()
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu a:has-text('Switch persona')")
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    page.locator("[data-persona=viewer] button[type=submit]").click()
+    expect(page.locator("[data-persona=viewer] .badge")).to_have_text("Current")
+    expect(page.locator(roles_link)).to_have_count(0)
+
+
 def test_roles_page_assign_change_remove(page, playground_url):
-    page.goto(f"{playground_url}/extensibility")
-    page.click("button[name=as][value=admin]")
+    _impersonate(page, playground_url, "admin")
     page.click("#gth-sidebar a[href='/roles']")
     expect(page).to_have_url(re.compile(r"/roles$"))
     roles = page.locator("#gth-roles")

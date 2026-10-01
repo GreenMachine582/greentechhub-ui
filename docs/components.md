@@ -880,7 +880,8 @@ items or `logout_url` it shows just the name. `app.html` passes these from the c
 [docs/contract.md](contract.md)). The menu is in the navbar rather than the sidebar footer, so it's in the same place
 in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
 
-The playground fakes sign-in on `/extensibility` to demo both.
+The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
+A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.
 
 ### Role assignments
 
@@ -906,5 +907,6 @@ grants per user). greentechhub-fastapi's `RoleAdminViews` renders them by defaul
 - Save sets a user's roles to exactly the checked chips. Each row's chips get their own id prefix (`gth_chips(id=)`).
 - Roles from directory groups or `ROLE_BOOTSTRAP` aren't grants, so they aren't listed; the section says so.
 
-The playground's `/roles` page (sign in as admin on `/extensibility`) runs this flow over an in-memory stand-in for a
+The playground's `/roles` page (impersonate the admin on `/personas`; going there signed out takes you to pick one)
+runs this flow over an in-memory stand-in for a
 `GrantStore`.
