@@ -29,8 +29,21 @@ there's no runtime import of core. Each PR updates any doc it would otherwise co
 
 Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15–#17 (density
 and motion, sidebar default, number format), plus the ready-made settings and role-assignment page templates. ui's
-half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. Every ui item
-here has shipped; the only open roadmap item is core #14 (the landing page, on hold).
+half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. Open: #19
+below (write-only secret fields). Core #14 (the landing page) stays on hold.
+
+#### Secret settings
+Settings whose value is a credential (an email app password, an API token) can't be plain settings: stores keep JSON
+as-is, `effective()` returns values to templates, and `SettingsViews` echoes a `str` back into the form. These items
+add an opt-in **secret** kind across the three packages. Order across repos: core #18 → ui #19 → fastapi #20, then
+releases core v0.8.0, ui v0.13.0 and fastapi v0.10.0 (fastapi pins core v0.8.0 first). The first consumer is
+PyFinBot's per-user email account for Commsec sync (its app password), registered in PyFinBot's `todo.md`.
+- [ ] **#19 `feat(settings): write-only secret fields`**
+  - `gth_setting_field` renders a `secret` setting as `type="password"` with an **empty value**, whatever the stored
+    value, and `autocomplete="new-password"`. When set, it adds help text ("Saved. Leave blank to keep it.") and a
+    "Remove" checkbox (`<key>.__clear`).
+  - The value it gets is core's `SECRET_SET` marker or `None`, never the secret.
+  - Snapshots, HTML validity, a playground demo (a fake "API token" preference) and `docs/components.md`.
 
 Notes, not items:
 - `locale.time_format` already shipped with #10 (`|datetime`).
