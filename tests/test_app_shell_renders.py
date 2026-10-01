@@ -246,3 +246,27 @@ def test_user_menu_items_are_permission_filtered():
     )
     assert 'href="/settings"' in html
     assert 'href="/roles"' not in html
+
+
+# ── v0.12: ui.density / ui.motion from user_settings ──────────────────────
+
+
+def _html_tag(**context) -> str:
+    html = _env().get_template("app.html").render(**_context(**context))
+    return html[html.index("<html"):html.index(">", html.index("<html")) + 1]
+
+
+def test_density_and_motion_become_html_attributes():
+    tag = _html_tag(user_settings={"ui.density": "compact", "ui.motion": "reduce"})
+    assert 'data-gth-density="compact"' in tag and 'data-gth-motion="reduce"' in tag
+    tag = _html_tag(user_settings={"ui.density": "comfortable", "ui.motion": "full"})
+    assert 'data-gth-density="comfortable"' in tag and 'data-gth-motion="full"' in tag
+    assert 'data-gth-motion="system"' in _html_tag(user_settings={"ui.motion": "system"})
+
+
+def test_unknown_or_missing_preferences_add_nothing():
+    bare = '<html lang="en" data-bs-theme="dark">'
+    assert _html_tag() == bare
+    assert _html_tag(user_settings={}) == bare
+    assert _html_tag(user_settings={"ui.density": "huge", "ui.motion": 1}) == bare
+    assert _html_tag(user_settings="nope") == bare

@@ -32,7 +32,10 @@
     return {
       hidden: headerCells(root).filter(function (th) { return th.hasAttribute("data-default-hidden"); })
         .map(function (th) { return th.getAttribute("data-gth-col"); }),
-      density: "comfortable",
+      // v0.12: the viewer's ui.density (<html data-gth-density>) when this
+      // table has nothing stored; the table's own toggle still wins.
+      density: document.documentElement.getAttribute("data-gth-density") === "compact"
+        ? "compact" : "comfortable",
     };
   }
   function current(root) { return load(root) || defaults(root); }
@@ -62,6 +65,9 @@
     var compact = v.density === "compact";
     t.classList.toggle("table-sm", compact);
     t.classList.toggle("gth-table-compact", compact);
+    // Under a compact page (ui.density), a table set to Comfortable keeps
+    // comfortable cells (theme.css).
+    t.classList.toggle("gth-table-comfortable", !compact);
 
     var menu = root.querySelector("[data-gth-view-menu]");
     if (!menu) return;

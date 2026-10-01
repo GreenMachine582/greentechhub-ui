@@ -27,22 +27,11 @@ opt-in: new behaviour turns on only when the optional context keys (`theme_mode`
 `user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
 there's no runtime import of core. Each PR updates any doc it would otherwise contradict.
 
-Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8 and #10, plus the ready-made
-settings and role-assignment page templates. ui's half of #12 is done: it registered the items below, which make ui
-honour core #13's shared settings. They read the values from `user_settings` (greentechhub-fastapi's
-`settings_context` supplies it), so they need no new context keys. Numbered from #15, after core's #13/#14.
-- [ ] **#15 `feat(theme): density and motion preferences`**
-  - `app.html` sets `data-gth-density` and `data-gth-motion` on `<html>` from `user_settings["ui.density"]` /
-    `["ui.motion"]`. Absent means no attribute, so output is unchanged.
-  - `theme.css`:
-    - Compact density tightens form controls, card and table padding.
-    - `data-gth-motion="reduce"` turns off transitions and animations: Bootstrap fades, toasts, the sidebar rail and
-      back-to-top's smooth scroll.
-    - `system` keeps following `prefers-reduced-motion`, which `theme.css` and `back-to-top.js` already honour.
-      `full` ignores it.
-  - `table-view.js`: a table's density defaults to the user's `ui.density` when that table has nothing stored. The
-    per-table toggle still wins.
-  - Docs: `docs/theming.md`, `docs/contract.md` (the `user_settings` keys read), `docs/components.md`.
+Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15 (density and
+motion), plus the ready-made settings and role-assignment page templates. ui's half of #12 is done: it registered the
+items below, which make ui honour core #13's shared settings. They read the values from `user_settings`
+(greentechhub-fastapi's `settings_context` supplies it), so they need no new context keys. Numbered from #15, after
+core's #13/#14.
 - [ ] **#16 `feat(navigation): sidebar default from the user's settings`**
   - `app.html`'s pre-paint script applies `user_settings["ui.sidebar_default"]` (`expanded` / `rail`) when this
     browser has no stored rail choice (`localStorage["gth-sidebar-mode"]`). Toggling still stores per browser and

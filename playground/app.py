@@ -405,6 +405,12 @@ SETTINGS_DEMO = {
         {"key": "locale.date_format", "type": "choice", "label": "Date format", "default": "iso",
          "group": "Locale", "choices": [("iso", "2026-01-31"), ("dmy", "31/01/2026"),
                                         ("mdy", "01/31/2026"), ("long", "31 Jan 2026")]},
+        {"key": "ui.density", "type": "choice", "label": "Density", "default": "comfortable",
+         "help_text": "Compact fits more rows and fields on screen.", "group": "Appearance",
+         "choices": [("comfortable", "Comfortable"), ("compact", "Compact")]},
+        {"key": "ui.motion", "type": "choice", "label": "Motion", "default": "system",
+         "help_text": "Reduce turns off animations and transitions.", "group": "Appearance",
+         "choices": [("system", "Follow device"), ("reduce", "Reduce"), ("full", "Full")]},
         {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
          "min": 5, "max": 200, "help_text": "5 to 200.", "group": "Tables"},
     ]),
@@ -493,6 +499,8 @@ async def settings_demo_save(request: Request, section: str):
     submitted, errors = {}, {}
     for setting in settings:
         raw = form.get(setting["key"])
+        if raw is None:
+            continue  # not on this form: keep the saved value (as SettingsViews does)
         try:
             submitted[setting["key"]] = _coerce_setting(setting, raw)
         except ValueError as exc:
