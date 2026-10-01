@@ -177,6 +177,29 @@ def test_navbar_with_theme_toggle():
     assert_snapshot(rendered, "navbar_with_theme_toggle")
 
 
+def test_navbar_with_user_menu():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar(nav_items, brand, current_user=user, user_menu_items=menu,
+                      logout_url="/logout") }}""",
+        nav_items=[{"label": "Deals", "url": "/"}],
+        brand=brand_context(service_name="Playground"),
+        user={"username": "alice"},
+        menu=[{"label": "Settings", "url": "/settings", "icon": "sliders"}],
+    )
+    assert_snapshot(rendered, "navbar_with_user_menu")
+
+
+def test_navbar_sidebar_mode_with_user_menu():
+    rendered = _render(
+        """{% from "navbar.html" import gth_navbar %}
+        {{ gth_navbar([], brand, current_user=user, logout_url="/logout", sidebar=True) }}""",
+        brand=brand_context(service_name="Playground"),
+        user={"username": "alice"},
+    )
+    assert_snapshot(rendered, "navbar_sidebar_mode_with_user_menu")
+
+
 def test_table_with_rows():
     rendered = _render(
         """

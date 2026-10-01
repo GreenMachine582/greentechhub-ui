@@ -149,8 +149,33 @@ def theme_context(request: Request) -> dict:
     return {"theme_save_url": "/demo/theme", "theme_mode": mode if mode in THEME_MODES else None}
 
 
+# Demo sign-in: the playground has no auth, so a cookie stands in for the
+# session. A service's settings wiring (greentechhub-fastapi's register_settings)
+# supplies the same keys: current_user (core's Identity), granted (RoleResolver),
+# user_menu_items and logout_url.
+USER_COOKIE = "playground-user"
+DEMO_USERS = {
+    "viewer": ({"username": "viewer", "email": "viewer@example.com"}, frozenset()),
+    "admin": ({"username": "admin", "email": "admin@example.com"},
+              frozenset({"settings.manage"})),
+}
+
+
+def user_context(request: Request) -> dict:
+    who = DEMO_USERS.get(request.cookies.get(USER_COOKIE, ""))
+    if who is None:
+        return {"current_user": None}
+    user, granted = who
+    return {
+        "current_user": user,
+        "granted": granted,
+        "user_menu_items": [{"label": "Settings", "url": "/settings", "icon": "sliders"}],
+        "logout_url": "/demo/logout",
+    }
+
+
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, theme_context])
+                            context_processors=[ui_context, theme_context, user_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -198,7 +223,9 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Settings", "url": "/settings", "icon": "sliders", "children": [
         {"label": "Preferences", "url": "/settings#gth-settings-preferences"},
-        {"label": "App", "url": "/settings#gth-settings-app"},
+        # Only an admin sees this link (the demo sign-in on /extensibility).
+        {"label": "App", "url": "/settings#gth-settings-app",
+         "required_permission": "settings.manage"},
     ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
 ]
@@ -447,6 +474,24 @@ async def navigation_page(request: Request):
 async def extensibility_page(request: Request):
     return _page(request, "extensibility", extra_css=[EXTRA_CSS_DATA_URL],
                  extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
+
+
+@app.post("/demo/sign-in")
+async def demo_sign_in(as_: str = Form(..., alias="as")):
+    """Demo sign-in for the user menu and permission-filtered nav."""
+    if as_ not in DEMO_USERS:
+        return Response(status_code=422)
+    response = Response(status_code=303, headers={"Location": "/extensibility#user-menu"})
+    response.set_cookie(USER_COOKIE, as_, samesite="lax")
+    return response
+
+
+@app.post("/demo/logout")
+async def demo_logout():
+    """The user menu's Log out (logout_url) — a POST, like greentechhub-fastapi's LoginViews."""
+    response = Response(status_code=303, headers={"Location": "/extensibility#user-menu"})
+    response.delete_cookie(USER_COOKIE)
+    return response
 
 
 @app.get("/nav-badges/watchlist", response_class=HTMLResponse)

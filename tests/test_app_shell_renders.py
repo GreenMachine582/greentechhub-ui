@@ -184,3 +184,65 @@ def test_app_shell_theme_mode_cannot_break_out_of_the_script():
 def test_app_shell_escapes_the_theme_save_url():
     html = _render_shell(theme_save_url='/x" onload="alert(1)')
     assert 'onload="alert(1)"' not in html
+
+
+# ── v0.12: per-request permission filtering + user menu ───────────────────
+
+def _installed_env(layout="navbar"):
+    env = _env()
+    greentechhub_ui.install(env, service_name="Playground", layout=layout, nav_items=[
+        {"label": "Deals", "url": "/"},
+        {"label": "Admin", "url": "/admin", "required_permission": "settings.manage"},
+    ])
+    return env
+
+
+def _render_installed(layout="navbar", **context):
+    base = {"flashes": [], "url_for": lambda name, **kwargs: "/", "extra_head": []}
+    return _installed_env(layout).get_template("app.html").render(**base, **context)
+
+
+def test_permissioned_nav_item_follows_granted_per_request():
+    for layout in ("navbar", "sidebar"):
+        allowed = _render_installed(layout, current_user={"username": "alice"},
+                                    granted={"settings.manage"})
+        denied = _render_installed(layout, current_user={"username": "bob"}, granted=set())
+        anonymous = _render_installed(layout)
+        assert 'href="/admin"' in allowed, layout
+        assert 'href="/admin"' not in denied, layout
+        assert 'href="/admin"' not in anonymous, layout
+
+
+def test_permissioned_item_is_left_out_of_the_command_palette_index():
+    denied = _render_installed("sidebar", current_user={"username": "bob"}, granted=set())
+    allowed = _render_installed("sidebar", current_user={"username": "a"},
+                                granted={"settings.manage"})
+    assert "/admin" not in denied
+    assert allowed.count("/admin") > denied.count("/admin")
+
+
+def test_signed_in_without_granted_keeps_old_behaviour():
+    html = _render_installed(current_user={"username": "alice"})
+    assert 'href="/admin"' in html
+
+
+def test_user_menu_renders_only_when_signed_in():
+    signed_in = _render_installed(current_user={"username": "alice"}, logout_url="/logout",
+                                  user_menu_items=[{"label": "Settings", "url": "/settings"}])
+    assert "gth-user-menu" in signed_in
+    assert ">alice<" in signed_in
+    assert 'action="/logout"' in signed_in
+    assert 'href="/settings"' in signed_in
+    assert "gth-user-menu" not in _render_installed()
+
+
+def test_user_menu_items_are_permission_filtered():
+    html = _render_installed(
+        current_user={"username": "bob"}, granted=set(),
+        user_menu_items=[
+            {"label": "Settings", "url": "/settings"},
+            {"label": "Roles", "url": "/roles", "required_permission": "users.manage"},
+        ],
+    )
+    assert 'href="/settings"' in html
+    assert 'href="/roles"' not in html

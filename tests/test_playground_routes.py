@@ -431,3 +431,29 @@ def test_settings_theme_shares_the_toggles_store_and_applies_without_reload():
     assert toggled.status_code == 204
     assert 'gth-field-ui.theme-2" autocomplete="off" checked' in after_toggle.text
     playground_app.SETTINGS_VALUES.clear()
+
+
+def test_demo_sign_in_drives_the_user_menu_and_permissioned_nav():
+    app_link = 'href="/settings#gth-settings-app"'
+
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            signed_out = await client.get("/settings")
+            await client.post("/demo/sign-in", data={"as": "viewer"})
+            viewer = await client.get("/settings")
+            await client.post("/demo/sign-in", data={"as": "admin"})
+            admin = await client.get("/settings")
+            logout = await client.post("/demo/logout")
+            after = await client.get("/settings")
+            bad = await client.post("/demo/sign-in", data={"as": "root"})
+            return signed_out, viewer, admin, logout, after, bad
+
+    signed_out, viewer, admin, logout, after, bad = _run(flow())
+    assert "gth-user-menu" not in signed_out.text and app_link not in signed_out.text
+    assert "gth-user-menu" in viewer.text and ">viewer<" in viewer.text
+    assert app_link not in viewer.text
+    assert app_link in admin.text and 'action="/demo/logout"' in admin.text
+    assert logout.status_code == 303
+    assert "gth-user-menu" not in after.text and app_link not in after.text
+    assert bad.status_code == 422

@@ -71,6 +71,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "sidebar",
         "navbar_sidebar_mode",
         "navbar_dropdown",
+        "navbar_with_user_menu",
+        "navbar_sidebar_mode_with_user_menu",
         "command_palette",
         "tree_single",
         "tree_multi",

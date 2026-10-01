@@ -12,4 +12,23 @@
   <p class="gth-extra-css-demo mb-1">This text is pink if <code>extra_css</code> worked.</p>
   <p id="gth-extra-js-demo">extra_js hasn't run yet.</p>
 </section>
+
+<section class="mb-5" id="user-menu">
+  <h2 class="h4">User menu and permission-filtered nav</h2>
+  <p class="text-secondary">
+    With <code>current_user</code> set, the navbar shows a user menu: <code>user_menu_items</code>,
+    then Log out (a POST to <code>logout_url</code>). Nav items with
+    <code>required_permission</code> only show when <code>granted</code> holds it — sign in as
+    admin and Settings &rsaquo; App appears in the sidebar. The playground fakes sign-in with a cookie.
+  </p>
+  {% if current_user %}
+  <p id="gth-user-demo-state">Signed in as <strong>{{ current_user.username }}</strong>.</p>
+  {% else %}
+  <p id="gth-user-demo-state">Signed out.</p>
+  {% endif %}
+  <form method="post" action="/demo/sign-in" class="d-flex gap-2">
+    <button type="submit" name="as" value="viewer" class="btn btn-outline-secondary">Sign in as viewer</button>
+    <button type="submit" name="as" value="admin" class="btn btn-outline-primary">Sign in as admin</button>
+  </form>
+</section>
 {% endblock %}
