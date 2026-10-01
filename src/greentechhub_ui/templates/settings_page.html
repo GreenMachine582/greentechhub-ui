@@ -1,0 +1,17 @@
+{#- settings_page.html — a ready-made settings page: page.html's header, an
+    optional `settings_intro` line, then each of `settings_sections` stacked
+    (see settings_section.html for a section's shape). Stacked rather than
+    tabbed, so a "/settings#gth-settings-<id>" link lands on its section and
+    a 422 is never hidden in a closed tab. greentechhub-fastapi's
+    SettingsViews renders this by default; any framework can, with the same
+    context. -#}
+{% extends "page.html" %}
+
+{% block page %}
+{%- if settings_intro|default(none) %}
+<p class="text-secondary small">{{ settings_intro }}</p>
+{%- endif %}
+{%- for section in settings_sections|default([]) %}
+{% include "settings_section.html" %}
+{%- endfor %}
+{% endblock %}

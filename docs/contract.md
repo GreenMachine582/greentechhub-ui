@@ -12,7 +12,7 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
 # what every macro expects in its Jinja2 context — nothing framework-specific
 {
   "nav_items": [...],        # from navigation.py
-  "current_user": {...} | None,
+  "current_user": {...} | None,  # anything with username/email (core's Identity, a dict); None = anonymous
   "flashes": [...],          # shape is greentechhub_core.types.FlashMessage; production/storage (session
                               # wiring, a Django messages adapter, etc.) is owned by the framework adapter
                               # (greentechhub_fastapi.flash / a Django messages bridge), not greentechhub-core
@@ -25,7 +25,7 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
 }
 ```
 
-`brand.logo_url`/`brand.favicon_url` are populated by `theme.brand_context(show_logo=True, static_url_prefix=...)`
+`brand.logo_url`/`brand.logo_light_url`/`brand.favicon_url` (`logo/favicon.png`, 64×64, the mark on a dark rounded-square tile) are populated by `theme.brand_context(show_logo=True, static_url_prefix=...)`
 — a Python-side opt-in (both `None` by default), distinct from the `*_url` Jinja globals below, which a consumer
 sets directly as template defaults rather than through a Python function argument.
 
@@ -107,6 +107,52 @@ mode; `"dark"` pins it dark.
 | `nav_mark_active`, `nav_flatten` | helpers `gth_sidebar` / `gth-command-palette` call (installed by `shell_globals`) |
 | `show_command_palette` | include the palette (and a navbar search button) in the default layout |
 | `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
+
+**User settings (v0.12)** — optional `user_settings`, the viewer's effective setting values keyed by
+greentechhub-core key (greentechhub-fastapi's `settings_context` supplies it). The `date` and `datetime` filters read
+`locale.date_format`, `locale.timezone` and `locale.time_format` from it, and `money` and `number` read
+`locale.number_format`; without it they render as before.
+`app.html` reads `ui.density` and `ui.motion` into `<html data-gth-density / data-gth-motion>` (see
+[docs/theming.md](theming.md)), and `ui.sidebar_default` (`expanded` / `rail`) as the sidebar's starting state until
+the browser's own rail toggle is used.
+
+**Role assignments page (v0.12)** — the context `roles_page.html` and `roles_section.html` take
+(greentechhub-fastapi's `RoleAdminViews` supplies it): `roles_url`, `roles_assignments`, `roles_options`, and
+optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
+[docs/components.md](components.md#role-assignments).
+
+**Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
+(greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
+`settings_intro`, and `section` for the single-section fragment. A section's shape is in
+[docs/components.md](components.md#settings).
+
+**Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
+(greentechhub-fastapi's `register_settings`). Without them nothing changes:
+
+| Key | Meaning |
+|---|---|
+| `granted` | the viewer's permission strings (core's `RoleResolver.granted()`). Nav items with `required_permission` show only when it holds it; without `granted`, any signed-in viewer sees them, as before |
+| `user_menu_items` | NavItems for the navbar's user menu (e.g. Settings), permission-filtered like `nav_items` |
+| `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
+
+`nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
+
+**Theme preference (v0.12)** — both optional, usually per-request context from the framework adapter's settings
+wiring (greentechhub-fastapi's `register_settings`), backed by core's `ui.theme` user preference:
+
+| Key | Meaning |
+|---|---|
+| `theme_mode` | the signed-in user's saved theme: `"light"`, `"dark"` or `"system"` (follows `prefers-color-scheme`). Applied before first paint and mirrored to localStorage; anything else is ignored |
+| `theme_save_url` | where `gth_theme_toggle` POSTs a new choice, as the form field `theme=light\|dark`. Expect a 2xx with no body (204) |
+
+Without them, nothing changes: the toggle keeps the choice in localStorage only. The save goes through `htmx.ajax`
+when htmx is loaded, so it carries the page's `hx-headers` (e.g. a CSRF token) and a failure gets the usual error
+toast. Without htmx it's a same-origin `fetch`.
+
+A theme saved some other way, such as a settings form that htmx swaps in place, is applied without a reload by the
+**`gth:theme`** event. Send it in the save response's `HX-Trigger` with the saved mode as its value, alongside the
+toast: `toast("Preferences saved", events={"gth:theme": "light"})`. The page switches theme and updates
+localStorage; it doesn't POST to `theme_save_url` again, since the response means the server already saved it.
 
 A per-request context value overrides a global of the same name — e.g. one page can render `layout="sidebar"`
 with its own `nav_items` (the playground's `/layouts/sidebar`).

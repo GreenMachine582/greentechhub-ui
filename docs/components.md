@@ -19,7 +19,9 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
-| `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
+| `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
+| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
+| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
@@ -27,11 +29,11 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
-| `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
+| `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
-| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
+| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), permission-filtered per request against `current_user`/`granted` (v0.12). `gth-navbar` shows a user menu when signed in (v0.12). `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
 | `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
 | `gth-tree` | APG tree view: keyboard, lazy children, single or tri-state selection, detail pane (v0.8) |
 
@@ -106,16 +108,16 @@ gth_toast_flashes(flashes)
 
 ```jinja
 {# navigation.py (Python, not a template) #}
-greentechhub_ui.navigation.build_nav_items(custom_items, current_user=None, built_in_items=None) -> list[NavItem]
-{# The "built-in + consumer-registered, scope-filtered" merge the gth-sidebar/
-   gth-navbar row above promises. built_in_items defaults to DEFAULT_NAV_ITEMS
-   (empty today — no cross-service nav concept exists yet, e.g. no
-   greentechhub-core auth for an "Account" link). Built-ins are placed before
-   custom_items, then the combined list is scope-filtered via filter_by_scope
-   against current_user. A future addition to DEFAULT_NAV_ITEMS becomes
-   visible to every consumer through this helper without any of them changing
-   their own code. See docs/extensibility.md for the current_user scoping
-   contract. #}
+greentechhub_ui.navigation.build_nav_items(custom_items, current_user=<unset>, built_in_items=None,
+                                           granted=None) -> list[NavItem]
+{# The "built-in + consumer-registered" merge the gth-sidebar/gth-navbar row
+   above promises. built_in_items defaults to DEFAULT_NAV_ITEMS (empty today).
+   Built-ins are placed before custom_items. Without current_user (the usual
+   startup call for install()'s global nav_items) nothing is filtered: since
+   v0.12 app.html filters per request (the nav_visible global). Passing
+   current_user (even None) filters here via filter_by_scope, as before. A
+   future addition to DEFAULT_NAV_ITEMS becomes visible to every consumer
+   through this helper without any of them changing their own code. #}
 ```
 
 ## Shipped signatures (v0.6)
@@ -172,10 +174,17 @@ gth_combobox_empty(message="No matches")
    form), Esc closes the panel (not an enclosing modal), Tab closes. #}
 
 {# segmented.html #}
-gth_segmented(name, options, value=None, label=None, field_class="mb-3")
-{# options: [{"value", "label", "style"?, "icon"?}] — style is a
-   btn-outline-* class (default btn-outline-primary). Checked = value, or the
-   first option. Submits name=<value> like any radio group. #}
+gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_text=None, errors=None,
+              variant=None)
+{# options: [{"value", "label", "style"?, "icon"?}]. Checked = value, or the
+   first option. Submits name=<value> like any radio group (arrow keys move
+   the selection).
+   variant (v0.12): "track" — a muted rounded track sized to its content, the
+   checked option a raised thumb in the brand colour, with hover and a brand
+   focus ring — or "buttons", the joined full-width Bootstrap group where each
+   option's style (a btn-outline-* class, default btn-outline-primary) applies.
+   None picks "buttons" when any option sets a style, so per-option colours
+   (e.g. Buy/Sell) keep their meaning, and "track" otherwise. #}
 ```
 
 ```python
@@ -183,6 +192,8 @@ gth_segmented(name, options, value=None, label=None, field_class="mb-3")
 greentechhub_ui.toast(message, kind="success", *, events=())
 # events: extra HX-Trigger events merged into the same header, e.g.
 # ["closeModal", "stocksChanged"] — a response can only carry one HX-Trigger.
+# A mapping sends each event with a detail value instead of true, e.g.
+# {"gth:theme": "light"} to apply a theme a settings form just saved.
 
 # shell.py
 greentechhub_ui.shell_globals(*, service_name, nav_items, assets_prefix="/gth-assets",
@@ -208,12 +219,18 @@ state = greentechhub_ui.TableState.from_query(
     push_url=False,                  # hx-push-url on sort/filter/page changes
     window=2,                        # pages either side of the current one in the pager
     max_height=None,                 # e.g. "24rem": scroll box + sticky header;
-)                                    #   infinite mode then observes that box
+                                     #   infinite mode then observes that box
+    user_settings=None,              # v0.12: the viewer's settings; their ui.page_size
+)                                    #   becomes the default size (added to page_sizes)
 rows, total = repo.list(offset=state.offset, limit=state.limit, sort=state.sort,
                         direction=state.direction, **state.filters)
 state = state.with_result(total=total)   # or has_next=... when the count is unknown
 template = "_stocks_table.html" if is_htmx_swap(request) else "stocks.html"
 ```
+
+`user_settings` (v0.12) is the viewer's effective settings, e.g. greentechhub-fastapi's `get_effective_settings`.
+Their greentechhub-core `ui.page_size` becomes this table's default size; if `page_sizes` restricts sizes and theirs
+isn't one, it's added. A `?size=` in the URL still wins, and the URL omits `size` at the viewer's own default.
 
 Query parameters are fixed: `page`, `size`, `sort`, `dir`, `partial=rows`, plus each `filter_params` name. Anything not allow-listed (an unsortable column, an off-list size, a negative page) is ignored, not trusted. Return the table fragment for htmx swaps — `HX-Request: true` *without* `HX-History-Restore-Request: true` (a history restore needs the whole page) — and the full page otherwise.
 
@@ -275,7 +292,9 @@ gth_tabs(id, tabs, active=None, tabs_class="mb-3")      {# optional {% call(key)
    renders caller(key). #}
 
 {# chips.html #}
-gth_chips(name, options, values=(), label=None, field_class="mb-3")
+gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None)
+# id (v0.12): element-id prefix, default "gth-field-<name>" — set it when several chip groups
+# share a field name (e.g. one per table row) so ids stay unique.
 {# options: [{"value", "label", "icon"?}]; btn-check checkboxes as pills, a check
    icon on checked ones. Submits name=<value> per checked chip (FastAPI
    list[str]; Django getlist). #}
@@ -383,9 +402,13 @@ gth_sidebar_rail_toggle()
    opens the groups holding matches; clearing restores. From 992px the rail
    toggle collapses it to icons (tooltips; badges as dots; groups open as
    flyouts, closed by Esc / a click elsewhere), remembered in localStorage and
-   applied before first paint. Below 992px it's Bootstrap's offcanvas-lg drawer
+   applied before first paint. Until this browser toggles it, the starting
+   state is the viewer's ui.sidebar_default from user_settings (v0.12;
+   "rail" or "expanded"). Below 992px it's Bootstrap's offcanvas-lg drawer
    (a link click closes it). sidebar.js also remembers which groups were
-   opened by hand. {% block sidebar_extra %} fills the footer. #}
+   opened by hand, and keeps the list's scroll position across page loads
+   (per tab), always bringing the current page's link into view — without
+   moving focus, which stays with the page. {% block sidebar_extra %} fills the footer. #}
 
 {# navbar.html #}
 gth_navbar(..., sidebar=False, show_search=False)
@@ -446,6 +469,7 @@ greentechhub_ui.toast(message, kind="success", *, title=None, icon=None, action=
 # toast("Saved") is still just {"showToast": {"message", "kind"}}.
 # The message is TEXT. html=True renders it as HTML — only for markup the server itself
 # produced and escaped (a template render), NEVER for anything holding user input.
+# events: names (each sent as true) or a {name: detail} mapping, e.g. {"gth:theme": "light"}.
 ```
 
 ```jinja
@@ -641,7 +665,8 @@ gth_data_table(state, headers, rows, ..., view_options=False)
 ```
 
 The choice is stored in `localStorage["gth-table-view:<pathname>#<table id>"]`, so it's per browser, per page and
-per table. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
+per table. With nothing stored, density starts from the viewer's `ui.density` (`<html data-gth-density>`, v0.12), and
+Comfortable on a compact page keeps comfortable cells. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
 load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
 cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
 so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
@@ -711,13 +736,14 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers three filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers four filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
 {{ value|money(symbol="$", places=2) }}   {# 1234.5 → $1,234.50 · -1234.5 → -$1,234.50 · |money("") → 1,234.50 #}
 {{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
 {{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
+{{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
 ```
 
 - **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
@@ -728,9 +754,179 @@ that the app already registered**, so an app's own `money` wins.
   `number(places=n)` gives fixed decimals the same way.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
+- **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
+  `settings_context` supplies it), `date` and `datetime` follow greentechhub-core's:
+  - `locale.date_format`: `iso` (2025-02-05), `dmy` (05/02/2025), `mdy` (02/05/2025), `long` (5 Feb 2025);
+  - `locale.timezone`: an *aware* datetime is converted first, so 23:30 UTC shows as the next morning in Sydney.
+    Naive datetimes and plain dates are left alone, and an unknown zone is ignored;
+  - `locale.time_format`: `24h` (13:45) or `12h` (1:45 pm).
+
+  `money` and `number` follow `locale.number_format`: `comma_dot` (1,234.56), `dot_comma` (1.234,56) or
+  `space_comma` (1 234,56, with a non-breaking space so a number never wraps). Only the digits change; the sign and
+  symbol stay put (`-$1.234,50`).
+
+  Without `user_settings` they render as before. An explicit `fmt`, or keyword (`|date(date_format="iso")`,
+  `|datetime(time_format="12h", tz="UTC")`, `|money(number_format="comma_dot")`), wins.
 
 They're plain functions too, e.g. for a CSV export:
 
 ```python
-from greentechhub_ui.formatting import format_date, money, number
+from greentechhub_ui.formatting import format_date, format_datetime, money, number
+
+format_date(value, fmt=None, *, date_format=None, tz=None)
+format_datetime(value, fmt=None, *, date_format=None, time_format=None, tz=None)
+money(value, symbol="$", places=2, *, number_format=None)
+number(value, places=None, *, number_format=None)
 ```
+
+The plain functions never read `user_settings`, so a CSV export keeps `1,234.56` unless you pass `number_format`.
+
+## Shipped signatures (v0.12)
+
+### Select
+
+```jinja
+{# select.html #}
+gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
+           field_class="mb-3", input_attrs=None)
+{# options: {"value", "label"} dicts, (value, label) pairs (core Setting.choices' shape), or bare
+   values. value is compared as a string, so 25 selects "25". placeholder adds an empty first
+   option. Same ids, aria-describedby and error layout as gth_form_field. #}
+```
+
+`gth_segmented` gains `help_text=None, errors=None` and `gth_switch` gains `errors=None, off_value=None`.
+Without them both render exactly as before. With `off_value`, the switch adds a hidden input carrying it ahead of the
+checkbox, so an unchecked switch still submits a value. Starlette's and Django's form `get()` both return the last
+value, so a checked switch reads as its own `value`.
+
+### Settings
+
+Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
+The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
+`choices`, `min`, `max`, `group`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
+
+```jinja
+{# settings.html #}
+gth_setting_field(setting, value=None, errors=None, name=None, field_class="mb-3", segmented_max=4)
+gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
+                     error=None, submit_label="Save", form_attrs=None)
+```
+
+| `setting.type` | Widget |
+|---|---|
+| `bool` | `gth_switch`, submitting `"true"`, or `"false"` when unchecked (`off_value`) |
+| `choice` with `segmented_max` (4) or fewer options | `gth_segmented` |
+| `choice` with more | `gth_select` |
+| `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
+| `str` | `gth_form_field` |
+
+- `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
+  `StrEnum`; a plain `Enum`'s `SettingType.BOOL` also works).
+- `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
+  settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
+  `error` is a banner.
+- With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
+  it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
+  back with a 422.
+
+**Ready-made page (v0.12).** Two templates render a whole settings page from data, so a service writes no settings
+markup (greentechhub-fastapi's `SettingsViews` renders them by default):
+
+| Template | Context |
+|---|---|
+| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
+| `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
+
+A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
+optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no
+`form_attrs`, the form posts over htmx and swaps the section in place (`hx-post` = action, `hx-target` =
+`#gth-settings-<id>`, `hx-swap="outerHTML"`). Sections are stacked rather than tabbed, so a
+`/settings#gth-settings-<id>` link lands on its section and a 422 is never hidden in a closed tab.
+
+```python
+templates.TemplateResponse(request, "settings_page.html", {
+    "page_title": "Settings",
+    "settings_sections": [{"id": "preferences", "title": "Preferences", "settings": preference_settings,
+                           "values": effective, "action": "/settings/preferences"}],
+})
+```
+
+The server side of that form, with core (render `settings_section.html` with the section, plus `errors`):
+
+```python
+form = await request.form()
+errors = {}
+for setting in preference_settings:
+    try:
+        await settings.set_user(identity, setting.key, registry.coerce(setting.key, form.get(setting.key, "")))
+    except ValueError as exc:
+        errors[setting.key] = [str(exc)]
+# 422 + the section re-rendered with errors, or 200 + the section + HX-Trigger toast
+```
+
+The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
+definitions.
+
+### Permission-filtered nav and the user menu
+
+`nav_items` is built once, at startup, so permissions are checked per request: `app.html` filters the list through
+the `nav_visible` global before the navbar, sidebar and command palette see it.
+
+```python
+# navigation.py
+NavItem.required_permission  # optional permission string, e.g. "settings.manage"; required_scope still works
+greentechhub_ui.navigation.filter_by_scope(nav_items, current_user, granted=None) -> list[NavItem]
+```
+
+An item with `required_permission` (or the older `required_scope`) is:
+
+- hidden from anonymous viewers (`current_user` is None);
+- shown to any signed-in viewer when `granted` is None, which is the old behaviour for services that haven't opted in;
+- otherwise shown only when `granted` holds the permission. `granted` is the viewer's permission strings, e.g.
+  greentechhub-core's `RoleResolver.granted()`.
+
+A group left with no children (and no url of its own) is dropped. Breadcrumbs aren't filtered.
+
+```jinja
+{# navbar.html #}
+gth_navbar(..., user_menu_items=None, logout_url=None, granted=None)
+```
+
+With `current_user` set, the navbar ends with a user menu, in both layouts: the user's `username` (or `email`), then
+`user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a
+`<form method="post" action="{logout_url}">`, matching greentechhub-fastapi's `LoginViews` `POST /logout`. Without
+items or `logout_url` it shows just the name. `app.html` passes these from the context keys of the same names (see
+[docs/contract.md](contract.md)). The menu is in the navbar rather than the sidebar footer, so it's in the same place
+in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
+
+The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
+A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.
+
+### Role assignments
+
+Two templates render a role-assignment admin page from data, over greentechhub-core's `GrantStore` (in-app role
+grants per user). greentechhub-fastapi's `RoleAdminViews` renders them by default:
+
+| Template | Renders |
+|---|---|
+| `roles_page.html` | extends `page.html` (`page_title`, `page_subtitle`) and includes the section |
+| `roles_section.html` | `<section id="gth-roles">`: an Assign form, then a table with one row per user — their roles as chips with Save, and Remove through `gth_confirm_delete`. Every save or remove returns this section |
+
+| Context | |
+|---|---|
+| `roles_url` | base url: `POST` it to assign; `POST` / `DELETE` `<roles_url>/<subject>` (urlencoded, `/` too) to set or remove a user's roles |
+| `roles_assignments` | `[{"subject", "roles": [role names]}]` |
+| `roles_options` | `[{"value", "label"}]` — the service's roles |
+| `roles_error` | optional banner |
+| `roles_form` | optional `{"subject", "roles", "errors": {"subject"/"roles": [messages]}}`, echoing the Assign form on a 422 |
+| `roles_title` | optional heading (default "Role assignments") |
+
+- `hx-target="#gth-roles"` and `hx-swap="outerHTML"` sit on the section, so the forms and the confirm modal's
+  `hx-delete` all swap it whole.
+- Save sets a user's roles to exactly the checked chips. Each row's chips get their own id prefix (`gth_chips(id=)`).
+- Roles from directory groups or `ROLE_BOOTSTRAP` aren't grants, so they aren't listed; the section says so.
+
+The playground's `/roles` page (impersonate the admin on `/personas`; going there signed out takes you to pick one)
+runs this flow over an in-memory stand-in for a
+`GrantStore`.

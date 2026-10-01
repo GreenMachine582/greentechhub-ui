@@ -152,3 +152,155 @@ def test_app_shell_back_to_top_only_when_configured():
     assert "gth-back-to-top" not in _env().get_template("app.html").render(**_context())
     html = _env().get_template("app.html").render(**_context(back_to_top_js_url="/a/js/b.js"))
     assert "data-gth-back-to-top" in html and '<script src="/a/js/b.js"></script>' in html
+
+
+def _render_shell(**overrides) -> str:
+    return _env().get_template("app.html").render(**_context(**overrides))
+
+
+def test_app_shell_without_theme_keys_keeps_the_local_only_behaviour():
+    html = _render_shell()
+    assert "var server = null;" in html
+    assert "data-gth-theme-save-url" not in html
+    assert '<html lang="en" data-bs-theme="dark">' in html
+
+
+def test_app_shell_seeds_the_anti_fouc_script_from_theme_mode():
+    html = _render_shell(theme_mode="light")
+    assert 'var server = "light";' in html
+
+
+def test_app_shell_renders_the_theme_save_url_on_html():
+    html = _render_shell(theme_save_url="/settings/theme")
+    assert '<html lang="en" data-bs-theme="dark" data-gth-theme-save-url="/settings/theme">' in html
+
+
+def test_app_shell_theme_mode_cannot_break_out_of_the_script():
+    html = _render_shell(theme_mode='</script><script>alert(1)</script>')
+    assert "<script>alert(1)" not in html
+    assert "\\u003c/script\\u003e" in html
+
+
+def test_app_shell_escapes_the_theme_save_url():
+    html = _render_shell(theme_save_url='/x" onload="alert(1)')
+    assert 'onload="alert(1)"' not in html
+
+
+# ── v0.12: per-request permission filtering + user menu ───────────────────
+
+def _installed_env(layout="navbar"):
+    env = _env()
+    greentechhub_ui.install(env, service_name="Playground", layout=layout, nav_items=[
+        {"label": "Deals", "url": "/"},
+        {"label": "Admin", "url": "/admin", "required_permission": "settings.manage"},
+    ])
+    return env
+
+
+def _render_installed(layout="navbar", **context):
+    base = {"flashes": [], "url_for": lambda name, **kwargs: "/", "extra_head": []}
+    return _installed_env(layout).get_template("app.html").render(**base, **context)
+
+
+def test_permissioned_nav_item_follows_granted_per_request():
+    for layout in ("navbar", "sidebar"):
+        allowed = _render_installed(layout, current_user={"username": "alice"},
+                                    granted={"settings.manage"})
+        denied = _render_installed(layout, current_user={"username": "bob"}, granted=set())
+        anonymous = _render_installed(layout)
+        assert 'href="/admin"' in allowed, layout
+        assert 'href="/admin"' not in denied, layout
+        assert 'href="/admin"' not in anonymous, layout
+
+
+def test_permissioned_item_is_left_out_of_the_command_palette_index():
+    denied = _render_installed("sidebar", current_user={"username": "bob"}, granted=set())
+    allowed = _render_installed("sidebar", current_user={"username": "a"},
+                                granted={"settings.manage"})
+    assert "/admin" not in denied
+    assert allowed.count("/admin") > denied.count("/admin")
+
+
+def test_signed_in_without_granted_keeps_old_behaviour():
+    html = _render_installed(current_user={"username": "alice"})
+    assert 'href="/admin"' in html
+
+
+def test_user_menu_renders_only_when_signed_in():
+    signed_in = _render_installed(current_user={"username": "alice"}, logout_url="/logout",
+                                  user_menu_items=[{"label": "Settings", "url": "/settings"}])
+    assert "gth-user-menu" in signed_in
+    assert ">alice<" in signed_in
+    assert 'action="/logout"' in signed_in
+    assert 'href="/settings"' in signed_in
+    assert "gth-user-menu" not in _render_installed()
+
+
+def test_user_menu_items_are_permission_filtered():
+    html = _render_installed(
+        current_user={"username": "bob"}, granted=set(),
+        user_menu_items=[
+            {"label": "Settings", "url": "/settings"},
+            {"label": "Roles", "url": "/roles", "required_permission": "users.manage"},
+        ],
+    )
+    assert 'href="/settings"' in html
+    assert 'href="/roles"' not in html
+
+
+# ── v0.12: ui.density / ui.motion from user_settings ──────────────────────
+
+
+def _html_tag(**context) -> str:
+    html = _env().get_template("app.html").render(**_context(**context))
+    return html[html.index("<html"):html.index(">", html.index("<html")) + 1]
+
+
+def test_density_and_motion_become_html_attributes():
+    tag = _html_tag(user_settings={"ui.density": "compact", "ui.motion": "reduce"})
+    assert 'data-gth-density="compact"' in tag and 'data-gth-motion="reduce"' in tag
+    tag = _html_tag(user_settings={"ui.density": "comfortable", "ui.motion": "full"})
+    assert 'data-gth-density="comfortable"' in tag and 'data-gth-motion="full"' in tag
+    assert 'data-gth-motion="system"' in _html_tag(user_settings={"ui.motion": "system"})
+
+
+def test_unknown_or_missing_preferences_add_nothing():
+    bare = '<html lang="en" data-bs-theme="dark">'
+    assert _html_tag() == bare
+    assert _html_tag(user_settings={}) == bare
+    assert _html_tag(user_settings={"ui.density": "huge", "ui.motion": 1}) == bare
+    assert _html_tag(user_settings="nope") == bare
+
+
+# ── v0.12: ui.sidebar_default seeds the rail ──────────────────────────────
+
+
+def _sidebar_script(**context) -> str:
+    html = _env().get_template("app.html").render(**_context(layout="sidebar", **context))
+    start = html.index("gth_sidebar's icon rail")
+    return html[start:html.index("</script>", start)]
+
+
+def test_sidebar_default_is_passed_to_the_pre_paint_script():
+    rail = _sidebar_script(user_settings={"ui.sidebar_default": "rail"})
+    assert 'var preferred = "rail";' in rail
+    expanded = _sidebar_script(user_settings={"ui.sidebar_default": "expanded"})
+    assert 'var preferred = "expanded";' in expanded
+
+
+def test_unknown_or_missing_sidebar_default_is_null():
+    for context in ({}, {"user_settings": {}}, {"user_settings": {"ui.sidebar_default": "wide"}},
+                    {"user_settings": "nope"}):
+        assert "var preferred = null;" in _sidebar_script(**context), context
+
+
+def test_the_stored_toggle_still_wins_in_the_script():
+    script = _sidebar_script(user_settings={"ui.sidebar_default": "rail"})
+    assert 'stored === "rail" || (stored !== "full" && preferred === "rail")' in script
+
+
+def test_navbar_layout_has_no_sidebar_script():
+    html = _env().get_template("app.html").render(
+        **_context(user_settings={"ui.sidebar_default": "rail"}))
+    assert "gth-sidebar-mode" not in html
+

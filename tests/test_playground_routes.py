@@ -10,6 +10,7 @@ import asyncio
 import csv
 import io
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -38,6 +39,14 @@ async def _post(path, **kwargs):
         return await client.post(path, **kwargs)
 
 
+async def _as(persona, method, path, **kwargs):
+    """One request as a playground persona (its cookie set on the client)."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                 cookies={"playground-user": persona}) as client:
+        return await client.request(method, path, **kwargs)
+
+
 def test_index_returns_200():
     response = _run(_get("/"))
     assert response.status_code == 200
@@ -48,9 +57,16 @@ def test_every_sidebar_link_returns_200():
     from playground.app import PLAYGROUND_NAV
 
     paths = {entry["url"].split("#")[0] for entry in flatten(PLAYGROUND_NAV)}
-    assert {"/layout", "/data", "/forms", "/tables", "/tree"} <= paths
+    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles"} <= paths
+    async def get_as_admin(path):
+        # as the demo admin, so permission-gated links (Roles) are reachable too
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "admin"}) as client:
+            return await client.get(path)
+
     for path in sorted(paths):
-        response = _run(_get(path))
+        response = _run(get_as_admin(path))
         assert response.status_code == 200, path
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
 
@@ -342,3 +358,301 @@ def test_playground_pages_get_current_path_from_the_context_processor():
     # No route passes current_path any more: greentechhub_fastapi's ui_context does.
     html = _run(_get("/tree")).text
     assert 'aria-current="page"' in html and '<a href="/data">Data</a>' in html
+
+
+def test_settings_page_renders_each_widget():
+    page = _run(_as("admin", "GET", "/settings"))  # the App section needs settings.manage
+    assert page.status_code == 200
+    for marker in ('id="gth-settings-preferences"', 'id="gth-settings-app"', "gth-segmented",
+                   "gth-select", 'type="number"', 'role="switch"'):
+        assert marker in page.text, marker
+
+
+def test_settings_demo_saves_and_toasts():
+    playground_app.SETTINGS_VALUES.clear()
+    data = {"ui.theme": "dark", "locale.timezone": "Asia/Tokyo", "locale.date_format": "dmy",
+            "ui.page_size": "50"}
+    response = _run(_post("/settings-demo/preferences", data=data))
+    assert response.status_code == 200
+    assert "Preferences saved" in response.headers["HX-Trigger"]
+    assert "playground-prefs=" in response.headers["set-cookie"]  # per browser, not shared
+    assert "ui.page_size" not in playground_app.SETTINGS_VALUES
+    assert '<option value="Asia/Tokyo" selected>' in response.text
+    playground_app.SETTINGS_VALUES.clear()
+
+
+def test_settings_demo_returns_422_with_field_errors():
+    data = {"ui.theme": "dark", "locale.timezone": "UTC", "locale.date_format": "iso",
+            "ui.page_size": "500"}
+    response = _run(_post("/settings-demo/preferences", data=data))
+    assert response.status_code == 422
+    assert "Must be between 5 and 200." in response.text
+    assert 'value="500"' in response.text
+    assert "HX-Trigger" not in response.headers
+
+
+def test_settings_demo_unchecked_switch_submits_false():
+    playground_app.SETTINGS_VALUES.clear()
+    # what the browser sends for an unchecked gth_switch(off_value="false"): only the hidden input
+    unchecked = {"site.banner": "", "site.maintenance": "false"}
+    response = _run(_as("admin", "POST", "/settings-demo/app", data=unchecked))
+    assert response.status_code == 200
+    assert playground_app.SETTINGS_VALUES["site.maintenance"] is False
+    checked = _run(_as("admin", "POST", "/settings-demo/app",
+                         data={"site.banner": "Back soon", "site.maintenance": ["false", "true"]}))
+    assert checked.status_code == 200
+    assert playground_app.SETTINGS_VALUES["site.maintenance"] is True
+    playground_app.SETTINGS_VALUES.clear()
+
+
+def test_theme_demo_saves_to_a_cookie_and_seeds_the_next_page():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            first = await client.get("/forms")
+            saved = await client.post("/demo/theme", data={"theme": "light"})
+            second = await client.get("/forms")
+            bad = await client.post("/demo/theme", data={"theme": "purple"})
+            return first, saved, second, bad
+
+    first, saved, second, bad = _run(flow())
+    assert 'data-gth-theme-save-url="/demo/theme"' in first.text
+    assert "var server = null;" in first.text
+    assert saved.status_code == 204
+    assert 'var server = "light";' in second.text
+    assert bad.status_code == 422
+
+
+def test_settings_theme_shares_the_toggles_store_and_applies_without_reload():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            saved = await client.post("/settings-demo/preferences", data={
+                "ui.theme": "light", "locale.timezone": "UTC", "locale.date_format": "iso",
+                "ui.page_size": "25"})
+            page = await client.get("/settings")
+            toggled = await client.post("/demo/theme", data={"theme": "dark"})
+            after_toggle = await client.get("/settings")
+            return saved, page, toggled, after_toggle
+
+    playground_app.SETTINGS_VALUES.clear()
+    saved, page, toggled, after_toggle = _run(flow())
+    assert saved.status_code == 200
+    assert json.loads(saved.headers["HX-Trigger"])["gth:theme"] == "light"
+    assert "playground-theme=light" in saved.headers["set-cookie"]
+    assert 'gth-field-ui.theme-1" autocomplete="off" checked' in saved.text
+    assert 'var server = "light";' in page.text
+    assert 'gth-field-ui.theme-1" autocomplete="off" checked' in page.text
+    assert "ui.theme" not in playground_app.SETTINGS_VALUES
+    # the navbar toggle writes the same store, so the form follows it
+    assert toggled.status_code == 204
+    assert 'gth-field-ui.theme-2" autocomplete="off" checked' in after_toggle.text
+    playground_app.SETTINGS_VALUES.clear()
+
+
+def test_demo_sign_in_drives_the_user_menu_and_permissioned_nav():
+    app_link = 'href="/settings#gth-settings-app"'
+
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            signed_out = await client.get("/settings")
+            await client.post("/demo/sign-in", data={"as": "viewer"})
+            viewer = await client.get("/settings")
+            await client.post("/demo/sign-in", data={"as": "admin"})
+            admin = await client.get("/settings")
+            logout = await client.post("/demo/logout")
+            after = await client.get("/settings")
+            bad = await client.post("/demo/sign-in", data={"as": "root"})
+            return signed_out, viewer, admin, logout, after, bad
+
+    signed_out, viewer, admin, logout, after, bad = _run(flow())
+    assert "gth-user-menu" not in signed_out.text and app_link not in signed_out.text
+    assert "gth-user-menu" in viewer.text and ">viewer<" in viewer.text
+    assert app_link not in viewer.text
+    assert app_link in admin.text and 'action="/demo/logout"' in admin.text
+    assert logout.status_code == 303
+    assert "gth-user-menu" not in after.text and app_link not in after.text
+    assert bad.status_code == 422
+
+
+def test_saved_preferences_drive_dates_and_the_records_page_size():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            before = (await client.get("/data")).text, (await client.get("/tables")).text
+            saved = await client.post("/settings-demo/preferences", data={
+                "ui.theme": "dark", "locale.timezone": "Australia/Sydney",
+                "locale.date_format": "dmy", "ui.page_size": "50"})
+            after = (await client.get("/data")).text, (await client.get("/tables")).text
+        # another browser (no cookie) still gets the defaults
+        other = (await _get("/data")).text, (await _get("/tables")).text
+        return before, saved, after, other
+
+    before, saved, after, other = _run(flow())
+    assert saved.status_code == 200
+    for data, tables in (before, other):
+        assert "5 Feb 2025 23:30" in data
+        assert '<option value="10" selected>' in tables
+    data, tables = after
+    assert "06/02/2025 10:30" in data  # the aware 23:30 UTC example, in Sydney
+    assert '<option value="50" selected>' in tables
+
+
+def test_roles_demo_admin_only_and_assign_set_remove():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as anon:
+            denied = await anon.get("/roles")
+            denied_post = await anon.post("/roles", data={"subject": "x", "roles": "viewer"})
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as viewer:
+            viewer_page = await viewer.get("/roles")
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "admin"}) as admin:
+            page = await admin.get("/roles")
+            bad = await admin.post("/roles", data={"subject": " "})
+            added = await admin.post("/roles", data={"subject": "carol",
+                                                     "roles": ["viewer", "editor"]})
+            changed = await admin.post("/roles/carol", data={"roles": ["admin"]})
+            removed = await admin.delete("/roles/carol")
+        return denied, denied_post, viewer_page, page, bad, added, changed, removed
+
+    playground_app.ROLE_GRANTS.clear()
+    try:
+        denied, denied_post, viewer_page, page, bad, added, changed, removed = _run(flow())
+        # a page sends you to pick a persona; a POST can't redirect, so it's a 403
+        persona_url = "/personas?next=%2Froles&need=settings.manage"
+        assert (denied.status_code, denied.headers["location"]) == (303, persona_url)
+        assert (viewer_page.status_code, viewer_page.headers["location"]) == (303, persona_url)
+        assert denied_post.status_code == 403
+        assert page.status_code == 200 and 'id="gth-roles"' in page.text
+        assert bad.status_code == 422
+        assert "Enter a user ID." in bad.text and "Pick at least one role." in bad.text
+        assert added.status_code == 200 and "Roles assigned to carol" in added.headers["HX-Trigger"]
+        assert 'hx-post="/roles/carol"' in added.text
+        assert changed.status_code == 200
+        assert removed.status_code == 200 and "No roles assigned here yet." in removed.text
+        assert playground_app.ROLE_GRANTS == {}
+    finally:
+        playground_app.ROLE_GRANTS.clear()
+
+
+def test_personas_impersonate_and_return_to_next():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            picker = await client.get("/personas?next=/roles&need=settings.manage")
+            as_admin = await client.post("/demo/sign-in", data={"as": "admin", "next": "/roles"})
+            roles = await client.get("/roles")
+            current = await client.get("/personas")
+            htmx = await client.get("/roles", headers={"HX-Request": "true"})
+            out = await client.post("/demo/sign-in", data={"as": "anonymous"})
+            after = await client.get("/personas")
+            return picker, as_admin, roles, current, htmx, out, after
+
+    picker, as_admin, roles, current, htmx, out, after = _run(flow())
+    assert picker.status_code == 200
+    assert 'id="gth-persona-need"' in picker.text and "settings.manage" in picker.text
+    assert '<input type="hidden" name="next" value="/roles">' in picker.text
+    assert 'data-persona="anonymous"' in picker.text and 'data-persona="admin"' in picker.text
+    assert (as_admin.status_code, as_admin.headers["location"]) == (303, "/roles")
+    assert roles.status_code == 200 and htmx.status_code == 200
+    assert 'Switch persona' in current.text  # the user menu's item
+    assert re.search(r'data-persona="admin">.*?Current', current.text, re.S)
+    assert (out.status_code, out.headers["location"]) == (303, "/personas")
+    assert "gth-user-menu" not in after.text
+
+
+def test_persona_next_must_stay_on_site():
+    for evil in ("//evil.example/x", "https://evil.example", "/\\evil.example", "roles"):
+        response = _run(_post("/demo/sign-in", data={"as": "viewer", "next": evil}))
+        assert response.headers["location"] == "/personas", evil
+    picker = _run(_get("/personas", params={"next": "//evil.example"}))
+    assert 'name="next"' not in picker.text
+
+
+def test_viewer_htmx_or_post_to_a_gated_page_is_a_403():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as client:
+            return (await client.get("/roles", headers={"HX-Request": "true"}),
+                    await client.delete("/roles/carol"))
+
+    htmx, delete = _run(flow())
+    assert (htmx.status_code, delete.status_code) == (403, 403)
+
+
+def test_app_settings_section_needs_settings_manage():
+    playground_app.SETTINGS_VALUES.clear()
+    data = {"site.banner": "Viewer was here", "site.maintenance": "true"}
+    try:
+        for persona in ("anonymous", "viewer"):
+            page = _run(_as(persona, "GET", "/settings"))
+            assert 'id="gth-settings-preferences"' in page.text, persona
+            assert 'id="gth-settings-app"' not in page.text, persona
+            denied = _run(_as(persona, "POST", "/settings-demo/app", data=data))
+            assert denied.status_code == 403, persona
+        assert playground_app.SETTINGS_VALUES == {}
+        assert 'id="gth-settings-app"' in _run(_as("admin", "GET", "/settings")).text
+        assert _run(_as("admin", "POST", "/settings-demo/app", data=data)).status_code == 200
+        assert playground_app.SETTINGS_VALUES["site.banner"] == "Viewer was here"
+    finally:
+        playground_app.SETTINGS_VALUES.clear()
+
+
+def test_personas_only_send_a_persona_back_to_a_page_it_can_open():
+    html = _run(_get("/personas", params={"next": "/roles", "need": "settings.manage"})).text
+    cards = {key: html.split(f'data-persona="{key}"', 1)[1].split("</form>", 1)[0]
+             for key in ("anonymous", "viewer", "admin")}
+    assert 'name="next" value="/roles"' in cards["admin"]
+    for key in ("anonymous", "viewer"):
+        assert 'name="next"' not in cards[key], key
+        assert "Can&#39;t open" in cards[key] or "Can't open" in cards[key], key
+
+
+def test_saved_density_and_motion_reach_the_html_tag():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # a partial form: fields that weren't submitted keep their saved values
+            saved = await client.post("/settings-demo/preferences",
+                                      data={"ui.density": "compact", "ui.motion": "reduce"})
+            page = await client.get("/forms")
+            return saved, page
+
+    saved, page = _run(flow())
+    assert saved.status_code == 200
+    tag = page.text[page.text.index("<html"):page.text.index(">", page.text.index("<html"))]
+    assert 'data-gth-density="compact"' in tag and 'data-gth-motion="reduce"' in tag
+
+
+def test_saved_sidebar_default_reaches_the_pre_paint_script():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            before = await client.get("/forms")
+            await client.post("/settings-demo/preferences", data={"ui.sidebar_default": "rail"})
+            after = await client.get("/forms")
+            return before, after
+
+    before, after = _run(flow())
+    assert "var preferred = null;" in before.text
+    assert 'var preferred = "rail";' in after.text
+
+
+
+def test_saved_number_format_changes_money_and_number_for_that_browser():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/settings-demo/preferences",
+                              data={"locale.number_format": "dot_comma"})
+            mine = (await client.get("/data")).text
+        other = (await _get("/data")).text
+        return mine, other
+
+    mine, other = _run(flow())
+    assert "$1.234,50" in mine and "1.234.567,891" in mine
+    assert "$1,234.50" in other and "1,234,567.891" in other

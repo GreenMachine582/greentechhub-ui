@@ -1,0 +1,48 @@
+
+<section class="gth-settings-section mb-4" id="gth-settings-preferences" aria-labelledby="gth-settings-preferences-title">
+  <h2 class="h5 mb-1" id="gth-settings-preferences-title">Preferences</h2>
+  <p class="text-secondary small mb-3">Only you see these.</p>
+  <form method="post" action="/settings/preferences" class="gth-form" novalidate hx-post="/settings/preferences" hx-target="#gth-settings-preferences" hx-swap="outerHTML">
+  <h3 class="h6 text-secondary mt-3 mb-2">Appearance</h3>
+  
+
+
+<div class="mb-3 gth-form-field gth-segmented">
+  <span class="form-label d-block" id="gth-field-ui.theme-label">Theme</span>
+  <div class="gth-segmented-track" role="group" aria-labelledby="gth-field-ui.theme-label">
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="light"
+      id="gth-field-ui.theme-1" autocomplete="off">
+    <label class="btn gth-segmented-option" for="gth-field-ui.theme-1">Light</label>
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="dark"
+      id="gth-field-ui.theme-2" autocomplete="off" checked>
+    <label class="btn gth-segmented-option" for="gth-field-ui.theme-2">Dark</label>
+    
+    <input type="radio" class="btn-check" name="ui.theme" value="system"
+      id="gth-field-ui.theme-3" autocomplete="off">
+    <label class="btn gth-segmented-option" for="gth-field-ui.theme-3">System</label>
+    
+  </div>
+</div>
+
+  <h3 class="h6 text-secondary mt-3 mb-2">Tables</h3>
+  
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-field-ui.page_size">Rows per page</label>
+  <input type="number" id="gth-field-ui.page_size" name="ui.page_size"
+    class="form-control"
+    value="25"
+    step="1"
+    min="5"
+    max="200"
+    
+    
+    >
+  
+  
+</div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</section>

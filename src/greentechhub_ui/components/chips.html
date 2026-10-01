@@ -1,17 +1,21 @@
-{% macro gth_chips(name, options, values=(), label=None, field_class="mb-3") %}
+{% macro gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None) %}
 {# Multi-select filter pills: btn-check checkboxes styled as chips (a
    check icon appears on selected ones, so state isn't color-only).
    options: [{"value", "label", "icon"?}]. values: the checked values.
    Submits name=<value> once per checked chip (FastAPI: list[str] =
-   Query/Form; Django: getlist). The gth_segmented of multi-choice. #}
+   Query/Form; Django: getlist). The gth_segmented of multi-choice.
+   id: the element-id prefix (default "gth-field-<name>") — set it when
+   several chip groups on one page share a field name, e.g. one per table
+   row, so ids stay unique and each label toggles its own checkbox. #}
 {% set checked = values|map("string")|list %}
+{%- set prefix = id or "gth-field-" ~ name %}
 <div class="{{ field_class }} gth-form-field gth-chips">
-  {% if label %}<span class="form-label d-block" id="gth-field-{{ name }}-label">{{ label }}</span>{% endif %}
-  <div class="d-flex flex-wrap gap-2" role="group"{% if label %} aria-labelledby="gth-field-{{ name }}-label"{% endif %}>
+  {% if label %}<span class="form-label d-block" id="{{ prefix }}-label">{{ label }}</span>{% endif %}
+  <div class="d-flex flex-wrap gap-2" role="group"{% if label %} aria-labelledby="{{ prefix }}-label"{% endif %}>
     {% for opt in options %}
     <input type="checkbox" class="btn-check" name="{{ name }}" value="{{ opt.value }}"
-      id="gth-field-{{ name }}-{{ loop.index }}" autocomplete="off"{% if opt.value|string in checked %} checked{% endif %}>
-    <label class="btn btn-sm rounded-pill gth-chip" for="gth-field-{{ name }}-{{ loop.index }}">
+      id="{{ prefix }}-{{ loop.index }}" autocomplete="off"{% if opt.value|string in checked %} checked{% endif %}>
+    <label class="btn btn-sm rounded-pill gth-chip" for="{{ prefix }}-{{ loop.index }}">
       <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>
       {%- if opt.icon %}<i class="bi bi-{{ opt.icon }} me-1" aria-hidden="true"></i>{% endif %}{{ opt.label -}}
     </label>
@@ -20,16 +24,29 @@
 </div>
 {% endmacro %}
 
-{% macro gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3", input_attrs=None) %}
+{% macro gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3", input_attrs=None, errors=None, off_value=None) %}
 {# An on/off toggle (Bootstrap form-switch, role="switch") in the brand
-   color. Unchecked submits nothing — treat a missing field as off.
-   input_attrs: dict of extra attributes (e.g. hx-post to save on change). #}
+   color. Unchecked submits nothing — treat a missing field as off — unless
+   off_value is set: then a hidden input submits off_value first, and a
+   checked switch's own value comes after it (Starlette and Django both read
+   the last value), so the field is always present.
+   input_attrs: dict of extra attributes (e.g. hx-post to save on change).
+   errors: optional, laid out like gth_form_field's. #}
 <div class="{{ field_class }} form-check form-switch gth-form-field gth-switch">
+  {%- if off_value is not none %}
+  <input type="hidden" name="{{ name }}" value="{{ off_value }}">
+  {%- endif %}
   <input class="form-check-input" type="checkbox" role="switch" id="gth-field-{{ name }}" name="{{ name }}" value="{{ value }}"
     {%- if checked %} checked{% endif %}
-    {%- if help_text %} aria-describedby="gth-field-{{ name }}-help"{% endif %}
+    {%- if errors %} aria-invalid="true"{% endif %}
+    {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}
     {%- for k, v in (input_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
   <label class="form-check-label" for="gth-field-{{ name }}">{{ label }}</label>
   {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {%- if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {%- for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor -%}
+  </div>
+  {%- endif %}
 </div>
 {% endmacro %}

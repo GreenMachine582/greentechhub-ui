@@ -12,10 +12,11 @@ directly:
 import asyncio
 import csv
 import io
+import json
 from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
@@ -64,8 +65,9 @@ RECORDS = [
 # POST /demo/reset trims it back and restores the stock.
 _RECORDS_INITIAL = len(RECORDS)
 _RECORDS_STOCK = [r["stock"] for r in RECORDS]
-CATEGORY_OPTIONS = [{"value": "", "label": "All", "style": "btn-outline-secondary"}] + [
-    {"value": c, "label": c, "style": "btn-outline-secondary"} for c in RECORD_CATEGORIES
+# No per-option "style", so gth_segmented draws its brand track (v0.12).
+CATEGORY_OPTIONS = [{"value": "", "label": "All"}] + [
+    {"value": c, "label": c} for c in RECORD_CATEGORIES
 ]
 PAGINATION_PAGE_SIZE = 5
 
@@ -136,7 +138,112 @@ EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
 # ui_context supplies current_path to every page: the sidebar's active trail
 # and nav_breadcrumbs need it.
-templates = Jinja2Templates(directory=_here / "templates", context_processors=[ui_context])
+THEME_COOKIE = "playground-theme"
+THEME_MODES = ("light", "dark", "system")
+
+
+def theme_context(request: Request) -> dict:
+    """What a service's settings wiring supplies (greentechhub-fastapi's
+    register_settings, later): the signed-in user's saved ui.theme as theme_mode,
+    and where the toggle saves. The playground has no users, so a cookie stands in
+    for the store — per browser, so e2e tests don't share a theme."""
+    mode = request.cookies.get(THEME_COOKIE)
+    return {"theme_save_url": "/demo/theme", "theme_mode": mode if mode in THEME_MODES else None}
+
+
+# Personas: the playground has no auth, so you impersonate one (ServiceNow
+# style) on /personas, and a cookie stands in for the session. A service's
+# settings wiring (greentechhub-fastapi's register_settings) supplies the same
+# keys: current_user (core's Identity), granted (RoleResolver), user_menu_items
+# and logout_url.
+USER_COOKIE = "playground-user"
+PERSONAS = {
+    "anonymous": {"user": None, "granted": frozenset(), "icon": "incognito",
+                  "description": "Signed out. No user menu; permission-gated pages send you here."},
+    "viewer": {"user": {"username": "viewer", "email": "viewer@example.com"},
+               "granted": frozenset(), "icon": "person",
+               "description": "Signed in with no permissions: the user menu and Preferences, "
+                              "but not Settings \u203a App or Roles."},
+    "admin": {"user": {"username": "admin", "email": "admin@example.com"},
+              "granted": frozenset({"settings.manage"}), "icon": "person-gear",
+              "description": "Holds settings.manage: Settings \u203a App and the Roles page "
+                             "appear in the sidebar."},
+}
+
+
+def _persona(request: Request) -> str:
+    key = request.cookies.get(USER_COOKIE, "")
+    return key if key in PERSONAS and PERSONAS[key]["user"] else "anonymous"
+
+
+def user_context(request: Request) -> dict:
+    persona = PERSONAS[_persona(request)]
+    if persona["user"] is None:
+        return {"current_user": None}
+    return {
+        "current_user": persona["user"],
+        "granted": persona["granted"],
+        "user_menu_items": [{"label": "Settings", "url": "/settings", "icon": "sliders"},
+                            {"label": "Switch persona", "url": "/personas",
+                             "icon": "person-badge"}],
+        "logout_url": "/demo/logout",
+    }
+
+
+# What the admin persona holds: Settings › App and the Roles page need it.
+MANAGE_PERMISSION = "settings.manage"
+
+
+def _has(request: Request, permission: str) -> bool:
+    return permission in user_context(request).get("granted", ())
+
+
+def _local_path(url: str | None) -> str | None:
+    """`url` if it's a path on this site, else None — so ?next= can't send
+    anyone off-site (no //host, no scheme, no backslash tricks)."""
+    if not url or not url.startswith("/") or url.startswith("//") or "\\" in url:
+        return None
+    return url
+
+
+def _require_persona(request: Request, permission: str) -> Response | None:
+    """None when the impersonated persona holds `permission`. Otherwise a page
+    request is sent to /personas to pick one that does (like
+    require_page_permission's login redirect), and htmx / non-GET calls get a
+    plain 403 (like require_permission) — a fragment can't redirect sensibly."""
+    if _has(request, permission):
+        return None
+    if request.method != "GET" or request.headers.get("HX-Request"):
+        return Response(status_code=403)
+    query = urlencode({"next": request.url.path, "need": permission})
+    return Response(status_code=303, headers={"Location": f"/personas?{query}"})
+
+
+PREFS_COOKIE = "playground-prefs"
+
+
+def _preferences(request: Request) -> dict[str, object]:
+    """This browser's saved Preferences (all but the theme, which has its own
+    cookie): per browser like a service's per-user store, so one visitor's —
+    or one e2e test's — choices never leak into another's pages."""
+    try:
+        values = json.loads(unquote(request.cookies.get(PREFS_COOKIE, "")) or "{}")
+    except ValueError:
+        return {}
+    return values if isinstance(values, dict) else {}
+
+
+def settings_values_context(request: Request) -> dict:
+    """user_settings, as greentechhub-fastapi's settings_context supplies it:
+    here only the Preferences this browser saved, so pages render the defaults
+    until then. The |date / |datetime filters follow it."""
+    prefs = _preferences(request)
+    return {"user_settings": prefs} if prefs else {}
+
+
+templates = Jinja2Templates(directory=_here / "templates",
+                            context_processors=[ui_context, theme_context, user_context,
+                                                settings_values_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -182,7 +289,17 @@ PLAYGROUND_NAV = [
         {"label": "Breadcrumbs", "url": "/navigation#breadcrumbs"},
         {"label": "Command palette", "url": "/navigation#command-palette"},
     ]},
+    {"label": "Settings", "url": "/settings", "icon": "sliders", "children": [
+        {"label": "Preferences", "url": "/settings#gth-settings-preferences"},
+        # Only an admin sees this link (the demo sign-in on /extensibility).
+        {"label": "App", "url": "/settings#gth-settings-app",
+         "required_permission": "settings.manage"},
+    ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
+    {"label": "Personas", "url": "/personas", "icon": "person-badge"},
+    # Only the demo admin (sign in on /extensibility) sees this.
+    {"label": "Roles", "url": "/roles", "icon": "people",
+     "required_permission": "settings.manage"},
 ]
 
 # Title and subtitle per category page.
@@ -198,6 +315,10 @@ PAGES = {
     "navigation": ("Navigation", "The sidebar this page uses, breadcrumbs derived from it, and the "
                    "command palette."),
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
+    "personas": ("Personas", "Impersonate a persona to see the playground as they would: the user "
+                             "menu, permission-filtered nav and gated pages."),
+    "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
+                 "own widget."),
 }
 
 greentechhub_ui.install(
@@ -267,6 +388,168 @@ def _page(request: Request, name: str, **context):
     })
 
 
+# ── Settings demo ─────────────────────────────────────────────────────────────
+# Plain dicts shaped like greentechhub-core's Setting (key, type, label, default,
+# help_text, choices, min, max, group): the macros duck-type, so a service passes
+# core's Setting objects and Settings.effective() values the same way. The coercion
+# below stands in for core's registry.coerce(key, raw).
+
+SETTINGS_DEMO = {
+    "preferences": ("Preferences", "Only you see these.", [
+        {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
+         "help_text": "Light, dark, or follow your device.", "group": "Appearance",
+         "choices": [("light", "Light"), ("dark", "Dark"), ("system", "System")]},
+        {"key": "locale.timezone", "type": "choice", "label": "Timezone", "default": "UTC",
+         "help_text": "More than four choices, so a select.", "group": "Locale",
+         "choices": [(z, z) for z in ("UTC", "Australia/Sydney", "Australia/Perth",
+                                      "Europe/London", "America/New_York", "Asia/Tokyo")]},
+        {"key": "locale.date_format", "type": "choice", "label": "Date format", "default": "iso",
+         "group": "Locale", "choices": [("iso", "2026-01-31"), ("dmy", "31/01/2026"),
+                                        ("mdy", "01/31/2026"), ("long", "31 Jan 2026")]},
+        {"key": "ui.density", "type": "choice", "label": "Density", "default": "comfortable",
+         "help_text": "Compact fits more rows and fields on screen.", "group": "Appearance",
+         "choices": [("comfortable", "Comfortable"), ("compact", "Compact")]},
+        {"key": "ui.motion", "type": "choice", "label": "Motion", "default": "system",
+         "help_text": "Reduce turns off animations and transitions.", "group": "Appearance",
+         "choices": [("system", "Follow device"), ("reduce", "Reduce"), ("full", "Full")]},
+        {"key": "ui.sidebar_default", "type": "choice", "label": "Sidebar",
+         "default": "expanded", "group": "Appearance",
+         "help_text": "How the sidebar starts until you toggle it in this browser.",
+         "choices": [("expanded", "Expanded"), ("rail", "Icons only")]},
+        {"key": "locale.number_format", "type": "choice", "label": "Number format",
+         "default": "comma_dot", "group": "Locale",
+         "choices": [("comma_dot", "1,234.56"), ("dot_comma", "1.234,56"),
+                     ("space_comma", "1 234,56")]},
+        {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
+         "min": 5, "max": 200, "help_text": "5 to 200.", "group": "Tables"},
+    ]),
+    "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
+        {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
+         "help_text": "Leave empty for no banner."},
+        {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
+         "help_text": "An unchecked switch still submits \"false\" (off_value)."},
+    ]),
+}
+SETTINGS_VALUES: dict[str, object] = {}
+
+
+def _coerce_setting(setting: dict, raw: str | None) -> object:
+    if setting["type"] == "bool":
+        if raw in ("true", "false"):
+            return raw == "true"
+        raise ValueError("Choose on or off.")
+    if setting["type"] == "int":
+        try:
+            value = int((raw or "").strip())
+        except ValueError:
+            raise ValueError("Enter a whole number.") from None
+        if not setting["min"] <= value <= setting["max"]:
+            raise ValueError(f"Must be between {setting['min']} and {setting['max']}.")
+        return value
+    if setting["type"] == "choice" and raw not in [v for v, _ in setting["choices"]]:
+        raise ValueError("Pick one of the options.")
+    return raw or ""
+
+
+def _saved_settings(request: Request) -> dict[str, object]:
+    """SETTINGS_VALUES (the App section, shared), this browser's Preferences, and
+    ui.theme from the theme cookie: the toggle and the Preferences form share
+    one store, as a service's settings store would."""
+    values = dict(SETTINGS_VALUES) | _preferences(request)
+    if (mode := theme_context(request)["theme_mode"]) is not None:
+        values["ui.theme"] = mode
+    return values
+
+
+def _settings_section(request: Request, section: str, *, errors=None, values=None) -> dict:
+    """One section for gth-ui's settings_page.html / settings_section.html — the
+    data a service (or greentechhub-fastapi's SettingsViews) passes. With an
+    action and no form_attrs, the template wires the htmx post-and-swap itself."""
+    title, description, settings = SETTINGS_DEMO[section]
+    return {"id": section, "title": title, "description": description, "settings": settings,
+            "values": values if values is not None else _saved_settings(request),
+            "errors": errors, "action": f"/settings-demo/{section}"}
+
+
+def _render_section(request: Request, section: dict, **kwargs) -> HTMLResponse:
+    return templates.TemplateResponse(request, "settings_section.html", {"section": section},
+                                      **kwargs)
+
+
+def _visible_sections(request: Request) -> list[str]:
+    """Preferences for everyone; App only with settings.manage — as
+    greentechhub-fastapi's SettingsViews gates it on manage_permission."""
+    return [s for s in SETTINGS_DEMO if s != "app" or _has(request, MANAGE_PERMISSION)]
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    title, subtitle = PAGES["settings"]
+    return templates.TemplateResponse(request, "settings_page.html", {
+        "page_title": title, "page_subtitle": subtitle,
+        "settings_intro": (
+            "gth_setting_field picks the widget from the setting's type: a switch for bool, "
+            "segmented buttons for four or fewer choices, a select for more, number and text "
+            "fields for int and str. Save a page size of 500 to see the 422 path."),
+        "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
+    })
+
+
+@app.post("/settings-demo/{section}", response_class=HTMLResponse)
+async def settings_demo_save(request: Request, section: str):
+    """The flow core's Settings facade expects: coerce every field, then 422 with
+    the section re-rendered around its field errors, or save and toast."""
+    if section not in SETTINGS_DEMO:
+        return HTMLResponse("Unknown section", status_code=404)
+    if section == "app" and (denied := _require_persona(request, MANAGE_PERMISSION)):
+        return denied  # a POST, so a 403
+    form = await request.form()
+    _, _, settings = SETTINGS_DEMO[section]
+    submitted, errors = {}, {}
+    for setting in settings:
+        raw = form.get(setting["key"])
+        if raw is None:
+            continue  # not on this form: keep the saved value (as SettingsViews does)
+        try:
+            submitted[setting["key"]] = _coerce_setting(setting, raw)
+        except ValueError as exc:
+            errors[setting["key"]] = [str(exc)]
+            submitted[setting["key"]] = raw
+    if errors:
+        return _render_section(request, _settings_section(
+            request, section, errors=errors, values=_saved_settings(request) | submitted),
+            status_code=422)
+    # ui.theme lives in the theme cookie (see _saved_settings); the gth:theme
+    # event applies it without a reload, as a service's save response would.
+    theme = submitted.pop("ui.theme", None)
+    prefs = None
+    if section == "preferences":
+        prefs = _preferences(request) | submitted
+    else:
+        SETTINGS_VALUES.update(submitted)
+    events = {"gth:theme": theme} if theme else {}
+    values = _saved_settings(request) | (prefs or {}) | ({"ui.theme": theme} if theme else {})
+    response = _render_section(request, _settings_section(request, section, values=values),
+                               headers={"HX-Trigger": greentechhub_ui.toast(
+                                   f"{SETTINGS_DEMO[section][0]} saved", events=events)})
+    if prefs is not None:
+        response.set_cookie(PREFS_COOKIE, quote(json.dumps(prefs)), max_age=60 * 60 * 24 * 365,
+                            samesite="lax")
+    if theme:
+        response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
+    return response
+
+
+@app.post("/demo/theme")
+async def demo_theme(theme: str = Form(...)):
+    """theme-toggle.js POSTs theme=<light|dark> here (theme_save_url)."""
+    if theme not in THEME_MODES:
+        return Response(status_code=422)
+    response = Response(status_code=204)
+    response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
+    return response
+
+
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
     return _page(request, "overview", categories=PLAYGROUND_NAV)
@@ -308,6 +591,109 @@ async def navigation_page(request: Request):
 async def extensibility_page(request: Request):
     return _page(request, "extensibility", extra_css=[EXTRA_CSS_DATA_URL],
                  extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
+
+
+@app.get("/personas", response_class=HTMLResponse)
+async def personas_page(request: Request, next: str | None = None, need: str | None = None):
+    return _page(request, "personas", personas=PERSONAS, current=_persona(request),
+                 next=_local_path(next), need=need)
+
+
+@app.post("/demo/sign-in")
+async def demo_sign_in(as_: str = Form(..., alias="as"), next: str | None = Form(None)):
+    """Impersonate a persona (anonymous signs out), then go back to `next`."""
+    if as_ not in PERSONAS:
+        return Response(status_code=422)
+    response = Response(status_code=303, headers={"Location": _local_path(next) or "/personas"})
+    if PERSONAS[as_]["user"] is None:
+        response.delete_cookie(USER_COOKIE)
+    else:
+        response.set_cookie(USER_COOKIE, as_, samesite="lax")
+    return response
+
+
+# ── Role assignments demo ─────────────────────────────────────────────────
+# gth-ui's roles_page.html / roles_section.html over an in-memory dict standing
+# in for greentechhub-core's GrantStore — the flow greentechhub-fastapi's
+# RoleAdminViews runs. Admin only, like RoleAdminViews' permission gate.
+
+ROLE_OPTIONS = [{"value": "viewer", "label": "Viewer"}, {"value": "editor", "label": "Editor"},
+                {"value": "admin", "label": "Admin"}]
+ROLE_GRANTS: dict[str, set[str]] = {}
+
+
+
+
+def _roles_context(**extra) -> dict:
+    return {"roles_url": "/roles", "roles_options": ROLE_OPTIONS,
+            "roles_assignments": [{"subject": s, "roles": sorted(r)}
+                                  for s, r in sorted(ROLE_GRANTS.items())], **extra}
+
+
+def _roles_section(request: Request, message: str | None = None, **extra) -> HTMLResponse:
+    headers = {"HX-Trigger": greentechhub_ui.toast(message)} if message else None
+    status = 422 if "roles_form" in extra else 200
+    return templates.TemplateResponse(request, "roles_section.html", _roles_context(**extra),
+                                      status_code=status, headers=headers)
+
+
+def _picked_roles(form) -> list[str]:
+    known = {o["value"] for o in ROLE_OPTIONS}
+    return [r for r in form.getlist("roles") if r in known]
+
+
+@app.get("/roles", response_class=HTMLResponse)
+async def roles_page(request: Request):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
+    return templates.TemplateResponse(request, "roles_page.html", _roles_context(
+        page_title="Roles", page_subtitle="gth-ui's roles_page.html over a stand-in GrantStore."))
+
+
+@app.post("/roles", response_class=HTMLResponse)
+async def roles_assign(request: Request):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
+    form = await request.form()
+    subject, roles = (form.get("subject") or "").strip(), _picked_roles(form)
+    errors = {}
+    if not subject:
+        errors["subject"] = ["Enter a user ID."]
+    if not roles:
+        errors["roles"] = ["Pick at least one role."]
+    if errors:
+        return _roles_section(request, roles_form={"subject": subject, "roles": roles,
+                                                   "errors": errors})
+    ROLE_GRANTS.setdefault(subject, set()).update(roles)
+    return _roles_section(request, f"Roles assigned to {subject}")
+
+
+@app.post("/roles/{subject}", response_class=HTMLResponse)
+async def roles_set(request: Request, subject: str):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
+    roles = _picked_roles(await request.form())
+    if roles:
+        ROLE_GRANTS[subject] = set(roles)
+    else:
+        ROLE_GRANTS.pop(subject, None)
+    return _roles_section(request, f"Roles saved for {subject}")
+
+
+@app.delete("/roles/{subject}", response_class=HTMLResponse)
+async def roles_remove(request: Request, subject: str):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
+    ROLE_GRANTS.pop(subject, None)
+    return _roles_section(request, f"Removed {subject}'s roles")
+
+
+@app.post("/demo/logout")
+async def demo_logout():
+    """The user menu's Log out (logout_url) — a POST, like greentechhub-fastapi's LoginViews."""
+    response = Response(status_code=303, headers={"Location": "/personas"})
+    response.delete_cookie(USER_COOKIE)
+    return response
 
 
 @app.get("/nav-badges/watchlist", response_class=HTMLResponse)
@@ -452,7 +838,7 @@ async def watchlist_list(request: Request):
 
 
 def _records_state(query, *, mode: str, scroll: bool, base_url: str,
-                   table_id: str = "records") -> greentechhub_ui.TableState:
+                   table_id: str = "records", user_settings=None) -> greentechhub_ui.TableState:
     return greentechhub_ui.TableState.from_query(
         query,
         id=table_id,
@@ -466,6 +852,7 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
         export_base_url="/tables/export.csv" if table_id == "records" else None,
+        user_settings=user_settings,  # Preferences' "Rows per page", once saved
     )
 
 
@@ -501,7 +888,8 @@ def _query_records(state: greentechhub_ui.TableState):
 async def tables_export(request: Request):
     """TableState.export_url's endpoint: the same state as the table (so the
     same allow-listed filters and sort), every matching row, no paging."""
-    state = _records_state(request.query_params, mode="none", scroll=False, base_url="/tables")
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode="none", scroll=False, base_url="/tables")
     rows, _ = _query_records(state)
     out = io.StringIO()
     writer = csv.writer(out)
@@ -518,7 +906,8 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
     if mode not in greentechhub_ui.table.MODES:
         mode = "pages"
     fixed = {"mode": mode, **({"scroll": 1} if scroll else {})}
-    state = _records_state(request.query_params, mode=mode, scroll=bool(scroll),
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode=mode, scroll=bool(scroll),
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
@@ -775,7 +1164,8 @@ async def demo_record_picker(request: Request):
     endpoint serves two pickers, so ?for= keeps their table ids apart."""
     picker = request.query_params.get("for")
     picker = picker if picker in ("modal", "page") else "page"
-    state = _records_state(request.query_params, mode="pages", scroll=False,
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode="pages", scroll=False,
                            base_url="/demo/record-picker?" + urlencode({"for": picker}),
                            table_id=f"picker-{picker}")
     rows, state = _query_records(state)

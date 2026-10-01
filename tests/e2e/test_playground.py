@@ -14,7 +14,7 @@ from playwright.sync_api import expect
 # Every playground page (the category pages the sidebar links to, plus the
 # data-table / tree / standalone sidebar demos).
 PAGES = ["/", "/layout", "/data", "/forms", "/feedback", "/overlays", "/navigation",
-         "/extensibility", "/tables", "/tree", "/layouts/sidebar"]
+         "/extensibility", "/settings", "/tables", "/tree", "/layouts/sidebar"]
 
 # Dynamically-triggered toasts land in #gth-toast-container. The static
 # gth_toast_flashes demo section on the page also renders `.toast.show`
@@ -34,6 +34,43 @@ def test_dark_mode_toggle_persists(page, playground_url):
     assert html.get_attribute("data-bs-theme") == "light"
 
 
+def test_theme_toggle_saves_to_the_server(page, playground_url):
+    page.goto(playground_url)
+    html = page.locator("html")
+    assert html.get_attribute("data-bs-theme") == "dark"
+
+    with page.expect_response(lambda r: r.url.endswith("/demo/theme")) as saved:
+        page.click(".gth-theme-toggle")
+    assert saved.value.status == 204
+
+    # The server's theme_mode wins even with localStorage gone (another device, cleared storage).
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    assert html.get_attribute("data-bs-theme") == "light"
+    assert page.evaluate("localStorage.getItem('gth-theme-mode')") == "light"
+
+
+def test_system_theme_follows_the_os_live(page, playground_url):
+    host = urlparse(playground_url).hostname
+    page.context.add_cookies([{"name": "playground-theme", "value": "system", "domain": host,
+                               "path": "/"}])
+    page.emulate_media(color_scheme="light")
+    page.goto(playground_url)
+    html = page.locator("html")
+    assert html.get_attribute("data-gth-theme-mode") == "system"
+    assert html.get_attribute("data-bs-theme") == "light"
+
+    page.emulate_media(color_scheme="dark")
+    expect(html).to_have_attribute("data-bs-theme", "dark")
+
+    # A click picks an explicit mode, which stops following the OS.
+    page.click(".gth-theme-toggle")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    page.emulate_media(color_scheme="dark")
+    expect(html).to_have_attribute("data-gth-theme-mode", "light")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+
+
 def test_form_validation_and_success_toast(page, playground_url):
     page.goto(f"{playground_url}/forms")
 
@@ -46,6 +83,368 @@ def test_form_validation_and_success_toast(page, playground_url):
     page.fill("#gth-field-budget", "250")
     page.click("#form-demo-container button[type=submit]")
     expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved budget")
+
+
+def test_settings_section_validates_saves_and_submits_unchecked_switch(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # the App section needs settings.manage
+    page.goto(f"{playground_url}/settings")
+    prefs = "#gth-settings-preferences"
+    page_size = "[id='gth-field-ui.page_size']"  # setting keys have dots, so no #id selector
+
+    page.fill(page_size, "500")
+    page.click(f"{prefs} button[type=submit]")
+    page.wait_for_selector(f"{page_size}.is-invalid")
+    assert "Must be between 5 and 200." in page.inner_text(prefs)
+    expect(page.locator(DYNAMIC_TOAST)).to_have_count(0)
+
+    page.fill(page_size, "50")
+    page.click(f"{prefs} label:has-text('Dark')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    expect(page.locator(page_size)).to_have_value("50")
+
+    # An unchecked switch still submits "false" (gth_switch off_value) and saves.
+    app = "#gth-settings-app"
+    expect(page.locator("[id='gth-field-site.maintenance']")).not_to_be_checked()
+    page.click(f"{app} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
+
+
+def test_theme_saved_from_settings_applies_without_reload_and_persists(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    html = page.locator("html")
+    prefs = "#gth-settings-preferences"
+    assert html.get_attribute("data-bs-theme") == "dark"
+
+    page.click(f"{prefs} label:has-text('Light')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    # applied by the gth:theme event in the save response, no reload
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    assert page.evaluate("localStorage.getItem('gth-theme-mode')") == "light"
+
+    # saved server-side: wins with localStorage gone, and the form shows it
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    assert html.get_attribute("data-bs-theme") == "light"
+    expect(page.locator("[id='gth-field-ui.theme-1']")).to_be_checked()
+
+    # the navbar toggle writes the same store, so the form follows it
+    with page.expect_response(lambda r: r.url.endswith("/demo/theme")):
+        page.click(".gth-theme-toggle")
+    page.reload()
+    expect(page.locator("[id='gth-field-ui.theme-2']")).to_be_checked()
+
+
+def _impersonate(page, playground_url, persona):
+    page.goto(f"{playground_url}/personas")
+    page.locator(f"[data-persona={persona}] button[type=submit]").click()
+    expect(page.locator(f"[data-persona={persona}] .badge")).to_have_text("Current")
+
+
+def test_user_menu_and_permissioned_nav(page, playground_url):
+    app_link = "#gth-sidebar a[href='/settings#gth-settings-app']"
+    page.goto(f"{playground_url}/extensibility")
+    expect(page.locator(".gth-user-menu")).to_have_count(0)
+    expect(page.locator(app_link)).to_have_count(0)
+
+    _impersonate(page, playground_url, "admin")
+    expect(page.locator(app_link)).to_have_count(1)
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu a:has-text('Settings')")
+    expect(page).to_have_url(re.compile(r"/settings$"))
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu button:has-text('Log out')")
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    expect(page.locator("[data-persona=anonymous] .badge")).to_have_text("Current")
+    expect(page.locator(".gth-user-menu")).to_have_count(0)
+
+
+def test_gated_page_redirects_to_personas_and_back(page, playground_url):
+    roles_link = "#gth-sidebar a[href='/roles']"
+    page.goto(f"{playground_url}/roles")
+    expect(page).to_have_url(re.compile(r"/personas\?next=%2Froles&need=settings.manage$"))
+    expect(page.locator("#gth-persona-need")).to_contain_text("settings.manage")
+
+    page.locator("[data-persona=admin] button[type=submit]").click()
+    expect(page).to_have_url(re.compile(r"/roles$"))
+    expect(page.locator("#gth-roles")).to_be_visible()
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu a:has-text('Switch persona')")
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    page.locator("[data-persona=viewer] button[type=submit]").click()
+    expect(page.locator("[data-persona=viewer] .badge")).to_have_text("Current")
+    expect(page.locator(roles_link)).to_have_count(0)
+
+    # the viewer sees Preferences only, not the App section
+    page.goto(f"{playground_url}/settings")
+    expect(page.locator("#gth-settings-preferences")).to_be_visible()
+    expect(page.locator("#gth-settings-app")).to_have_count(0)
+
+    # from a gated page's banner, the viewer can't open /roles: they land on Personas, no banner
+    page.goto(f"{playground_url}/roles")
+    expect(page.locator("#gth-persona-need")).to_be_visible()
+    expect(page.locator("[data-persona=viewer] .gth-persona-cant-open")).to_contain_text("/roles")
+    page.locator("[data-persona=anonymous] button[type=submit]").click()
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    expect(page.locator("#gth-persona-need")).to_have_count(0)
+
+
+def test_roles_page_assign_change_remove(page, playground_url):
+    _impersonate(page, playground_url, "admin")
+    page.click("#gth-sidebar a[href='/roles']")
+    expect(page).to_have_url(re.compile(r"/roles$"))
+    roles = page.locator("#gth-roles")
+
+    subject = f"e2e-{datetime.now():%H%M%S%f}"
+    page.fill("[id='gth-field-subject']", subject)
+    page.click("label[for='gth-roles-add-1']")  # Viewer
+    page.click("label[for='gth-roles-add-2']")  # Editor
+    page.click(".gth-roles-add button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text(f"Roles assigned to {subject}")
+    row = roles.locator("tr", has_text=subject)
+    expect(row).to_have_count(1)
+
+    # set the row to Admin only
+    row.locator("label", has_text="Viewer").click()
+    row.locator("label", has_text="Editor").click()
+    row.locator("label", has_text="Admin").click()
+    row.locator("button", has_text="Save").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text(f"Roles saved for {subject}")
+    row = roles.locator("tr", has_text=subject)
+    expect(row.locator("input[value=admin]")).to_be_checked()
+    expect(row.locator("input[value=viewer]")).not_to_be_checked()
+
+    row.locator("button", has_text="Remove").click()
+    page.locator(".modal.show .gth-confirm-delete-button").click()
+    expect(roles.locator("tr", has_text=subject)).to_have_count(0)
+    expect(page.locator(".modal-backdrop")).to_have_count(0)
+    expect(page.locator("body")).not_to_have_class(re.compile("modal-open"))
+
+
+def test_density_and_motion_preferences(page, playground_url):
+    def padding_top(selector):
+        return page.eval_on_selector(selector, "el => parseFloat(getComputedStyle(el).paddingTop)")
+
+    page.goto(f"{playground_url}/settings")
+    html = page.locator("html")
+    field = "[id='gth-field-ui.page_size']"
+    comfortable = padding_top(field)
+
+    prefs = "#gth-settings-preferences"
+    page.click(f"{prefs} label:has-text('Compact')")
+    page.click(f"{prefs} label:has-text('Reduce')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    page.reload()
+    expect(html).to_have_attribute("data-gth-density", "compact")
+    expect(html).to_have_attribute("data-gth-motion", "reduce")
+    assert padding_top(field) < comfortable
+    # the sidebar's width transition (0.15s) is cut to ~0
+    duration = page.eval_on_selector(
+        "#gth-sidebar", "el => getComputedStyle(el).transitionDuration")
+    assert all(float(d.rstrip("s")) < 0.001 for d in duration.split(", ")), duration
+
+    # a data table with nothing stored starts compact; its own toggle still wins
+    page.goto(f"{playground_url}/tables")
+    table = page.locator("table.gth-table").first
+    expect(table).to_have_class(re.compile(r"\btable-sm\b"))
+    page.click("#records-view-toggle")
+    page.click("input[name=records-density][value=comfortable]")
+    expect(table).not_to_have_class(re.compile(r"\btable-sm\b"))
+    page.reload()
+    expect(page.locator("table.gth-table").first).not_to_have_class(re.compile(r"\btable-sm\b"))
+
+
+def test_sidebar_default_until_this_browser_toggles(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})  # the rail is >=992px only
+    html = page.locator("html")
+    page.goto(f"{playground_url}/settings")
+    page.click("#gth-settings-preferences label:has-text('Icons only')")
+    page.click("#gth-settings-preferences button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+
+    page.evaluate("localStorage.removeItem('gth-sidebar-mode')")
+    page.reload()
+    expect(html).to_have_attribute("data-gth-sidebar", "rail")
+
+    # this browser's toggle wins from then on
+    page.locator("[data-gth-sidebar-rail]").click()
+    expect(html).not_to_have_attribute("data-gth-sidebar", "rail")
+    page.reload()
+    expect(html).not_to_have_attribute("data-gth-sidebar", "rail")
+
+
+def _nav_state(page):
+    return page.evaluate("""() => {
+        const n = document.querySelector('.gth-sidebar-nav');
+        const a = n.querySelector('a[aria-current="page"]');
+        const r = a.getBoundingClientRect(), nr = n.getBoundingClientRect();
+        return {scroll: n.scrollTop, href: a.getAttribute('href'),
+                visible: r.top >= nr.top && r.bottom <= nr.bottom, pageY: window.scrollY};
+    }""")
+
+
+def test_sidebar_keeps_its_scroll_across_page_loads(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 500})
+    page.goto(f"{playground_url}/navigation")
+    page.evaluate("document.querySelectorAll('[data-gth-sidebar-group][aria-expanded=false]')"
+                  ".forEach(b => b.click())")
+    page.evaluate("document.querySelector('.gth-sidebar-nav').scrollTop = 99999")
+    page.locator("#gth-sidebar a[href='/personas']").click()
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    state = _nav_state(page)
+    assert state["href"] == "/personas" and state["visible"], state
+    assert state["scroll"] > 0 and state["pageY"] == 0, state
+
+
+def test_sidebar_brings_the_current_page_into_view_on_a_fresh_tab(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 400})
+    page.goto(f"{playground_url}/personas")  # no saved scroll in this tab
+    state = _nav_state(page)
+    assert state["visible"] and state["pageY"] == 0, state
+
+
+def test_choice_buttons_show_hover(page, playground_url):
+    def background(locator):
+        return locator.evaluate("el => getComputedStyle(el).backgroundColor")
+
+    page.goto(f"{playground_url}/tables")
+    segmented = page.locator(".gth-segmented").first
+    unchecked, checked = segmented.locator("label").nth(1), segmented.locator("label").nth(0)
+    resting, checked_bg = background(unchecked), background(checked)
+    unchecked.hover()
+    expect(unchecked).not_to_have_css("background-color", resting)
+    checked.hover()
+    expect(checked).to_have_css("background-color", checked_bg)
+
+    page.goto(f"{playground_url}/forms")
+    chip = page.locator(".gth-chips .btn-check:not(:checked) + .gth-chip").first
+    resting = background(chip)
+    chip.hover()
+    expect(chip).not_to_have_css("background-color", resting)
+
+
+def test_segmented_track_style(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    field = page.locator("#gth-settings-preferences .gth-segmented").first  # Theme
+    track = field.locator(".gth-segmented-track")
+    checked = field.locator(".btn-check:checked + .gth-segmented-option")
+    unchecked = field.locator(".btn-check:not(:checked) + .gth-segmented-option").first
+
+    brand = page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--gth-brand-fg').trim()")
+    brand_rgb = page.evaluate(
+        """c => { const el = document.createElement('span'); el.style.color = c;
+                  document.body.append(el); const v = getComputedStyle(el).color; el.remove();
+                  return v; }""", brand)
+    expect(checked).to_have_css("color", brand_rgb)
+    assert checked.evaluate("el => getComputedStyle(el).backgroundColor") != track.evaluate(
+        "el => getComputedStyle(el).backgroundColor")
+
+    resting = unchecked.evaluate("el => getComputedStyle(el).backgroundColor")
+    unchecked.hover()
+    expect(unchecked).not_to_have_css("background-color", resting)
+
+    # sized to its content, not stretched across the form
+    form_width = page.locator("#gth-settings-preferences form").evaluate("el => el.clientWidth")
+    assert track.evaluate("el => el.getBoundingClientRect().width") < form_width
+
+    # keyboard: native radios, so arrows move the selection; the focus ring shows
+    checked_input = field.locator(".btn-check:checked")
+    checked_input.focus()
+    before = checked_input.get_attribute("value")
+    page.keyboard.press("ArrowRight")
+    focused = page.evaluate("document.activeElement.value")
+    assert focused != before
+    ring = page.evaluate("getComputedStyle(document.activeElement.nextElementSibling).boxShadow")
+    assert ring != "none"
+
+
+# ── v0.12: one brand accent (theme.css "Brand accent") ────────────────────
+
+BOOTSTRAP_BLUES = ("rgb(13, 110, 253)", "rgb(134, 183, 254)", "rgb(10, 88, 202)",
+                   "rgba(13, 110, 253", "rgb(110, 168, 254)")
+
+# WCAG contrast of an element's text (or a chosen property) against its own
+# background, walking up to the first opaque background.
+CONTRAST_JS = """([el, fgProp]) => {
+  const rgb = v => (v.match(/[\\d.]+/g) || []).map(Number);
+  const lum = c => { const [r, g, b] = c.slice(0, 3).map(x => { x /= 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  let n = el, bg = null;
+  while (n && n.nodeType === 1) { const c = rgb(getComputedStyle(n).backgroundColor);
+    if (c.length >= 3 && (c.length < 4 || c[3] > 0.5)) { bg = c; break; } n = n.parentElement; }
+  const fg = rgb(getComputedStyle(el)[fgProp]);
+  const [a, b] = [lum(fg), lum(bg || [255, 255, 255])].sort((x, y) => y - x);
+  return (a + 0.05) / (b + 0.05);
+}"""
+
+
+def _themed(page, playground_url, scheme, path):
+    page.context.add_cookies([{"name": "playground-theme", "value": scheme,
+                               "url": playground_url}])
+    page.goto(f"{playground_url}{path}")
+
+
+def _contrast(locator, prop="color"):
+    return locator.evaluate(f"el => ({CONTRAST_JS})([el, '{prop}'])")
+
+
+def test_brand_accent_fills_clear_contrast_in_both_themes(page, playground_url):
+    for scheme in ("dark", "light"):
+        _themed(page, playground_url, scheme, "/forms")
+        button = page.locator(".btn-primary").first
+        assert _contrast(button) >= 4.5, (scheme, "btn-primary")
+
+        chip = page.locator(".gth-chips .gth-chip").first
+        chip.click()
+        assert _contrast(chip) >= 4.5, (scheme, "checked chip")
+
+        _themed(page, playground_url, scheme, "/settings")
+        thumb = page.locator(".btn-check:checked + .gth-segmented-option").first
+        assert _contrast(thumb) >= 4.5, (scheme, "segmented thumb")
+
+
+def test_no_bootstrap_blue_left_on_brand_states(page, playground_url):
+    def colours(locator):
+        return locator.evaluate(
+            "el => { const s = getComputedStyle(el); return [s.color, s.backgroundColor,"
+            " s.borderTopColor, s.boxShadow].join(' | '); }")
+
+    for scheme in ("dark", "light"):
+        _themed(page, playground_url, scheme, "/forms")
+        checks = {"btn-primary": page.locator(".btn-primary").first,
+                  "link": page.locator("main a[href]:not(.btn)").first}
+        field = page.locator("main input.form-control").first
+        field.focus()
+        checks["focused field"] = field
+        switch = page.locator(".form-switch .form-check-input").first
+        if not switch.is_checked():
+            switch.check(force=True)
+        checks["checked switch"] = switch
+        multiselect = page.locator(".gth-multiselect-input").first
+        multiselect.focus()
+        checks["focused multiselect"] = page.locator(".gth-multiselect-control").first
+        for name, locator in checks.items():
+            value = colours(locator)
+            assert not any(b in value for b in BOOTSTRAP_BLUES), (scheme, name, value)
+
+        _themed(page, playground_url, scheme, "/tables")
+        active_page = page.locator(".pagination .page-item.active .page-link").first
+        value = colours(active_page)
+        assert not any(b in value for b in BOOTSTRAP_BLUES), (scheme, "pagination", value)
+        accent = page.evaluate(
+            "getComputedStyle(document.documentElement).getPropertyValue('--gth-accent').trim()")
+        accent_rgb = page.evaluate(
+            """c => { const el = document.createElement('span'); el.style.color = c;
+                      document.body.append(el); const v = getComputedStyle(el).color; el.remove();
+                      return v; }""", accent)
+        expect(active_page).to_have_css("background-color", accent_rgb)
 
 
 def test_standalone_toast_trigger(page, playground_url):

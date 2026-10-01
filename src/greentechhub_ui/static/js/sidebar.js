@@ -9,7 +9,8 @@
 //   cleared.
 // - Icon rail ([data-gth-sidebar-rail] toggle; data-gth-sidebar="rail" on
 //   <html>, persisted in localStorage["gth-sidebar-mode"] and applied
-//   before first paint by app.html). ≥992px only. In the rail a top-level
+//   before first paint by app.html; with nothing stored, app.html starts
+//   from the viewer's ui.sidebar_default instead, v0.12). ≥992px only. In the rail a top-level
 //   group opens as a flyout beside its icon; Esc or a click elsewhere
 //   closes it.
 // - A link click inside the off-canvas drawer (below 992px) closes the
@@ -20,6 +21,9 @@
 (function () {
   var STORE_OPEN = "gth-sidebar-open";
   var STORE_MODE = "gth-sidebar-mode";
+  // The nav's scroll position, per tab (sessionStorage), so a click on a link
+  // far down the list doesn't land on a page whose sidebar is back at the top.
+  var STORE_SCROLL = "gth-sidebar-scroll";
   var root = document.documentElement;
   var wide = window.matchMedia("(min-width: 992px)");
 
@@ -193,7 +197,38 @@
 
   wide.addEventListener("change", function () { closeFlyouts(null, false); });
 
-  // Initial state: remembered open groups, rail toggle labels.
+  // ── scroll position across page loads ─────────────────────────────────
+  // Only the nav scrolls (never the window), and focus isn't moved: it stays
+  // with the page, where keyboard and screen-reader users expect it.
+  function nav() { return document.querySelector(".gth-sidebar-nav"); }
+  function saveScroll() {
+    var n = nav();
+    if (!n) return;
+    try { sessionStorage.setItem(STORE_SCROLL, String(n.scrollTop)); } catch (e) { /* private mode etc. */ }
+  }
+  function restoreScroll() {
+    var n = nav();
+    if (!n) return;
+    var saved = null;
+    try { saved = sessionStorage.getItem(STORE_SCROLL); } catch (e) { saved = null; }
+    if (saved !== null) n.scrollTop = parseInt(saved, 10) || 0;
+    // Whatever was restored, the current page's link ends up in view.
+    var current = n.querySelector('a[aria-current="page"]');
+    if (!current) return;
+    var nr = n.getBoundingClientRect();
+    var cr = current.getBoundingClientRect();
+    if (cr.top < nr.top || cr.bottom > nr.bottom) {
+      n.scrollTop += cr.top - nr.top - (n.clientHeight - cr.height) / 2;
+    }
+  }
+  window.addEventListener("pagehide", saveScroll);
+  document.addEventListener("click", function (evt) {
+    var n = nav();
+    if (n && evt.target.closest && evt.target.closest("a[href]") && n.contains(evt.target)) saveScroll();
+  });
+
+  // Initial state: remembered open groups, rail toggle labels, then the
+  // nav's scroll (after the groups open, since they change its height).
   function init() {
     var open = [];
     try { open = JSON.parse(read(STORE_OPEN) || "[]"); } catch (e) { open = []; }
@@ -201,6 +236,7 @@
       if (open.indexOf(b.getAttribute("data-gth-sidebar-group")) !== -1) setOpen(b, true);
     });
     syncRailToggles();
+    restoreScroll();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

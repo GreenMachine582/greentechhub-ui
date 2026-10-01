@@ -1,0 +1,65 @@
+{#- roles_section.html — role assignments, as a section htmx swaps whole
+    (id "gth-roles"): roles_page.html includes it, and every save or remove
+    returns it. Context:
+      roles_url          base url: POST it to assign, POST/DELETE
+                         <roles_url>/<subject> to set or remove a subject's roles
+      roles_assignments  [{"subject", "roles": [role names]}]
+      roles_options      [{"value", "label"}] — the service's roles
+      roles_error        optional banner
+      roles_form         optional {"subject", "roles", "errors": {field: [msgs]}},
+                         echoing the Assign form on a 422
+      roles_title        optional heading (default "Role assignments")
+    hx-target/hx-swap sit on the section, so every form and the confirm
+    modal's hx-delete inherit them. -#}
+{% from "form.html" import gth_form_field %}
+{% from "chips.html" import gth_chips %}
+{% from "table.html" import gth_table %}
+{% from "confirm_delete.html" import gth_confirm_delete %}
+{% from "empty_state.html" import gth_empty_state %}
+{%- set url = roles_url|default("/roles") %}
+{%- set options = roles_options|default([]) %}
+{%- set form = roles_form|default(none) or {} %}
+{%- set form_errors = form.errors|default(none) or {} %}
+<section class="gth-roles mb-4" id="gth-roles" aria-labelledby="gth-roles-title"
+  hx-target="#gth-roles" hx-swap="outerHTML">
+  <h2 class="h5 mb-1" id="gth-roles-title">{{ roles_title|default("Role assignments") }}</h2>
+  <p class="text-secondary small mb-3">Roles given here add to any a user gets from directory groups or bootstrap
+    configuration, which aren't listed or editable here.</p>
+  {%- if roles_error|default(none) %}
+  <div class="alert alert-danger gth-form-error" role="alert">{{ roles_error }}</div>
+  {%- endif %}
+  <form method="post" action="{{ url }}" hx-post="{{ url }}" class="gth-form gth-roles-add mb-4" novalidate>
+    <h3 class="h6">Assign roles</h3>
+    {{ gth_form_field("subject", "User", value=form.subject|default(""), errors=form_errors.get("subject"),
+        help_text="The user's ID (their identity subject).") }}
+    {{ gth_chips("roles", options, values=form.roles|default([]), label="Roles", id="gth-roles-add") }}
+    {%- if form_errors.get("roles") %}
+    <div class="text-danger small mb-3 gth-roles-add-error">{{ form_errors["roles"]|join(" ") }}</div>
+    {%- endif %}
+    <button type="submit" class="btn btn-primary">Assign</button>
+  </form>
+  {%- if roles_assignments|default([]) %}
+  {% call gth_table(["User", "Roles", ""], table_class="align-middle") %}
+  {%- for row in roles_assignments %}
+  {%- set row_url = url ~ "/" ~ row.subject|urlencode|replace("/", "%2F") %}
+  <tr>
+    <th scope="row" class="fw-normal">{{ row.subject }}</th>
+    <td>
+      <form method="post" action="{{ row_url }}" hx-post="{{ row_url }}"
+        class="d-flex flex-wrap align-items-center gap-2" aria-label="Roles for {{ row.subject }}">
+        {{ gth_chips("roles", options, values=row.roles, field_class="mb-0", id="gth-roles-" ~ loop.index) }}
+        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+      </form>
+    </td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+        data-bs-target="#gth-roles-remove-{{ loop.index }}">Remove</button>
+      {{ gth_confirm_delete("gth-roles-remove-" ~ loop.index, row_url, row.subject ~ "'s roles", hx_target="#gth-roles") }}
+    </td>
+  </tr>
+  {%- endfor %}
+  {% endcall %}
+  {%- else %}
+  {{ gth_empty_state("No roles assigned here yet.") }}
+  {%- endif %}
+</section>

@@ -1,25 +1,50 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+{#- The viewer's density and motion (greentechhub-core's ui.density /
+    ui.motion, from the optional user_settings) as <html> attributes for
+    theme.css and the scripts, and their ui.sidebar_default for the sidebar's
+    pre-paint script; unknown or absent values add nothing. -#}
+{%- set _prefs = user_settings|default(none) if user_settings|default(none) is mapping else {} %}
+{%- set _density = _prefs.get("ui.density") if _prefs.get("ui.density") in ("comfortable", "compact") else none %}
+{%- set _motion = _prefs.get("ui.motion") if _prefs.get("ui.motion") in ("system", "reduce", "full") else none %}
+{%- set _sidebar = _prefs.get("ui.sidebar_default") if _prefs.get("ui.sidebar_default") in ("expanded", "rail") else none %}
+<html lang="en" data-bs-theme="dark"{% if theme_save_url|default(none) %} data-gth-theme-save-url="{{ theme_save_url|e }}"{% endif %}
+  {%- if _density %} data-gth-density="{{ _density }}"{% endif %}{% if _motion %} data-gth-motion="{{ _motion }}"{% endif %}>
 <head>
   <script>
-    // Anti-FOUC: only overrides the hardcoded default above if a consumer's
-    // toggle (gth_theme_toggle) has actually been used before — a consumer
-    // that never renders the toggle can never populate this key, so this is
-    // a no-op for them and today's always-dark default is fully preserved.
+    // Anti-FOUC: picks the theme before first paint. The server's theme_mode
+    // (the signed-in user's saved preference: light | dark | system) wins and
+    // is mirrored to localStorage; without it, a choice the toggle stored
+    // before applies. With neither — a consumer that sets no theme_mode and
+    // never renders the toggle — the hardcoded dark default above stays.
+    // "system" follows prefers-color-scheme (theme-toggle.js keeps following it).
     (function () {
-      var stored = localStorage.getItem("gth-theme-mode");
-      if (stored) document.documentElement.setAttribute("data-bs-theme", stored);
+      var root = document.documentElement;
+      var server = {{ theme_mode|default(none)|tojson }};
+      var mode = server;
+      try {
+        if (server) localStorage.setItem("gth-theme-mode", server);
+        else mode = localStorage.getItem("gth-theme-mode");
+      } catch (e) {}
+      if (mode !== "light" && mode !== "dark" && mode !== "system") return;
+      root.setAttribute("data-gth-theme-mode", mode);
+      if (mode === "system") {
+        mode = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      root.setAttribute("data-bs-theme", mode);
     })();
   </script>
   {%- if layout|default("navbar") == "sidebar" %}
   <script>
-    // Same idea for gth_sidebar's icon rail (gth_sidebar_rail_toggle).
+    // Same idea for gth_sidebar's icon rail (gth_sidebar_rail_toggle): this
+    // browser's own toggle ("rail"/"full" in localStorage) wins; with none,
+    // the viewer's ui.sidebar_default from user_settings (v0.12) decides.
     (function () {
-      try {
-        if (localStorage.getItem("gth-sidebar-mode") === "rail") {
-          document.documentElement.setAttribute("data-gth-sidebar", "rail");
-        }
-      } catch (e) {}
+      var preferred = {{ _sidebar|tojson }};
+      var stored = null;
+      try { stored = localStorage.getItem("gth-sidebar-mode"); } catch (e) {}
+      if (stored === "rail" || (stored !== "full" && preferred === "rail")) {
+        document.documentElement.setAttribute("data-gth-sidebar", "rail");
+      }
     })();
   </script>
   {%- endif %}
@@ -40,7 +65,7 @@
       }
     });
   </script>
-  {% if brand.favicon_url %}<link rel="icon" href="{{ brand.favicon_url }}">{% endif %}
+  {% if brand.favicon_url %}<link rel="icon" type="image/png" sizes="64x64" href="{{ brand.favicon_url }}">{% endif %}
   {% if theme_css_url|default(none) %}<link rel="stylesheet" href="{{ theme_css_url }}">{% endif %}
   {% if icons_css_url|default(none) %}<link rel="stylesheet" href="{{ icons_css_url }}">{% endif %}
   {% for url in extra_css|default([]) %}<link rel="stylesheet" href="{{ url }}">{% endfor %}
@@ -48,6 +73,11 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
+  {#- Per-request permission filter: items with required_permission show only
+      to a signed-in viewer whose `granted` holds it (see navigation.py).
+      Without `granted` it keeps the old behaviour; the navbar, sidebar and
+      command palette below all use the filtered list. #}
+  {%- set nav_items = nav_visible(nav_items, current_user|default(none), granted|default(none)) if nav_visible is defined else nav_items %}
   {% block banner %}{% endblock %}
 
   {% from "navbar.html" import gth_navbar %}
@@ -58,7 +88,9 @@
   {% from "sidebar.html" import gth_sidebar, gth_sidebar_rail_toggle %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
       show_theme_toggle|default(false), navbar_theme|default(none), sidebar=true,
-      show_search=command_palette_js_url|default(none) is not none) }}
+      show_search=command_palette_js_url|default(none) is not none,
+      user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
+      granted=granted|default(none)) }}
   <div class="gth-shell">
     <aside class="offcanvas-lg offcanvas-start gth-sidebar" tabindex="-1" id="gth-sidebar" aria-labelledby="gth-sidebar-title">
       <div class="offcanvas-header border-bottom d-lg-none">
@@ -78,7 +110,9 @@
   {%- else %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
       show_theme_toggle|default(false), navbar_theme|default(none),
-      show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false))) }}
+      show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false)),
+      user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
+      granted=granted|default(none)) }}
 
   <main class="container py-4">
   {%- endif %}

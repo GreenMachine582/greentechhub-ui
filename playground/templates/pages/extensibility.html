@@ -12,4 +12,18 @@
   <p class="gth-extra-css-demo mb-1">This text is pink if <code>extra_css</code> worked.</p>
   <p id="gth-extra-js-demo">extra_js hasn't run yet.</p>
 </section>
+
+<section class="mb-5" id="user-menu">
+  <h2 class="h4">User menu and permission-filtered nav</h2>
+  <p class="text-secondary">
+    With <code>current_user</code> set, the navbar shows a user menu: <code>user_menu_items</code>,
+    then Log out (a POST to <code>logout_url</code>). Nav items with
+    <code>required_permission</code> only show when <code>granted</code> holds it — impersonate the
+    admin and Settings &rsaquo; App and Roles appear in the sidebar.
+  </p>
+  <p>
+    {% if current_user %}You're impersonating <strong>{{ current_user.username }}</strong>.{% else %}You're signed out.{% endif %}
+    <a href="/personas">Switch persona</a>
+  </p>
+</section>
 {% endblock %}
