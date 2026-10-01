@@ -15,7 +15,7 @@ def toast(
     duration: int = DEFAULT_DURATION_MS,
     variant: str = "surface",
     html: bool = False,
-    events: Iterable[str] = (),
+    events: Iterable[str] | Mapping[str, object] = (),
 ) -> str:
     """Build an HX-Trigger header value that fires the client-side showToast event.
 
@@ -35,7 +35,10 @@ def toast(
     "closeModal", or a consumer's own "stocksChanged" that a table listens
     for with `hx-trigger="stocksChanged from:body"`). A response carries a
     single HX-Trigger header, so they have to be merged into one JSON object
-    rather than set separately.
+    rather than set separately. A mapping sends each event with a detail
+    value instead of `true` — e.g. `events={"gth:theme": "light"}`, which
+    theme-toggle.js applies without a reload after a settings form saves the
+    theme.
 
     Options left at their defaults are omitted from the payload, so a plain
     toast("Saved") is exactly {"showToast": {"message", "kind"}}.
@@ -58,5 +61,8 @@ def toast(
     if html:
         detail["html"] = True
     payload: dict[str, object] = {"showToast": detail}
-    payload.update({event: True for event in events})
+    if isinstance(events, Mapping):
+        payload.update(events)
+    else:
+        payload.update({event: True for event in events})
     return json.dumps(payload)

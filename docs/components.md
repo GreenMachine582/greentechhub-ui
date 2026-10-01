@@ -185,6 +185,8 @@ gth_segmented(name, options, value=None, label=None, field_class="mb-3")
 greentechhub_ui.toast(message, kind="success", *, events=())
 # events: extra HX-Trigger events merged into the same header, e.g.
 # ["closeModal", "stocksChanged"] — a response can only carry one HX-Trigger.
+# A mapping sends each event with a detail value instead of true, e.g.
+# {"gth:theme": "light"} to apply a theme a settings form just saved.
 
 # shell.py
 greentechhub_ui.shell_globals(*, service_name, nav_items, assets_prefix="/gth-assets",
@@ -448,6 +450,7 @@ greentechhub_ui.toast(message, kind="success", *, title=None, icon=None, action=
 # toast("Saved") is still just {"showToast": {"message", "kind"}}.
 # The message is TEXT. html=True renders it as HTML — only for markup the server itself
 # produced and escaped (a template render), NEVER for anything holding user input.
+# events: names (each sent as true) or a {name: detail} mapping, e.g. {"gth:theme": "light"}.
 ```
 
 ```jinja

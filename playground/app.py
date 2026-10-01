@@ -336,10 +336,19 @@ def _coerce_setting(setting: dict, raw: str | None) -> object:
     return raw or ""
 
 
-def _settings_section(section: str, *, errors=None, values=None) -> Markup:
+def _saved_settings(request: Request) -> dict[str, object]:
+    """SETTINGS_VALUES, with ui.theme from the theme cookie: the toggle and the
+    Preferences form share one store, as a service's settings store would."""
+    values = dict(SETTINGS_VALUES)
+    if (mode := theme_context(request)["theme_mode"]) is not None:
+        values["ui.theme"] = mode
+    return values
+
+
+def _settings_section(request: Request, section: str, *, errors=None, values=None) -> Markup:
     title, description, settings = SETTINGS_DEMO[section]
     return _macro("settings.html", "gth_settings_section", section, title, settings,
-                  values=values if values is not None else SETTINGS_VALUES, errors=errors,
+                  values=values if values is not None else _saved_settings(request), errors=errors,
                   action=f"/settings-demo/{section}", description=description,
                   form_attrs={"hx-post": f"/settings-demo/{section}",
                               "hx-target": f"#gth-settings-{section}", "hx-swap": "outerHTML"})
@@ -347,7 +356,8 @@ def _settings_section(section: str, *, errors=None, values=None) -> Markup:
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    return _page(request, "settings", sections=[_settings_section(s) for s in SETTINGS_DEMO])
+    return _page(request, "settings",
+                 sections=[_settings_section(request, s) for s in SETTINGS_DEMO])
 
 
 @app.post("/settings-demo/{section}", response_class=HTMLResponse)
@@ -367,13 +377,23 @@ async def settings_demo_save(request: Request, section: str):
             errors[setting["key"]] = [str(exc)]
             submitted[setting["key"]] = raw
     if errors:
-        return HTMLResponse(_settings_section(section, errors=errors,
-                                              values=SETTINGS_VALUES | submitted),
+        return HTMLResponse(_settings_section(request, section, errors=errors,
+                                              values=_saved_settings(request) | submitted),
                             status_code=422)
+    # ui.theme lives in the theme cookie (see _saved_settings); the gth:theme
+    # event applies it without a reload, as a service's save response would.
+    theme = submitted.pop("ui.theme", None)
     SETTINGS_VALUES.update(submitted)
-    return HTMLResponse(_settings_section(section), headers={
-        "HX-Trigger": greentechhub_ui.toast(f"{SETTINGS_DEMO[section][0]} saved"),
-    })
+    events = {"gth:theme": theme} if theme else {}
+    response = HTMLResponse(
+        _settings_section(request, section, values=_saved_settings(request) | (
+            {"ui.theme": theme} if theme else {})),
+        headers={"HX-Trigger": greentechhub_ui.toast(f"{SETTINGS_DEMO[section][0]} saved",
+                                                     events=events)},
+    )
+    if theme:
+        response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
+    return response
 
 
 @app.post("/demo/theme")
