@@ -404,3 +404,30 @@ def test_theme_demo_saves_to_a_cookie_and_seeds_the_next_page():
     assert saved.status_code == 204
     assert 'var server = "light";' in second.text
     assert bad.status_code == 422
+
+
+def test_settings_theme_shares_the_toggles_store_and_applies_without_reload():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            saved = await client.post("/settings-demo/preferences", data={
+                "ui.theme": "light", "locale.timezone": "UTC", "locale.date_format": "iso",
+                "ui.page_size": "25"})
+            page = await client.get("/settings")
+            toggled = await client.post("/demo/theme", data={"theme": "dark"})
+            after_toggle = await client.get("/settings")
+            return saved, page, toggled, after_toggle
+
+    playground_app.SETTINGS_VALUES.clear()
+    saved, page, toggled, after_toggle = _run(flow())
+    assert saved.status_code == 200
+    assert json.loads(saved.headers["HX-Trigger"])["gth:theme"] == "light"
+    assert "playground-theme=light" in saved.headers["set-cookie"]
+    assert 'gth-field-ui.theme-1" autocomplete="off" checked' in saved.text
+    assert 'var server = "light";' in page.text
+    assert 'gth-field-ui.theme-1" autocomplete="off" checked' in page.text
+    assert "ui.theme" not in playground_app.SETTINGS_VALUES
+    # the navbar toggle writes the same store, so the form follows it
+    assert toggled.status_code == 204
+    assert 'gth-field-ui.theme-2" autocomplete="off" checked' in after_toggle.text
+    playground_app.SETTINGS_VALUES.clear()

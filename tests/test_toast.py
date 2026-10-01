@@ -20,6 +20,17 @@ def test_toast_merges_extra_events_into_one_header():
     }
 
 
+def test_toast_events_mapping_carries_detail_values():
+    payload = json.loads(
+        toast("Preferences saved", events={"gth:theme": "light", "closeModal": True})
+    )
+    assert payload == {
+        "showToast": {"message": "Preferences saved", "kind": "success"},
+        "gth:theme": "light",
+        "closeModal": True,
+    }
+
+
 def test_defaults_stay_minimal():
     # A plain toast is exactly the pre-v0.8 payload: new options only appear when set.
     assert json.loads(toast("Saved")) == {"showToast": {"message": "Saved", "kind": "success"}}

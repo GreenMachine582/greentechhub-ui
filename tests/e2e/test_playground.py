@@ -109,6 +109,32 @@ def test_settings_section_validates_saves_and_submits_unchecked_switch(page, pla
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
+def test_theme_saved_from_settings_applies_without_reload_and_persists(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    html = page.locator("html")
+    prefs = "#gth-settings-preferences"
+    assert html.get_attribute("data-bs-theme") == "dark"
+
+    page.click(f"{prefs} label:has-text('Light')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    # applied by the gth:theme event in the save response, no reload
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    assert page.evaluate("localStorage.getItem('gth-theme-mode')") == "light"
+
+    # saved server-side: wins with localStorage gone, and the form shows it
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    assert html.get_attribute("data-bs-theme") == "light"
+    expect(page.locator("[id='gth-field-ui.theme-1']")).to_be_checked()
+
+    # the navbar toggle writes the same store, so the form follows it
+    with page.expect_response(lambda r: r.url.endswith("/demo/theme")):
+        page.click(".gth-theme-toggle")
+    page.reload()
+    expect(page.locator("[id='gth-field-ui.theme-2']")).to_be_checked()
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

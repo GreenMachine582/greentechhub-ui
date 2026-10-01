@@ -120,6 +120,11 @@ Without them, nothing changes: the toggle keeps the choice in localStorage only.
 when htmx is loaded, so it carries the page's `hx-headers` (e.g. a CSRF token) and a failure gets the usual error
 toast. Without htmx it's a same-origin `fetch`.
 
+A theme saved some other way, such as a settings form that htmx swaps in place, is applied without a reload by the
+**`gth:theme`** event. Send it in the save response's `HX-Trigger` with the saved mode as its value, alongside the
+toast: `toast("Preferences saved", events={"gth:theme": "light"})`. The page switches theme and updates
+localStorage; it doesn't POST to `theme_save_url` again, since the response means the server already saved it.
+
 A per-request context value overrides a global of the same name — e.g. one page can render `layout="sidebar"`
 with its own `nav_items` (the playground's `/layouts/sidebar`).
 
