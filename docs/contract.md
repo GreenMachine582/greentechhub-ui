@@ -12,7 +12,7 @@ So `greentechhub-ui` macros are written against a **plain context contract** ins
 # what every macro expects in its Jinja2 context — nothing framework-specific
 {
   "nav_items": [...],        # from navigation.py
-  "current_user": {...} | None,
+  "current_user": {...} | None,  # anything with username/email (core's Identity, a dict); None = anonymous
   "flashes": [...],          # shape is greentechhub_core.types.FlashMessage; production/storage (session
                               # wiring, a Django messages adapter, etc.) is owned by the framework adapter
                               # (greentechhub_fastapi.flash / a Django messages bridge), not greentechhub-core
@@ -107,6 +107,17 @@ mode; `"dark"` pins it dark.
 | `nav_mark_active`, `nav_flatten` | helpers `gth_sidebar` / `gth-command-palette` call (installed by `shell_globals`) |
 | `show_command_palette` | include the palette (and a navbar search button) in the default layout |
 | `command_search_url` | the palette's server search endpoint (`gth_command_item` rows) |
+
+**Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
+(greentechhub-fastapi's `register_settings`). Without them nothing changes:
+
+| Key | Meaning |
+|---|---|
+| `granted` | the viewer's permission strings (core's `RoleResolver.granted()`). Nav items with `required_permission` show only when it holds it; without `granted`, any signed-in viewer sees them, as before |
+| `user_menu_items` | NavItems for the navbar's user menu (e.g. Settings), permission-filtered like `nav_items` |
+| `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
+
+`nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
 
 **Theme preference (v0.12)** — both optional, usually per-request context from the framework adapter's settings
 wiring (greentechhub-fastapi's `register_settings`), backed by core's `ui.theme` user preference:

@@ -61,6 +61,11 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
+  {#- Per-request permission filter: items with required_permission show only
+      to a signed-in viewer whose `granted` holds it (see navigation.py).
+      Without `granted` it keeps the old behaviour; the navbar, sidebar and
+      command palette below all use the filtered list. #}
+  {%- set nav_items = nav_visible(nav_items, current_user|default(none), granted|default(none)) if nav_visible is defined else nav_items %}
   {% block banner %}{% endblock %}
 
   {% from "navbar.html" import gth_navbar %}
@@ -71,7 +76,9 @@
   {% from "sidebar.html" import gth_sidebar, gth_sidebar_rail_toggle %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
       show_theme_toggle|default(false), navbar_theme|default(none), sidebar=true,
-      show_search=command_palette_js_url|default(none) is not none) }}
+      show_search=command_palette_js_url|default(none) is not none,
+      user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
+      granted=granted|default(none)) }}
   <div class="gth-shell">
     <aside class="offcanvas-lg offcanvas-start gth-sidebar" tabindex="-1" id="gth-sidebar" aria-labelledby="gth-sidebar-title">
       <div class="offcanvas-header border-bottom d-lg-none">
@@ -91,7 +98,9 @@
   {%- else %}
   {{ gth_navbar(nav_items, brand, current_path|default(none), current_user|default(none),
       show_theme_toggle|default(false), navbar_theme|default(none),
-      show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false))) }}
+      show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false)),
+      user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
+      granted=granted|default(none)) }}
 
   <main class="container py-4">
   {%- endif %}

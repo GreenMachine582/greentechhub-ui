@@ -135,6 +135,26 @@ def test_theme_saved_from_settings_applies_without_reload_and_persists(page, pla
     expect(page.locator("[id='gth-field-ui.theme-2']")).to_be_checked()
 
 
+def test_user_menu_and_permissioned_nav(page, playground_url):
+    app_link = "#gth-sidebar a[href='/settings#gth-settings-app']"
+    page.goto(f"{playground_url}/extensibility")
+    expect(page.locator(".gth-user-menu")).to_have_count(0)
+    expect(page.locator(app_link)).to_have_count(0)
+
+    page.click("button[name=as][value=admin]")
+    expect(page.locator("#gth-user-demo-state")).to_contain_text("admin")
+    expect(page.locator(app_link)).to_have_count(1)
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu a:has-text('Settings')")
+    expect(page).to_have_url(re.compile(r"/settings$"))
+
+    page.click(".gth-user-menu .dropdown-toggle")
+    page.click(".gth-user-menu button:has-text('Log out')")
+    expect(page.locator("#gth-user-demo-state")).to_have_text("Signed out.")
+    expect(page.locator(".gth-user-menu")).to_have_count(0)
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

@@ -1,7 +1,45 @@
 {% from "theme_toggle.html" import gth_theme_toggle %}
 {% from "badge.html" import gth_nav_badge %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False) %}
+{% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None) %}
+{#- The signed-in viewer's menu: their name, `items` (NavItems — e.g. Settings,
+    permission-filtered like nav_items) and a Log out button that POSTs to
+    logout_url. Nothing renders without a current_user. -#}
+{%- if current_user %}
+{%- set name = current_user.username or current_user.email or "Account" %}
+{%- set visible = (nav_visible(items, current_user, granted) if nav_visible is defined else items) if items else [] %}
+<div class="dropdown gth-user-menu">
+  {%- if visible or logout_url %}
+  <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1"
+    data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="bi bi-person-circle" aria-hidden="true"></i><span class="gth-user-menu-name">{{ name }}</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    {%- for item in visible %}
+    <li><a class="dropdown-item" href="{{ item.url }}">
+      {%- if item.icon %}<i class="bi bi-{{ item.icon }} me-2" aria-hidden="true"></i>{% endif %}{{ item.label }}</a></li>
+    {%- endfor %}
+    {%- if logout_url %}
+    {%- if visible %}
+    <li><hr class="dropdown-divider"></li>
+    {%- endif %}
+    <li>
+      <form method="post" action="{{ logout_url }}">
+        <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Log out</button>
+      </form>
+    </li>
+    {%- endif %}
+  </ul>
+  {%- else %}
+  <span class="d-inline-flex align-items-center gap-1 text-body-secondary small">
+    <i class="bi bi-person-circle" aria-hidden="true"></i><span class="gth-user-menu-name">{{ name }}</span>
+  </span>
+  {%- endif %}
+</div>
+{%- endif %}
+{%- endmacro %}
+
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
@@ -11,7 +49,10 @@
    gth_sidebar instead, so the bar holds a drawer button (below 992px), the
    brand, the command-palette search button (show_search) and the theme
    toggle. In the default navbar mode an item with `children` becomes a
-   dropdown (one level; deeper children are listed flat inside it). #}
+   dropdown (one level; deeper children are listed flat inside it).
+   current_user (v0.12): a user menu at the right end, in both modes — their
+   name, user_menu_items (NavItems, filtered against granted like nav_items)
+   and, with logout_url, a Log out button that POSTs there. #}
 {% if sidebar %}
 <nav class="navbar {{ 'bg-dark' if navbar_theme == 'dark' else 'bg-body-tertiary' }} border-bottom sticky-top gth-navbar gth-navbar-sidebar"
   {%- if navbar_theme %} data-bs-theme="{{ navbar_theme }}"{% endif %}>
@@ -36,6 +77,9 @@
       </button>
       {% endif %}
       {% if show_theme_toggle %}{{ gth_theme_toggle() }}{% endif %}
+      {%- if current_user %}
+      {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}
+      {%- endif %}
     </div>
   </div>
 </nav>
@@ -96,6 +140,11 @@
           {{ gth_theme_toggle() }}
         </li>
         {% endif %}
+        {%- if current_user %}
+        <li class="nav-item d-flex align-items-center ms-md-2">
+          {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}
+        </li>
+        {%- endif %}
       </ul>
     </div>
   </div>

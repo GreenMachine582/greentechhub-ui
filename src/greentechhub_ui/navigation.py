@@ -1,3 +1,4 @@
+from collections.abc import Set as AbstractSet
 from typing import NotRequired, TypedDict
 
 
@@ -10,6 +11,9 @@ class NavItem(TypedDict):
     label: str
     url: NotRequired[str]  # optional for a group (an item with children)
     icon: NotRequired[str | None]
+    # A permission string (e.g. "settings.manage") the viewer needs to see the
+    # item; required_scope is the older name and still works.
+    required_permission: NotRequired[str | None]
     required_scope: NotRequired[str | None]
     # v0.8 — all optional, so flat v0.4-style lists keep working unchanged.
     children: NotRequired[list["NavItem"]]  # a group (gth_sidebar / navbar dropdown)
@@ -20,27 +24,44 @@ class NavItem(TypedDict):
 
 
 # Built-in nav items shared by every consumer. Empty today — no universal
-# cross-service nav concept exists yet (no greentechhub-core auth, no shared
-# "Account"/"Docs"-style link). A future addition here becomes visible to
+# cross-service nav link exists yet (account links live in the navbar's user
+# menu, `user_menu_items`, instead). A future addition here becomes visible to
 # every consumer through build_nav_items() without any of them needing to
 # change their own code.
 DEFAULT_NAV_ITEMS: list[NavItem] = []
 
 
-def filter_by_scope(nav_items: list[NavItem], current_user: dict | None) -> list[NavItem]:
-    """Scope-filter nav items against the current user, recursing into
-    groups; a group left with no children is dropped.
+def _required_permission(item: NavItem) -> str | None:
+    return item.get("required_permission") or item.get("required_scope")
 
-    No-op today: neither BottleBot nor greentechhub-core's permission system
-    supplies a real `current_user`/scope check yet. Once one does, this is
-    where `required_scope` gets checked against it (see docs/extensibility.md).
+
+def filter_by_scope(
+    nav_items: list[NavItem],
+    current_user: object | None,
+    granted: AbstractSet[str] | None = None,
+) -> list[NavItem]:
+    """Permission-filter nav items for the viewer, recursing into groups; a
+    group left with no children (and no url of its own) is dropped.
+
+    An item with `required_permission` (or its older name `required_scope`):
+      - is hidden from anonymous viewers (`current_user is None`);
+      - is shown to any signed-in viewer when `granted is None` — a service
+        that hasn't opted into permissions keeps the old behaviour;
+      - otherwise is shown only when its permission is in `granted`, the
+        viewer's permission strings (e.g. greentechhub-core's
+        `RoleResolver.granted()`, which greentechhub-fastapi's
+        register_settings supplies as the `granted` context value).
+
+    `current_user` is only ever compared to None, so it can be core's
+    Identity, a dict, or anything else.
     """
     result = []
     for item in nav_items:
-        if current_user is None and item.get("required_scope"):
+        needed = _required_permission(item)
+        if needed and (current_user is None or (granted is not None and needed not in granted)):
             continue
         if "children" in item:
-            children = filter_by_scope(item["children"], current_user)
+            children = filter_by_scope(item["children"], current_user, granted)
             if not children and not item.get("url"):
                 continue
             item = {**item, "children": children}
@@ -48,10 +69,14 @@ def filter_by_scope(nav_items: list[NavItem], current_user: dict | None) -> list
     return result
 
 
+_UNSET = object()
+
+
 def build_nav_items(
     custom_items: list[NavItem],
-    current_user: dict | None = None,
+    current_user: object | None = _UNSET,
     built_in_items: list[NavItem] | None = None,
+    granted: AbstractSet[str] | None = None,
 ) -> list[NavItem]:
     """Combine built-in + consumer-registered nav items, then scope-filter —
     the "built-in + consumer-registered, scope-filtered" merge docs/components.md's
@@ -59,9 +84,18 @@ def build_nav_items(
 
     `built_in_items` defaults to DEFAULT_NAV_ITEMS (currently empty), so this
     reduces to "custom_items, scope-filtered" until a real built-in item exists.
+
+    Without `current_user` (the usual call, once at startup, for install()'s
+    global nav_items) nothing is filtered: app.html filters per request
+    through the `nav_visible` global, with that request's `current_user` and
+    `granted`, so a permissioned item reaches the viewers allowed to see it.
+    Pass `current_user` (even None) to filter here instead, for a list built
+    per request.
     """
     items = [*(built_in_items if built_in_items is not None else DEFAULT_NAV_ITEMS), *custom_items]
-    return filter_by_scope(items, current_user)
+    if current_user is _UNSET:
+        return items
+    return filter_by_scope(items, current_user, granted)
 
 
 # ── Active-path helpers (v0.8) ────────────────────────────────────────────

@@ -33,7 +33,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
-| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), scope-filtered against `current_user`. `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
+| `gth-sidebar` / `gth-navbar` | Renders `nav_items` (built-in + consumer-registered, see [docs/extensibility.md](extensibility.md)), permission-filtered per request against `current_user`/`granted` (v0.12). `gth-navbar` shows a user menu when signed in (v0.12). `gth-sidebar` (v0.8): nested groups along the active trail, filter, icon rail, drawer on phones — `app.html`'s `layout="sidebar"` |
 | `gth-command-palette` | Ctrl/⌘+K quick navigation over every nav item, optional server search (v0.8) |
 | `gth-tree` | APG tree view: keyboard, lazy children, single or tri-state selection, detail pane (v0.8) |
 
@@ -108,16 +108,16 @@ gth_toast_flashes(flashes)
 
 ```jinja
 {# navigation.py (Python, not a template) #}
-greentechhub_ui.navigation.build_nav_items(custom_items, current_user=None, built_in_items=None) -> list[NavItem]
-{# The "built-in + consumer-registered, scope-filtered" merge the gth-sidebar/
-   gth-navbar row above promises. built_in_items defaults to DEFAULT_NAV_ITEMS
-   (empty today — no cross-service nav concept exists yet, e.g. no
-   greentechhub-core auth for an "Account" link). Built-ins are placed before
-   custom_items, then the combined list is scope-filtered via filter_by_scope
-   against current_user. A future addition to DEFAULT_NAV_ITEMS becomes
-   visible to every consumer through this helper without any of them changing
-   their own code. See docs/extensibility.md for the current_user scoping
-   contract. #}
+greentechhub_ui.navigation.build_nav_items(custom_items, current_user=<unset>, built_in_items=None,
+                                           granted=None) -> list[NavItem]
+{# The "built-in + consumer-registered" merge the gth-sidebar/gth-navbar row
+   above promises. built_in_items defaults to DEFAULT_NAV_ITEMS (empty today).
+   Built-ins are placed before custom_items. Without current_user (the usual
+   startup call for install()'s global nav_items) nothing is filtered: since
+   v0.12 app.html filters per request (the nav_visible global). Passing
+   current_user (even None) filters here via filter_by_scope, as before. A
+   future addition to DEFAULT_NAV_ITEMS becomes visible to every consumer
+   through this helper without any of them changing their own code. #}
 ```
 
 ## Shipped signatures (v0.6)
@@ -810,3 +810,37 @@ for setting in preference_settings:
 ```
 
 The playground's `/settings` page runs this flow, with dicts standing in for core's definitions.
+
+### Permission-filtered nav and the user menu
+
+`nav_items` is built once, at startup, so permissions are checked per request: `app.html` filters the list through
+the `nav_visible` global before the navbar, sidebar and command palette see it.
+
+```python
+# navigation.py
+NavItem.required_permission  # optional permission string, e.g. "settings.manage"; required_scope still works
+greentechhub_ui.navigation.filter_by_scope(nav_items, current_user, granted=None) -> list[NavItem]
+```
+
+An item with `required_permission` (or the older `required_scope`) is:
+
+- hidden from anonymous viewers (`current_user` is None);
+- shown to any signed-in viewer when `granted` is None, which is the old behaviour for services that haven't opted in;
+- otherwise shown only when `granted` holds the permission. `granted` is the viewer's permission strings, e.g.
+  greentechhub-core's `RoleResolver.granted()`.
+
+A group left with no children (and no url of its own) is dropped. Breadcrumbs aren't filtered.
+
+```jinja
+{# navbar.html #}
+gth_navbar(..., user_menu_items=None, logout_url=None, granted=None)
+```
+
+With `current_user` set, the navbar ends with a user menu, in both layouts: the user's `username` (or `email`), then
+`user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a
+`<form method="post" action="{logout_url}">`, matching greentechhub-fastapi's `LoginViews` `POST /logout`. Without
+items or `logout_url` it shows just the name. `app.html` passes these from the context keys of the same names (see
+[docs/contract.md](contract.md)). The menu is in the navbar rather than the sidebar footer, so it's in the same place
+in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
+
+The playground fakes sign-in on `/extensibility` to demo both.

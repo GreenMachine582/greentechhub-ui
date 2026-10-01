@@ -22,11 +22,9 @@ def test_build_nav_items_scope_filters_when_no_current_user():
     assert result == [{"label": "Deals", "url": "/"}]
 
 
-def test_build_nav_items_no_op_scope_filtering_with_a_current_user():
-    # Matches filter_by_scope's current documented behavior: a populated
-    # current_user doesn't yet perform a real scope check (no
-    # greentechhub-core permission system exists) — not something this
-    # task changes, just confirming build_nav_items doesn't alter it.
+def test_build_nav_items_signed_in_without_granted_keeps_permissioned_items():
+    # A service that hasn't opted into permissions (no `granted`) shows a
+    # permissioned item to any signed-in viewer, as before.
     custom = [{"label": "Admin", "url": "/admin", "required_scope": "admin"}]
     result = build_nav_items(custom_items=custom, current_user={"id": 1})
     assert result == custom
@@ -38,6 +36,64 @@ def test_filter_by_scope_still_works_standalone():
         {"label": "Admin", "url": "/admin", "required_scope": "admin"},
     ]
     assert filter_by_scope(items, None) == [{"label": "Deals", "url": "/"}]
+
+
+def test_build_nav_items_without_a_viewer_leaves_filtering_to_the_page():
+    # The startup call for install()'s global nav_items: app.html filters per request.
+    custom = [{"label": "Admin", "url": "/admin", "required_permission": "settings.manage"}]
+    assert build_nav_items(custom_items=custom) == custom
+
+
+# ── v0.12: permissions (required_permission + granted) ────────────────────
+
+ADMIN = {"label": "Admin", "url": "/admin", "required_permission": "settings.manage"}
+HOME = {"label": "Home", "url": "/"}
+
+
+def test_granted_permission_shows_the_item():
+    assert filter_by_scope([HOME, ADMIN], {"id": 1}, {"settings.manage"}) == [HOME, ADMIN]
+
+
+def test_missing_permission_hides_the_item():
+    assert filter_by_scope([HOME, ADMIN], {"id": 1}, {"reports.view"}) == [HOME]
+    assert filter_by_scope([HOME, ADMIN], {"id": 1}, frozenset()) == [HOME]
+
+
+def test_anonymous_never_sees_a_permissioned_item_even_with_granted():
+    assert filter_by_scope([HOME, ADMIN], None, {"settings.manage"}) == [HOME]
+
+
+def test_granted_none_keeps_the_old_signed_in_behaviour():
+    assert filter_by_scope([HOME, ADMIN], {"id": 1}, None) == [HOME, ADMIN]
+
+
+def test_required_scope_is_an_alias_and_required_permission_wins():
+    legacy = {"label": "Ops", "url": "/ops", "required_scope": "ops.view"}
+    both = {"label": "Both", "url": "/b", "required_scope": "ops.view",
+            "required_permission": "settings.manage"}
+    assert filter_by_scope([legacy], {"id": 1}, {"ops.view"}) == [legacy]
+    assert filter_by_scope([legacy], {"id": 1}, set()) == []
+    assert filter_by_scope([both], {"id": 1}, {"ops.view"}) == []
+    assert filter_by_scope([both], {"id": 1}, {"settings.manage"}) == [both]
+
+
+def test_a_group_emptied_by_permissions_is_dropped():
+    group = {"label": "Settings", "children": [ADMIN]}
+    with_url = {"label": "Settings", "url": "/settings", "children": [ADMIN]}
+    assert filter_by_scope([HOME, group], {"id": 1}, set()) == [HOME]
+    assert filter_by_scope([with_url], {"id": 1}, set()) == [{**with_url, "children": []}]
+
+
+def test_current_user_can_be_any_object():
+    from dataclasses import dataclass
+
+    @dataclass(frozen=True)
+    class Identity:
+        subject: str
+        username: str
+
+    viewer = Identity(subject="u1", username="alice")
+    assert filter_by_scope([ADMIN], viewer, {"settings.manage"}) == [ADMIN]
 
 
 # ── v0.8: nested items, active trail, breadcrumbs, flatten ────────────────

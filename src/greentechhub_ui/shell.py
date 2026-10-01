@@ -41,9 +41,11 @@ def shell_globals(
     pins gth_navbar dark; by default it follows the color mode.
     `layout="sidebar"` moves nav_items into gth_sidebar (see app.html).
 
-    Also installs two nav helpers as globals: `nav_breadcrumbs(path)` (the
-    gth_page_header breadcrumbs derived from nav_items) and
-    `nav_mark_active(items, path)` (used by gth_sidebar).
+    Also installs nav helpers as globals: `nav_breadcrumbs(path)` (the
+    gth_page_header breadcrumbs derived from nav_items),
+    `nav_mark_active(items, path)` (used by gth_sidebar), and
+    `nav_visible(items, current_user, granted)` (app.html's per-request
+    permission filter — navigation.filter_by_scope).
     """
     if layout not in ("navbar", "sidebar"):
         raise ValueError(f"layout must be 'navbar' or 'sidebar', got {layout!r}")
@@ -76,6 +78,7 @@ def shell_globals(
         "nav_breadcrumbs": partial(navigation.breadcrumbs_for, nav_items),
         "nav_mark_active": navigation.mark_active,
         "nav_flatten": navigation.flatten,
+        "nav_visible": navigation.filter_by_scope,
     }
     if theme_toggle:
         globals_["theme_toggle_js_url"] = f"{assets_prefix}/js/theme-toggle.js"
