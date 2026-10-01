@@ -17,6 +17,33 @@
 - **Secondary buttons** (v0.7): Bootstrap's dark mode reuses its light greys, so `.btn-outline-secondary` text was `#6c757d` on `#212529` (3.3:1). `theme.css` retunes `.btn-secondary`/`.btn-outline-secondary` in dark mode (outline text `#ced4da`, 10.3:1; hover/active fills `#495057`/`#6c757d` with white or `#f8f9fa` text, ≥4.5:1) and keeps Bootstrap's own values in light mode. Checked `btn-check` controls (`gth_segmented`) pick up the active values. Replace either file + update its row in `static/VENDORED.md` whenever the artwork changes.
 - Because `theme/` has no dependency on `components/` (see [docs/architecture.md](architecture.md#package-layout)), a service that only wants brand-consistent colors/typography without the full component library is already structurally possible. Not split into a standalone package today — kept as one repo until a real consumer (most likely GreenTechHub's Django app) needs branding without the component library.
 
+### Brand accent (v0.12)
+
+One accent covers everything "primary", so a service gets the brand without restyling Bootstrap:
+
+- **Bootstrap's globals are remapped:** `--bs-primary` (and `-rgb`, `-text-emphasis`, `-bg-subtle`,
+  `-border-subtle`), `--bs-link-color` / `--bs-link-hover-color` and `--bs-focus-ring-color`. Utilities such as
+  `text-primary`, `bg-primary` and `.focus-ring`, and every link, follow.
+- **Components Bootstrap compiles blue into are overridden:** `.btn-primary`, `.btn-outline-primary`, `.btn-link`'s
+  focus, form-control and form-select focus, checked checkboxes, radios and switches, `.form-range`, `.pagination`,
+  dropdown active items, `.nav-pills`, `.list-group` active, `.progress` and `.text-bg-primary`.
+- **gth's own components share it:** `gth_segmented`'s thumb, `gth_chips`, the switch, `gth_multiselect`'s focus ring
+  and tag tokens, `gth_file_drop`, the tree's checkboxes, table selection and `gth_badge(tone="brand")`.
+
+Fills pair the accent with a text colour that clears WCAG AA. White on the bright `#1FBE1E` is only 2.49:1, so dark
+mode puts near-black text and check glyphs on it instead:
+
+| Mode | `--gth-accent` | `--gth-on-accent` | Contrast | Hover |
+|---|---|---|---|---|
+| light | `#127a13` | white | 5.5:1 | `#0f6b10` |
+| dark | `#1FBE1E` | `#0b1f0b` | 6.95:1 | `#3fcf3e` |
+
+Tinted states (a checked chip, the segmented thumb, tag tokens) use `--gth-brand-fg` on `--gth-brand-subtle-bg`.
+Focus rings use `--gth-focus-ring`. The tokens live on `[data-bs-theme]`, like the brand colours, so a dark-pinned
+region on a light page resolves to the dark values. A service that wants a different accent sets `--gth-accent`,
+`--gth-accent-hover`, `--gth-accent-active`, `--gth-accent-rgb`, `--gth-on-accent` and `--gth-focus-ring` on
+`[data-bs-theme="light"]` and `[data-bs-theme="dark"]` after `theme.css`.
+
 ## Static asset hosting
 
 - **Bundled per service (recommended to start)**: each FastAPI service mounts `greentechhub_ui.static` at `/static`; Django does the equivalent via `STATICFILES_DIRS`. Simple, no extra infra.

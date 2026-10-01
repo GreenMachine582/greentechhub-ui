@@ -364,6 +364,89 @@ def test_segmented_track_style(page, playground_url):
     assert ring != "none"
 
 
+# ── v0.12: one brand accent (theme.css "Brand accent") ────────────────────
+
+BOOTSTRAP_BLUES = ("rgb(13, 110, 253)", "rgb(134, 183, 254)", "rgb(10, 88, 202)",
+                   "rgba(13, 110, 253", "rgb(110, 168, 254)")
+
+# WCAG contrast of an element's text (or a chosen property) against its own
+# background, walking up to the first opaque background.
+CONTRAST_JS = """([el, fgProp]) => {
+  const rgb = v => (v.match(/[\\d.]+/g) || []).map(Number);
+  const lum = c => { const [r, g, b] = c.slice(0, 3).map(x => { x /= 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  let n = el, bg = null;
+  while (n && n.nodeType === 1) { const c = rgb(getComputedStyle(n).backgroundColor);
+    if (c.length >= 3 && (c.length < 4 || c[3] > 0.5)) { bg = c; break; } n = n.parentElement; }
+  const fg = rgb(getComputedStyle(el)[fgProp]);
+  const [a, b] = [lum(fg), lum(bg || [255, 255, 255])].sort((x, y) => y - x);
+  return (a + 0.05) / (b + 0.05);
+}"""
+
+
+def _themed(page, playground_url, scheme, path):
+    page.context.add_cookies([{"name": "playground-theme", "value": scheme,
+                               "url": playground_url}])
+    page.goto(f"{playground_url}{path}")
+
+
+def _contrast(locator, prop="color"):
+    return locator.evaluate(f"el => ({CONTRAST_JS})([el, '{prop}'])")
+
+
+def test_brand_accent_fills_clear_contrast_in_both_themes(page, playground_url):
+    for scheme in ("dark", "light"):
+        _themed(page, playground_url, scheme, "/forms")
+        button = page.locator(".btn-primary").first
+        assert _contrast(button) >= 4.5, (scheme, "btn-primary")
+
+        chip = page.locator(".gth-chips .gth-chip").first
+        chip.click()
+        assert _contrast(chip) >= 4.5, (scheme, "checked chip")
+
+        _themed(page, playground_url, scheme, "/settings")
+        thumb = page.locator(".btn-check:checked + .gth-segmented-option").first
+        assert _contrast(thumb) >= 4.5, (scheme, "segmented thumb")
+
+
+def test_no_bootstrap_blue_left_on_brand_states(page, playground_url):
+    def colours(locator):
+        return locator.evaluate(
+            "el => { const s = getComputedStyle(el); return [s.color, s.backgroundColor,"
+            " s.borderTopColor, s.boxShadow].join(' | '); }")
+
+    for scheme in ("dark", "light"):
+        _themed(page, playground_url, scheme, "/forms")
+        checks = {"btn-primary": page.locator(".btn-primary").first,
+                  "link": page.locator("main a[href]:not(.btn)").first}
+        field = page.locator("main input.form-control").first
+        field.focus()
+        checks["focused field"] = field
+        switch = page.locator(".form-switch .form-check-input").first
+        if not switch.is_checked():
+            switch.check(force=True)
+        checks["checked switch"] = switch
+        multiselect = page.locator(".gth-multiselect-input").first
+        multiselect.focus()
+        checks["focused multiselect"] = page.locator(".gth-multiselect-control").first
+        for name, locator in checks.items():
+            value = colours(locator)
+            assert not any(b in value for b in BOOTSTRAP_BLUES), (scheme, name, value)
+
+        _themed(page, playground_url, scheme, "/tables")
+        active_page = page.locator(".pagination .page-item.active .page-link").first
+        value = colours(active_page)
+        assert not any(b in value for b in BOOTSTRAP_BLUES), (scheme, "pagination", value)
+        accent = page.evaluate(
+            "getComputedStyle(document.documentElement).getPropertyValue('--gth-accent').trim()")
+        accent_rgb = page.evaluate(
+            """c => { const el = document.createElement('span'); el.style.color = c;
+                      document.body.append(el); const v = getComputedStyle(el).color; el.remove();
+                      return v; }""", accent)
+        expect(active_page).to_have_css("background-color", accent_rgb)
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

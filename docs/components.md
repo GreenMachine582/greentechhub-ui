@@ -29,7 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
-| `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7); the switch takes errors and an `off_value` (v0.12) |
+| `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
