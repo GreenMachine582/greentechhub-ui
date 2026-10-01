@@ -86,6 +86,7 @@ def test_form_validation_and_success_toast(page, playground_url):
 
 
 def test_settings_section_validates_saves_and_submits_unchecked_switch(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # the App section needs settings.manage
     page.goto(f"{playground_url}/settings")
     prefs = "#gth-settings-preferences"
     page_size = "[id='gth-field-ui.page_size']"  # setting keys have dots, so no #id selector
@@ -177,6 +178,19 @@ def test_gated_page_redirects_to_personas_and_back(page, playground_url):
     page.locator("[data-persona=viewer] button[type=submit]").click()
     expect(page.locator("[data-persona=viewer] .badge")).to_have_text("Current")
     expect(page.locator(roles_link)).to_have_count(0)
+
+    # the viewer sees Preferences only, not the App section
+    page.goto(f"{playground_url}/settings")
+    expect(page.locator("#gth-settings-preferences")).to_be_visible()
+    expect(page.locator("#gth-settings-app")).to_have_count(0)
+
+    # from a gated page's banner, the viewer can't open /roles: they land on Personas, no banner
+    page.goto(f"{playground_url}/roles")
+    expect(page.locator("#gth-persona-need")).to_be_visible()
+    expect(page.locator("[data-persona=viewer] .gth-persona-cant-open")).to_contain_text("/roles")
+    page.locator("[data-persona=anonymous] button[type=submit]").click()
+    expect(page).to_have_url(re.compile(r"/personas$"))
+    expect(page.locator("#gth-persona-need")).to_have_count(0)
 
 
 def test_roles_page_assign_change_remove(page, playground_url):

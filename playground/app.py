@@ -189,6 +189,14 @@ def user_context(request: Request) -> dict:
     }
 
 
+# What the admin persona holds: Settings › App and the Roles page need it.
+MANAGE_PERMISSION = "settings.manage"
+
+
+def _has(request: Request, permission: str) -> bool:
+    return permission in user_context(request).get("granted", ())
+
+
 def _local_path(url: str | None) -> str | None:
     """`url` if it's a path on this site, else None — so ?next= can't send
     anyone off-site (no //host, no scheme, no backslash tricks)."""
@@ -202,7 +210,7 @@ def _require_persona(request: Request, permission: str) -> Response | None:
     request is sent to /personas to pick one that does (like
     require_page_permission's login redirect), and htmx / non-GET calls get a
     plain 403 (like require_permission) — a fragment can't redirect sensibly."""
-    if permission in user_context(request).get("granted", ()):
+    if _has(request, permission):
         return None
     if request.method != "GET" or request.headers.get("HX-Request"):
         return Response(status_code=403)
@@ -453,6 +461,12 @@ def _render_section(request: Request, section: dict, **kwargs) -> HTMLResponse:
                                       **kwargs)
 
 
+def _visible_sections(request: Request) -> list[str]:
+    """Preferences for everyone; App only with settings.manage — as
+    greentechhub-fastapi's SettingsViews gates it on manage_permission."""
+    return [s for s in SETTINGS_DEMO if s != "app" or _has(request, MANAGE_PERMISSION)]
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
@@ -462,7 +476,7 @@ async def settings_page(request: Request):
             "gth_setting_field picks the widget from the setting's type: a switch for bool, "
             "segmented buttons for four or fewer choices, a select for more, number and text "
             "fields for int and str. Save a page size of 500 to see the 422 path."),
-        "settings_sections": [_settings_section(request, s) for s in SETTINGS_DEMO],
+        "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
     })
 
 
@@ -472,6 +486,8 @@ async def settings_demo_save(request: Request, section: str):
     the section re-rendered around its field errors, or save and toast."""
     if section not in SETTINGS_DEMO:
         return HTMLResponse("Unknown section", status_code=404)
+    if section == "app" and (denied := _require_persona(request, MANAGE_PERMISSION)):
+        return denied  # a POST, so a 403
     form = await request.form()
     _, _, settings = SETTINGS_DEMO[section]
     submitted, errors = {}, {}
@@ -589,7 +605,6 @@ ROLE_OPTIONS = [{"value": "viewer", "label": "Viewer"}, {"value": "editor", "lab
 ROLE_GRANTS: dict[str, set[str]] = {}
 
 
-ROLES_PERMISSION = "settings.manage"
 
 
 def _roles_context(**extra) -> dict:
@@ -612,7 +627,7 @@ def _picked_roles(form) -> list[str]:
 
 @app.get("/roles", response_class=HTMLResponse)
 async def roles_page(request: Request):
-    if denied := _require_persona(request, ROLES_PERMISSION):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
         return denied
     return templates.TemplateResponse(request, "roles_page.html", _roles_context(
         page_title="Roles", page_subtitle="gth-ui's roles_page.html over a stand-in GrantStore."))
@@ -620,7 +635,7 @@ async def roles_page(request: Request):
 
 @app.post("/roles", response_class=HTMLResponse)
 async def roles_assign(request: Request):
-    if denied := _require_persona(request, ROLES_PERMISSION):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
         return denied
     form = await request.form()
     subject, roles = (form.get("subject") or "").strip(), _picked_roles(form)
@@ -638,7 +653,7 @@ async def roles_assign(request: Request):
 
 @app.post("/roles/{subject}", response_class=HTMLResponse)
 async def roles_set(request: Request, subject: str):
-    if denied := _require_persona(request, ROLES_PERMISSION):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
         return denied
     roles = _picked_roles(await request.form())
     if roles:
@@ -650,7 +665,7 @@ async def roles_set(request: Request, subject: str):
 
 @app.delete("/roles/{subject}", response_class=HTMLResponse)
 async def roles_remove(request: Request, subject: str):
-    if denied := _require_persona(request, ROLES_PERMISSION):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
         return denied
     ROLE_GRANTS.pop(subject, None)
     return _roles_section(request, f"Removed {subject}'s roles")
