@@ -259,6 +259,25 @@ def test_density_and_motion_preferences(page, playground_url):
     expect(page.locator("table.gth-table").first).not_to_have_class(re.compile(r"\btable-sm\b"))
 
 
+def test_sidebar_default_until_this_browser_toggles(page, playground_url):
+    page.set_viewport_size({"width": 1280, "height": 800})  # the rail is >=992px only
+    html = page.locator("html")
+    page.goto(f"{playground_url}/settings")
+    page.click("#gth-settings-preferences label:has-text('Icons only')")
+    page.click("#gth-settings-preferences button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+
+    page.evaluate("localStorage.removeItem('gth-sidebar-mode')")
+    page.reload()
+    expect(html).to_have_attribute("data-gth-sidebar", "rail")
+
+    # this browser's toggle wins from then on
+    page.locator("[data-gth-sidebar-rail]").click()
+    expect(html).not_to_have_attribute("data-gth-sidebar", "rail")
+    page.reload()
+    expect(html).not_to_have_attribute("data-gth-sidebar", "rail")
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

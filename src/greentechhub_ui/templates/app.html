@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 {#- The viewer's density and motion (greentechhub-core's ui.density /
     ui.motion, from the optional user_settings) as <html> attributes for
-    theme.css and the scripts; unknown or absent values add nothing. -#}
+    theme.css and the scripts, and their ui.sidebar_default for the sidebar's
+    pre-paint script; unknown or absent values add nothing. -#}
 {%- set _prefs = user_settings|default(none) if user_settings|default(none) is mapping else {} %}
 {%- set _density = _prefs.get("ui.density") if _prefs.get("ui.density") in ("comfortable", "compact") else none %}
 {%- set _motion = _prefs.get("ui.motion") if _prefs.get("ui.motion") in ("system", "reduce", "full") else none %}
+{%- set _sidebar = _prefs.get("ui.sidebar_default") if _prefs.get("ui.sidebar_default") in ("expanded", "rail") else none %}
 <html lang="en" data-bs-theme="dark"{% if theme_save_url|default(none) %} data-gth-theme-save-url="{{ theme_save_url|e }}"{% endif %}
   {%- if _density %} data-gth-density="{{ _density }}"{% endif %}{% if _motion %} data-gth-motion="{{ _motion }}"{% endif %}>
 <head>
@@ -33,13 +35,16 @@
   </script>
   {%- if layout|default("navbar") == "sidebar" %}
   <script>
-    // Same idea for gth_sidebar's icon rail (gth_sidebar_rail_toggle).
+    // Same idea for gth_sidebar's icon rail (gth_sidebar_rail_toggle): this
+    // browser's own toggle ("rail"/"full" in localStorage) wins; with none,
+    // the viewer's ui.sidebar_default from user_settings (v0.12) decides.
     (function () {
-      try {
-        if (localStorage.getItem("gth-sidebar-mode") === "rail") {
-          document.documentElement.setAttribute("data-gth-sidebar", "rail");
-        }
-      } catch (e) {}
+      var preferred = {{ _sidebar|tojson }};
+      var stored = null;
+      try { stored = localStorage.getItem("gth-sidebar-mode"); } catch (e) {}
+      if (stored === "rail" || (stored !== "full" && preferred === "rail")) {
+        document.documentElement.setAttribute("data-gth-sidebar", "rail");
+      }
     })();
   </script>
   {%- endif %}
