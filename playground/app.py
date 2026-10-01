@@ -252,6 +252,9 @@ PLAYGROUND_NAV = [
          "required_permission": "settings.manage"},
     ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
+    # Only the demo admin (sign in on /extensibility) sees this.
+    {"label": "Roles", "url": "/roles", "icon": "people",
+     "required_permission": "settings.manage"},
 ]
 
 # Title and subtitle per category page.
@@ -527,6 +530,84 @@ async def demo_sign_in(as_: str = Form(..., alias="as")):
     response = Response(status_code=303, headers={"Location": "/extensibility#user-menu"})
     response.set_cookie(USER_COOKIE, as_, samesite="lax")
     return response
+
+
+# ── Role assignments demo ─────────────────────────────────────────────────
+# gth-ui's roles_page.html / roles_section.html over an in-memory dict standing
+# in for greentechhub-core's GrantStore — the flow greentechhub-fastapi's
+# RoleAdminViews runs. Admin only, like RoleAdminViews' permission gate.
+
+ROLE_OPTIONS = [{"value": "viewer", "label": "Viewer"}, {"value": "editor", "label": "Editor"},
+                {"value": "admin", "label": "Admin"}]
+ROLE_GRANTS: dict[str, set[str]] = {}
+
+
+def _is_demo_admin(request: Request) -> bool:
+    return "settings.manage" in user_context(request).get("granted", ())
+
+
+def _roles_context(**extra) -> dict:
+    return {"roles_url": "/roles", "roles_options": ROLE_OPTIONS,
+            "roles_assignments": [{"subject": s, "roles": sorted(r)}
+                                  for s, r in sorted(ROLE_GRANTS.items())], **extra}
+
+
+def _roles_section(request: Request, message: str | None = None, **extra) -> HTMLResponse:
+    headers = {"HX-Trigger": greentechhub_ui.toast(message)} if message else None
+    status = 422 if "roles_form" in extra else 200
+    return templates.TemplateResponse(request, "roles_section.html", _roles_context(**extra),
+                                      status_code=status, headers=headers)
+
+
+def _picked_roles(form) -> list[str]:
+    known = {o["value"] for o in ROLE_OPTIONS}
+    return [r for r in form.getlist("roles") if r in known]
+
+
+@app.get("/roles", response_class=HTMLResponse)
+async def roles_page(request: Request):
+    if not _is_demo_admin(request):
+        return HTMLResponse("Forbidden — sign in as admin on /extensibility", status_code=403)
+    return templates.TemplateResponse(request, "roles_page.html", _roles_context(
+        page_title="Roles", page_subtitle="gth-ui's roles_page.html over a stand-in GrantStore."))
+
+
+@app.post("/roles", response_class=HTMLResponse)
+async def roles_assign(request: Request):
+    if not _is_demo_admin(request):
+        return Response(status_code=403)
+    form = await request.form()
+    subject, roles = (form.get("subject") or "").strip(), _picked_roles(form)
+    errors = {}
+    if not subject:
+        errors["subject"] = ["Enter a user ID."]
+    if not roles:
+        errors["roles"] = ["Pick at least one role."]
+    if errors:
+        return _roles_section(request, roles_form={"subject": subject, "roles": roles,
+                                                   "errors": errors})
+    ROLE_GRANTS.setdefault(subject, set()).update(roles)
+    return _roles_section(request, f"Roles assigned to {subject}")
+
+
+@app.post("/roles/{subject}", response_class=HTMLResponse)
+async def roles_set(request: Request, subject: str):
+    if not _is_demo_admin(request):
+        return Response(status_code=403)
+    roles = _picked_roles(await request.form())
+    if roles:
+        ROLE_GRANTS[subject] = set(roles)
+    else:
+        ROLE_GRANTS.pop(subject, None)
+    return _roles_section(request, f"Roles saved for {subject}")
+
+
+@app.delete("/roles/{subject}", response_class=HTMLResponse)
+async def roles_remove(request: Request, subject: str):
+    if not _is_demo_admin(request):
+        return Response(status_code=403)
+    ROLE_GRANTS.pop(subject, None)
+    return _roles_section(request, f"Removed {subject}'s roles")
 
 
 @app.post("/demo/logout")

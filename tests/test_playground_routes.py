@@ -48,9 +48,16 @@ def test_every_sidebar_link_returns_200():
     from playground.app import PLAYGROUND_NAV
 
     paths = {entry["url"].split("#")[0] for entry in flatten(PLAYGROUND_NAV)}
-    assert {"/layout", "/data", "/forms", "/tables", "/tree"} <= paths
+    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles"} <= paths
+    async def get_as_admin(path):
+        # as the demo admin, so permission-gated links (Roles) are reachable too
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "admin"}) as client:
+            return await client.get(path)
+
     for path in sorted(paths):
-        response = _run(_get(path))
+        response = _run(get_as_admin(path))
         assert response.status_code == 200, path
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
 
@@ -481,3 +488,39 @@ def test_saved_preferences_drive_dates_and_the_records_page_size():
     data, tables = after
     assert "06/02/2025 10:30" in data  # the aware 23:30 UTC example, in Sydney
     assert '<option value="50" selected>' in tables
+
+
+def test_roles_demo_admin_only_and_assign_set_remove():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as anon:
+            denied = await anon.get("/roles")
+            denied_post = await anon.post("/roles", data={"subject": "x", "roles": "viewer"})
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as viewer:
+            viewer_page = await viewer.get("/roles")
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "admin"}) as admin:
+            page = await admin.get("/roles")
+            bad = await admin.post("/roles", data={"subject": " "})
+            added = await admin.post("/roles", data={"subject": "carol",
+                                                     "roles": ["viewer", "editor"]})
+            changed = await admin.post("/roles/carol", data={"roles": ["admin"]})
+            removed = await admin.delete("/roles/carol")
+        return denied, denied_post, viewer_page, page, bad, added, changed, removed
+
+    playground_app.ROLE_GRANTS.clear()
+    try:
+        denied, denied_post, viewer_page, page, bad, added, changed, removed = _run(flow())
+        assert (denied.status_code, denied_post.status_code, viewer_page.status_code) == (
+            403, 403, 403)
+        assert page.status_code == 200 and 'id="gth-roles"' in page.text
+        assert bad.status_code == 422
+        assert "Enter a user ID." in bad.text and "Pick at least one role." in bad.text
+        assert added.status_code == 200 and "Roles assigned to carol" in added.headers["HX-Trigger"]
+        assert 'hx-post="/roles/carol"' in added.text
+        assert changed.status_code == 200
+        assert removed.status_code == 200 and "No roles assigned here yet." in removed.text
+        assert playground_app.ROLE_GRANTS == {}
+    finally:
+        playground_app.ROLE_GRANTS.clear()

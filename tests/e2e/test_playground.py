@@ -155,6 +155,39 @@ def test_user_menu_and_permissioned_nav(page, playground_url):
     expect(page.locator(".gth-user-menu")).to_have_count(0)
 
 
+def test_roles_page_assign_change_remove(page, playground_url):
+    page.goto(f"{playground_url}/extensibility")
+    page.click("button[name=as][value=admin]")
+    page.click("#gth-sidebar a[href='/roles']")
+    expect(page).to_have_url(re.compile(r"/roles$"))
+    roles = page.locator("#gth-roles")
+
+    subject = f"e2e-{datetime.now():%H%M%S%f}"
+    page.fill("[id='gth-field-subject']", subject)
+    page.click("label[for='gth-roles-add-1']")  # Viewer
+    page.click("label[for='gth-roles-add-2']")  # Editor
+    page.click(".gth-roles-add button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text(f"Roles assigned to {subject}")
+    row = roles.locator("tr", has_text=subject)
+    expect(row).to_have_count(1)
+
+    # set the row to Admin only
+    row.locator("label", has_text="Viewer").click()
+    row.locator("label", has_text="Editor").click()
+    row.locator("label", has_text="Admin").click()
+    row.locator("button", has_text="Save").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text(f"Roles saved for {subject}")
+    row = roles.locator("tr", has_text=subject)
+    expect(row.locator("input[value=admin]")).to_be_checked()
+    expect(row.locator("input[value=viewer]")).not_to_be_checked()
+
+    row.locator("button", has_text="Remove").click()
+    page.locator(".modal.show .gth-confirm-delete-button").click()
+    expect(roles.locator("tr", has_text=subject)).to_have_count(0)
+    expect(page.locator(".modal-backdrop")).to_have_count(0)
+    expect(page.locator("body")).not_to_have_class(re.compile("modal-open"))
+
+
 def test_standalone_toast_trigger(page, playground_url):
     page.goto(f"{playground_url}/feedback")
     page.click("text=Trigger a toast")

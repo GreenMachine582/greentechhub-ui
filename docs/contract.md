@@ -112,6 +112,11 @@ mode; `"dark"` pins it dark.
 greentechhub-core key (greentechhub-fastapi's `settings_context` supplies it). The `date` and `datetime` filters read
 `locale.date_format`, `locale.timezone` and `locale.time_format` from it; without it they render as before.
 
+**Role assignments page (v0.12)** — the context `roles_page.html` and `roles_section.html` take
+(greentechhub-fastapi's `RoleAdminViews` supplies it): `roles_url`, `roles_assignments`, `roles_options`, and
+optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
+[docs/components.md](components.md#role-assignments).
+
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in
