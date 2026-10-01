@@ -789,14 +789,29 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
 
-```jinja
-{{ gth_settings_section("preferences", "Preferences", preference_settings, values=effective,
-    errors=field_errors, action="/settings/preferences",
-    form_attrs={"hx-post": "/settings/preferences", "hx-target": "#gth-settings-preferences",
-                "hx-swap": "outerHTML"}) }}
+**Ready-made page (v0.12).** Two templates render a whole settings page from data, so a service writes no settings
+markup (greentechhub-fastapi's `SettingsViews` renders them by default):
+
+| Template | Context |
+|---|---|
+| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
+| `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
+
+A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
+optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no
+`form_attrs`, the form posts over htmx and swaps the section in place (`hx-post` = action, `hx-target` =
+`#gth-settings-<id>`, `hx-swap="outerHTML"`). Sections are stacked rather than tabbed, so a
+`/settings#gth-settings-<id>` link lands on its section and a 422 is never hidden in a closed tab.
+
+```python
+templates.TemplateResponse(request, "settings_page.html", {
+    "page_title": "Settings",
+    "settings_sections": [{"id": "preferences", "title": "Preferences", "settings": preference_settings,
+                           "values": effective, "action": "/settings/preferences"}],
+})
 ```
 
-The server side of that form, with core:
+The server side of that form, with core (render `settings_section.html` with the section, plus `errors`):
 
 ```python
 form = await request.form()
@@ -809,7 +824,8 @@ for setting in preference_settings:
 # 422 + the section re-rendered with errors, or 200 + the section + HX-Trigger toast
 ```
 
-The playground's `/settings` page runs this flow, with dicts standing in for core's definitions.
+The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
+definitions.
 
 ### Permission-filtered nav and the user menu
 

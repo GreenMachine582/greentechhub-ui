@@ -372,19 +372,32 @@ def _saved_settings(request: Request) -> dict[str, object]:
     return values
 
 
-def _settings_section(request: Request, section: str, *, errors=None, values=None) -> Markup:
+def _settings_section(request: Request, section: str, *, errors=None, values=None) -> dict:
+    """One section for gth-ui's settings_page.html / settings_section.html — the
+    data a service (or greentechhub-fastapi's SettingsViews) passes. With an
+    action and no form_attrs, the template wires the htmx post-and-swap itself."""
     title, description, settings = SETTINGS_DEMO[section]
-    return _macro("settings.html", "gth_settings_section", section, title, settings,
-                  values=values if values is not None else _saved_settings(request), errors=errors,
-                  action=f"/settings-demo/{section}", description=description,
-                  form_attrs={"hx-post": f"/settings-demo/{section}",
-                              "hx-target": f"#gth-settings-{section}", "hx-swap": "outerHTML"})
+    return {"id": section, "title": title, "description": description, "settings": settings,
+            "values": values if values is not None else _saved_settings(request),
+            "errors": errors, "action": f"/settings-demo/{section}"}
+
+
+def _render_section(request: Request, section: dict, **kwargs) -> HTMLResponse:
+    return templates.TemplateResponse(request, "settings_section.html", {"section": section},
+                                      **kwargs)
 
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    return _page(request, "settings",
-                 sections=[_settings_section(request, s) for s in SETTINGS_DEMO])
+    title, subtitle = PAGES["settings"]
+    return templates.TemplateResponse(request, "settings_page.html", {
+        "page_title": title, "page_subtitle": subtitle,
+        "settings_intro": (
+            "gth_setting_field picks the widget from the setting's type: a switch for bool, "
+            "segmented buttons for four or fewer choices, a select for more, number and text "
+            "fields for int and str. Save a page size of 500 to see the 422 path."),
+        "settings_sections": [_settings_section(request, s) for s in SETTINGS_DEMO],
+    })
 
 
 @app.post("/settings-demo/{section}", response_class=HTMLResponse)
@@ -404,20 +417,18 @@ async def settings_demo_save(request: Request, section: str):
             errors[setting["key"]] = [str(exc)]
             submitted[setting["key"]] = raw
     if errors:
-        return HTMLResponse(_settings_section(request, section, errors=errors,
-                                              values=_saved_settings(request) | submitted),
-                            status_code=422)
+        return _render_section(request, _settings_section(
+            request, section, errors=errors, values=_saved_settings(request) | submitted),
+            status_code=422)
     # ui.theme lives in the theme cookie (see _saved_settings); the gth:theme
     # event applies it without a reload, as a service's save response would.
     theme = submitted.pop("ui.theme", None)
     SETTINGS_VALUES.update(submitted)
     events = {"gth:theme": theme} if theme else {}
-    response = HTMLResponse(
-        _settings_section(request, section, values=_saved_settings(request) | (
-            {"ui.theme": theme} if theme else {})),
-        headers={"HX-Trigger": greentechhub_ui.toast(f"{SETTINGS_DEMO[section][0]} saved",
-                                                     events=events)},
-    )
+    values = _saved_settings(request) | ({"ui.theme": theme} if theme else {})
+    response = _render_section(request, _settings_section(request, section, values=values),
+                               headers={"HX-Trigger": greentechhub_ui.toast(
+                                   f"{SETTINGS_DEMO[section][0]} saved", events=events)})
     if theme:
         response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
     return response
