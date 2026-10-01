@@ -97,11 +97,23 @@ class TableState:
         window: int = 2,
         max_height: str | None = None,
         export_base_url: str | None = None,
+        user_settings: Mapping[str, object] | None = None,
     ) -> "TableState":
         """Parse page/size/sort/dir/filters from `query`, ignoring anything
         out of range or not allow-listed (a hand-edited URL can't request
-        an unsortable column or a 10,000-row page)."""
+        an unsortable column or a 10,000-row page).
+
+        `user_settings` (v0.12) — the viewer's settings, e.g.
+        greentechhub-fastapi's get_effective_settings — makes their
+        greentechhub-core `ui.page_size` this table's default size, added
+        to `page_sizes` when the service restricts sizes and it isn't one.
+        A `size` in the URL still wins."""
         page_sizes = tuple(page_sizes)
+        preferred = (user_settings or {}).get("ui.page_size")
+        if isinstance(preferred, int) and not isinstance(preferred, bool) and preferred > 0:
+            page_size = preferred
+            if page_sizes and page_size not in page_sizes:
+                page_sizes = tuple(sorted({*page_sizes, page_size}))
         sortable = tuple(sortable)
         filter_params = tuple(filter_params)
 

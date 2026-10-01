@@ -212,12 +212,18 @@ state = greentechhub_ui.TableState.from_query(
     push_url=False,                  # hx-push-url on sort/filter/page changes
     window=2,                        # pages either side of the current one in the pager
     max_height=None,                 # e.g. "24rem": scroll box + sticky header;
-)                                    #   infinite mode then observes that box
+                                     #   infinite mode then observes that box
+    user_settings=None,              # v0.12: the viewer's settings; their ui.page_size
+)                                    #   becomes the default size (added to page_sizes)
 rows, total = repo.list(offset=state.offset, limit=state.limit, sort=state.sort,
                         direction=state.direction, **state.filters)
 state = state.with_result(total=total)   # or has_next=... when the count is unknown
 template = "_stocks_table.html" if is_htmx_swap(request) else "stocks.html"
 ```
+
+`user_settings` (v0.12) is the viewer's effective settings, e.g. greentechhub-fastapi's `get_effective_settings`.
+Their greentechhub-core `ui.page_size` becomes this table's default size; if `page_sizes` restricts sizes and theirs
+isn't one, it's added. A `?size=` in the URL still wins, and the URL omits `size` at the viewer's own default.
 
 Query parameters are fixed: `page`, `size`, `sort`, `dir`, `partial=rows`, plus each `filter_params` name. Anything not allow-listed (an unsortable column, an off-list size, a negative page) is ignored, not trusted. Return the table fragment for htmx swaps — `HX-Request: true` *without* `HX-History-Restore-Request: true` (a history restore needs the whole page) — and the full page otherwise.
 
@@ -716,13 +722,14 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers three filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers four filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
 {{ value|money(symbol="$", places=2) }}   {# 1234.5 → $1,234.50 · -1234.5 → -$1,234.50 · |money("") → 1,234.50 #}
 {{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
 {{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
+{{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
 ```
 
 - **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
@@ -733,11 +740,23 @@ that the app already registered**, so an app's own `money` wins.
   `number(places=n)` gives fixed decimals the same way.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
+- **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
+  `settings_context` supplies it), `date` and `datetime` follow greentechhub-core's:
+  - `locale.date_format`: `iso` (2025-02-05), `dmy` (05/02/2025), `mdy` (02/05/2025), `long` (5 Feb 2025);
+  - `locale.timezone`: an *aware* datetime is converted first, so 23:30 UTC shows as the next morning in Sydney.
+    Naive datetimes and plain dates are left alone, and an unknown zone is ignored;
+  - `locale.time_format`: `24h` (13:45) or `12h` (1:45 pm).
+
+  Without `user_settings` they render as before. An explicit `fmt`, or keyword (`|date(date_format="iso")`,
+  `|datetime(time_format="12h", tz="UTC")`), wins.
 
 They're plain functions too, e.g. for a CSV export:
 
 ```python
-from greentechhub_ui.formatting import format_date, money, number
+from greentechhub_ui.formatting import format_date, format_datetime, money, number
+
+format_date(value, fmt=None, *, date_format=None, tz=None)
+format_datetime(value, fmt=None, *, date_format=None, time_format=None, tz=None)
 ```
 
 ## Shipped signatures (v0.12)

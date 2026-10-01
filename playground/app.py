@@ -12,10 +12,11 @@ directly:
 import asyncio
 import csv
 import io
+import json
 from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
@@ -174,8 +175,31 @@ def user_context(request: Request) -> dict:
     }
 
 
+PREFS_COOKIE = "playground-prefs"
+
+
+def _preferences(request: Request) -> dict[str, object]:
+    """This browser's saved Preferences (all but the theme, which has its own
+    cookie): per browser like a service's per-user store, so one visitor's —
+    or one e2e test's — choices never leak into another's pages."""
+    try:
+        values = json.loads(unquote(request.cookies.get(PREFS_COOKIE, "")) or "{}")
+    except ValueError:
+        return {}
+    return values if isinstance(values, dict) else {}
+
+
+def settings_values_context(request: Request) -> dict:
+    """user_settings, as greentechhub-fastapi's settings_context supplies it:
+    here only the Preferences this browser saved, so pages render the defaults
+    until then. The |date / |datetime filters follow it."""
+    prefs = _preferences(request)
+    return {"user_settings": prefs} if prefs else {}
+
+
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, theme_context, user_context])
+                            context_processors=[ui_context, theme_context, user_context,
+                                                settings_values_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -364,9 +388,10 @@ def _coerce_setting(setting: dict, raw: str | None) -> object:
 
 
 def _saved_settings(request: Request) -> dict[str, object]:
-    """SETTINGS_VALUES, with ui.theme from the theme cookie: the toggle and the
-    Preferences form share one store, as a service's settings store would."""
-    values = dict(SETTINGS_VALUES)
+    """SETTINGS_VALUES (the App section, shared), this browser's Preferences, and
+    ui.theme from the theme cookie: the toggle and the Preferences form share
+    one store, as a service's settings store would."""
+    values = dict(SETTINGS_VALUES) | _preferences(request)
     if (mode := theme_context(request)["theme_mode"]) is not None:
         values["ui.theme"] = mode
     return values
@@ -423,12 +448,19 @@ async def settings_demo_save(request: Request, section: str):
     # ui.theme lives in the theme cookie (see _saved_settings); the gth:theme
     # event applies it without a reload, as a service's save response would.
     theme = submitted.pop("ui.theme", None)
-    SETTINGS_VALUES.update(submitted)
+    prefs = None
+    if section == "preferences":
+        prefs = _preferences(request) | submitted
+    else:
+        SETTINGS_VALUES.update(submitted)
     events = {"gth:theme": theme} if theme else {}
-    values = _saved_settings(request) | ({"ui.theme": theme} if theme else {})
+    values = _saved_settings(request) | (prefs or {}) | ({"ui.theme": theme} if theme else {})
     response = _render_section(request, _settings_section(request, section, values=values),
                                headers={"HX-Trigger": greentechhub_ui.toast(
                                    f"{SETTINGS_DEMO[section][0]} saved", events=events)})
+    if prefs is not None:
+        response.set_cookie(PREFS_COOKIE, quote(json.dumps(prefs)), max_age=60 * 60 * 24 * 365,
+                            samesite="lax")
     if theme:
         response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
     return response
@@ -647,7 +679,7 @@ async def watchlist_list(request: Request):
 
 
 def _records_state(query, *, mode: str, scroll: bool, base_url: str,
-                   table_id: str = "records") -> greentechhub_ui.TableState:
+                   table_id: str = "records", user_settings=None) -> greentechhub_ui.TableState:
     return greentechhub_ui.TableState.from_query(
         query,
         id=table_id,
@@ -661,6 +693,7 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
         export_base_url="/tables/export.csv" if table_id == "records" else None,
+        user_settings=user_settings,  # Preferences' "Rows per page", once saved
     )
 
 
@@ -696,7 +729,8 @@ def _query_records(state: greentechhub_ui.TableState):
 async def tables_export(request: Request):
     """TableState.export_url's endpoint: the same state as the table (so the
     same allow-listed filters and sort), every matching row, no paging."""
-    state = _records_state(request.query_params, mode="none", scroll=False, base_url="/tables")
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode="none", scroll=False, base_url="/tables")
     rows, _ = _query_records(state)
     out = io.StringIO()
     writer = csv.writer(out)
@@ -713,7 +747,8 @@ async def tables(request: Request, mode: str = "pages", scroll: int = 0):
     if mode not in greentechhub_ui.table.MODES:
         mode = "pages"
     fixed = {"mode": mode, **({"scroll": 1} if scroll else {})}
-    state = _records_state(request.query_params, mode=mode, scroll=bool(scroll),
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode=mode, scroll=bool(scroll),
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
@@ -970,7 +1005,8 @@ async def demo_record_picker(request: Request):
     endpoint serves two pickers, so ?for= keeps their table ids apart."""
     picker = request.query_params.get("for")
     picker = picker if picker in ("modal", "page") else "page"
-    state = _records_state(request.query_params, mode="pages", scroll=False,
+    state = _records_state(request.query_params, user_settings=_preferences(request),
+                           mode="pages", scroll=False,
                            base_url="/demo/record-picker?" + urlencode({"for": picker}),
                            table_id=f"picker-{picker}")
     rows, state = _query_records(state)

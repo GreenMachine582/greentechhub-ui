@@ -137,3 +137,30 @@ def test_export_url_leaves_out_the_default_sort_and_joins_an_existing_query():
     assert s.export_url == "/export?format=csv"
     s = _state({"q": "x"}, export_base_url="/export?format=csv")
     assert s.export_url == "/export?format=csv&q=x"
+
+
+# ── v0.12: the viewer's ui.page_size ──────────────────────────────────────
+
+
+def test_user_page_size_becomes_the_default():
+    s = _state(page_size=25, page_sizes=(25, 50, 100), user_settings={"ui.page_size": 50})
+    assert s.page_size == 50
+    assert s.default_page_size == 50
+
+
+def test_url_size_still_wins_over_the_user_default():
+    s = _state({"size": "100"}, page_sizes=(25, 50, 100), user_settings={"ui.page_size": 50})
+    assert s.page_size == 100
+
+
+def test_user_size_outside_the_allowed_sizes_is_added():
+    s = _state(page_sizes=(25, 50), user_settings={"ui.page_size": 30})
+    assert s.page_size == 30
+    assert s.page_sizes == (25, 30, 50)
+
+
+def test_missing_or_bad_user_page_size_changes_nothing():
+    for settings in (None, {}, {"ui.page_size": None}, {"ui.page_size": "50"},
+                     {"ui.page_size": 0}, {"ui.page_size": True}):
+        s = _state(page_size=25, page_sizes=(25, 50), user_settings=settings)
+        assert (s.page_size, s.page_sizes) == (25, (25, 50)), settings

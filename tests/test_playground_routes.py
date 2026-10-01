@@ -359,7 +359,8 @@ def test_settings_demo_saves_and_toasts():
     response = _run(_post("/settings-demo/preferences", data=data))
     assert response.status_code == 200
     assert "Preferences saved" in response.headers["HX-Trigger"]
-    assert playground_app.SETTINGS_VALUES["ui.page_size"] == 50
+    assert "playground-prefs=" in response.headers["set-cookie"]  # per browser, not shared
+    assert "ui.page_size" not in playground_app.SETTINGS_VALUES
     assert '<option value="Asia/Tokyo" selected>' in response.text
     playground_app.SETTINGS_VALUES.clear()
 
@@ -457,3 +458,26 @@ def test_demo_sign_in_drives_the_user_menu_and_permissioned_nav():
     assert logout.status_code == 303
     assert "gth-user-menu" not in after.text and app_link not in after.text
     assert bad.status_code == 422
+
+
+def test_saved_preferences_drive_dates_and_the_records_page_size():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            before = (await client.get("/data")).text, (await client.get("/tables")).text
+            saved = await client.post("/settings-demo/preferences", data={
+                "ui.theme": "dark", "locale.timezone": "Australia/Sydney",
+                "locale.date_format": "dmy", "ui.page_size": "50"})
+            after = (await client.get("/data")).text, (await client.get("/tables")).text
+        # another browser (no cookie) still gets the defaults
+        other = (await _get("/data")).text, (await _get("/tables")).text
+        return before, saved, after, other
+
+    before, saved, after, other = _run(flow())
+    assert saved.status_code == 200
+    for data, tables in (before, other):
+        assert "5 Feb 2025 23:30" in data
+        assert '<option value="10" selected>' in tables
+    data, tables = after
+    assert "06/02/2025 10:30" in data  # the aware 23:30 UTC example, in Sydney
+    assert '<option value="50" selected>' in tables
