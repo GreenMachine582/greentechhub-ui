@@ -5,6 +5,31 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.12.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.11.0...v0.12.0) (2026-10-01)
+
+
+### Features
+
+* **components:** brand track style for gth_segmented ([#44](https://github.com/GreenMachine582/greentechhub-ui/issues/44)) ([90db22d](https://github.com/GreenMachine582/greentechhub-ui/commit/90db22ddb59ca3d9b7f5b47282f1267055ab23ba))
+* **components:** gth_select and settings field rendering ([#31](https://github.com/GreenMachine582/greentechhub-ui/issues/31)) ([26d7bbd](https://github.com/GreenMachine582/greentechhub-ui/commit/26d7bbdddae34a9277873ec7eab9250995572f05))
+* **formatting:** honour timezone, date format and page size ([#36](https://github.com/GreenMachine582/greentechhub-ui/issues/36)) ([5c9e2ea](https://github.com/GreenMachine582/greentechhub-ui/commit/5c9e2eaf5d6ed106be47697bacc647b29ec11213))
+* **formatting:** number format preference ([#42](https://github.com/GreenMachine582/greentechhub-ui/issues/42)) ([d055091](https://github.com/GreenMachine582/greentechhub-ui/commit/d055091353c425978a542f3bdd8cdbf6084ca37f))
+* **navigation:** permission-aware nav and navbar user menu ([#34](https://github.com/GreenMachine582/greentechhub-ui/issues/34)) ([4ff7d4c](https://github.com/GreenMachine582/greentechhub-ui/commit/4ff7d4c1faf2ae1fc10b2ec1fb09cd2d0b4d9b71))
+* **navigation:** sidebar default from the user's settings ([#41](https://github.com/GreenMachine582/greentechhub-ui/issues/41)) ([f7f592a](https://github.com/GreenMachine582/greentechhub-ui/commit/f7f592a7c7e1aaa30eeff9b5d4733f91ba56f03f))
+* **permissions:** ready-made role assignment templates ([#37](https://github.com/GreenMachine582/greentechhub-ui/issues/37)) ([d818fe6](https://github.com/GreenMachine582/greentechhub-ui/commit/d818fe68c0502fe3386b583cf0f60873ce02a933))
+* **playground:** impersonate personas instead of a bare 403 ([#38](https://github.com/GreenMachine582/greentechhub-ui/issues/38)) ([d8973c3](https://github.com/GreenMachine582/greentechhub-ui/commit/d8973c344dc82c35daa9fc3342e740143e2b7ed3))
+* **settings:** ready-made settings page templates ([#35](https://github.com/GreenMachine582/greentechhub-ui/issues/35)) ([a9542d8](https://github.com/GreenMachine582/greentechhub-ui/commit/a9542d8b7fa99fc75162e0291656925121cae43f))
+* **theme:** density and motion preferences ([#40](https://github.com/GreenMachine582/greentechhub-ui/issues/40)) ([c6e014b](https://github.com/GreenMachine582/greentechhub-ui/commit/c6e014bf23f08a4f0ecb1b7c9b53cb1413a0e0f6))
+* **theme:** one brand accent across Bootstrap and gth components ([#45](https://github.com/GreenMachine582/greentechhub-ui/issues/45)) ([d5677c8](https://github.com/GreenMachine582/greentechhub-ui/commit/d5677c844cb68c6207436c84bd6f705a4eea6103))
+* **theme:** server-persisted theme preference ([#32](https://github.com/GreenMachine582/greentechhub-ui/issues/32)) ([6185995](https://github.com/GreenMachine582/greentechhub-ui/commit/6185995b0b99115fb033da579a1a57371fb68ead))
+
+
+### Bug Fixes
+
+* keep the sidebar's scroll position and give choice buttons a hover state ([#43](https://github.com/GreenMachine582/greentechhub-ui/issues/43)) ([0b8bf9c](https://github.com/GreenMachine582/greentechhub-ui/commit/0b8bf9c2db7ec3d5122be6ee8bdf52b948226a07))
+* **theme:** apply a theme saved from the settings form ([#33](https://github.com/GreenMachine582/greentechhub-ui/issues/33)) ([85af794](https://github.com/GreenMachine582/greentechhub-ui/commit/85af79464768d228bf750d9d201f7755493cc817))
+* **theme:** favicon fills the tab icon ([#22](https://github.com/GreenMachine582/greentechhub-ui/issues/22)) ([a25b4fe](https://github.com/GreenMachine582/greentechhub-ui/commit/a25b4fe4b655759fcccbe7656c6ca8e654d948ad))
+
 ## [0.11.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.10.0...v0.11.0) (2026-09-30)
 
 
