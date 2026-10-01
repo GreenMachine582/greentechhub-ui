@@ -34,6 +34,43 @@ def test_dark_mode_toggle_persists(page, playground_url):
     assert html.get_attribute("data-bs-theme") == "light"
 
 
+def test_theme_toggle_saves_to_the_server(page, playground_url):
+    page.goto(playground_url)
+    html = page.locator("html")
+    assert html.get_attribute("data-bs-theme") == "dark"
+
+    with page.expect_response(lambda r: r.url.endswith("/demo/theme")) as saved:
+        page.click(".gth-theme-toggle")
+    assert saved.value.status == 204
+
+    # The server's theme_mode wins even with localStorage gone (another device, cleared storage).
+    page.evaluate("localStorage.clear()")
+    page.reload()
+    assert html.get_attribute("data-bs-theme") == "light"
+    assert page.evaluate("localStorage.getItem('gth-theme-mode')") == "light"
+
+
+def test_system_theme_follows_the_os_live(page, playground_url):
+    host = urlparse(playground_url).hostname
+    page.context.add_cookies([{"name": "playground-theme", "value": "system", "domain": host,
+                               "path": "/"}])
+    page.emulate_media(color_scheme="light")
+    page.goto(playground_url)
+    html = page.locator("html")
+    assert html.get_attribute("data-gth-theme-mode") == "system"
+    assert html.get_attribute("data-bs-theme") == "light"
+
+    page.emulate_media(color_scheme="dark")
+    expect(html).to_have_attribute("data-bs-theme", "dark")
+
+    # A click picks an explicit mode, which stops following the OS.
+    page.click(".gth-theme-toggle")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    page.emulate_media(color_scheme="dark")
+    expect(html).to_have_attribute("data-gth-theme-mode", "light")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+
+
 def test_form_validation_and_success_toast(page, playground_url):
     page.goto(f"{playground_url}/forms")
 
