@@ -20,16 +20,29 @@
 </div>
 {% endmacro %}
 
-{% macro gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3", input_attrs=None) %}
+{% macro gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3", input_attrs=None, errors=None, off_value=None) %}
 {# An on/off toggle (Bootstrap form-switch, role="switch") in the brand
-   color. Unchecked submits nothing — treat a missing field as off.
-   input_attrs: dict of extra attributes (e.g. hx-post to save on change). #}
+   color. Unchecked submits nothing — treat a missing field as off — unless
+   off_value is set: then a hidden input submits off_value first, and a
+   checked switch's own value comes after it (Starlette and Django both read
+   the last value), so the field is always present.
+   input_attrs: dict of extra attributes (e.g. hx-post to save on change).
+   errors: optional, laid out like gth_form_field's. #}
 <div class="{{ field_class }} form-check form-switch gth-form-field gth-switch">
+  {%- if off_value is not none %}
+  <input type="hidden" name="{{ name }}" value="{{ off_value }}">
+  {%- endif %}
   <input class="form-check-input" type="checkbox" role="switch" id="gth-field-{{ name }}" name="{{ name }}" value="{{ value }}"
     {%- if checked %} checked{% endif %}
-    {%- if help_text %} aria-describedby="gth-field-{{ name }}-help"{% endif %}
+    {%- if errors %} aria-invalid="true"{% endif %}
+    {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}
     {%- for k, v in (input_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
   <label class="form-check-label" for="gth-field-{{ name }}">{{ label }}</label>
   {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {%- if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {%- for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor -%}
+  </div>
+  {%- endif %}
 </div>
 {% endmacro %}

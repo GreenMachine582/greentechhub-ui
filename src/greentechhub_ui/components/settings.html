@@ -1,0 +1,93 @@
+{% from "chips.html" import gth_switch %}
+{% from "form.html" import gth_form_field %}
+{% from "segmented.html" import gth_segmented %}
+{% from "select.html" import gth_select %}
+
+{#- Rendering for greentechhub-core's settings (core docs/settings.md). Duck-typed:
+    a setting is anything with key, type ("bool" | "int" | "str" | "choice"), label,
+    default, and optionally help_text, choices ((value, label) pairs), min, max,
+    group — core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
+    imports core. Field names are the setting keys ("ui.theme"), which is what
+    core's registry.coerce(key, raw) expects back. -#}
+
+{% macro gth_setting_field(setting, value=None, errors=None, name=None, field_class="mb-3", segmented_max=4) %}
+{#- One setting's input, picked by type:
+      bool                          → gth_switch, with off_value="false" so an
+                                      unchecked switch still submits (core's coerce
+                                      reads "true"/"false")
+      choice, ≤ segmented_max opts  → gth_segmented
+      choice, more                  → gth_select
+      int                           → number gth_form_field with min/max, step 1
+      str                           → text gth_form_field
+    value: the current (effective) value; None falls back to setting.default.
+    errors: this field's messages. name: defaults to setting.key. -#}
+{%- set name = name or setting.key -%}
+{%- set value = value if value is not none else setting.default -%}
+{%- set kind = setting.type|string -%}
+{%- set kind = kind.split(".")[-1]|lower -%}
+{%- set help = setting.help_text or none -%}
+{%- if kind == "bool" -%}
+{{ gth_switch(name, setting.label, checked=value, value="true", off_value="false", help_text=help,
+              errors=errors, field_class=field_class) }}
+{%- elif kind == "choice" -%}
+{%- set options = [] -%}
+{%- for choice in setting.choices -%}
+{%- if choice is mapping %}{% set _ = options.append({"value": choice.value, "label": choice.label}) %}
+{%- elif choice is string %}{% set _ = options.append({"value": choice, "label": choice}) %}
+{%- else %}{% set _ = options.append({"value": choice[0], "label": choice[1]}) %}{% endif -%}
+{%- endfor -%}
+{%- if options|length <= segmented_max -%}
+{{ gth_segmented(name, options, value=value, label=setting.label, help_text=help, errors=errors,
+                 field_class=field_class) }}
+{%- else -%}
+{{ gth_select(name, setting.label, options, value=value, help_text=help, errors=errors,
+              field_class=field_class) }}
+{%- endif -%}
+{%- elif kind == "int" -%}
+{{ gth_form_field(name, setting.label, value=value, type="number", step=1, min=setting.min, max=setting.max,
+                  help_text=help, errors=errors, field_class=field_class) }}
+{%- else -%}
+{{ gth_form_field(name, setting.label, value=value, help_text=help, errors=errors, field_class=field_class) }}
+{%- endif -%}
+{% endmacro %}
+
+{% macro gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
+                              error=None, submit_label="Save", form_attrs=None) %}
+{#- A titled block of settings fields, grouped under subheadings by setting.group
+    (first-seen order; ungrouped settings come first, without a heading).
+    values: key → current value (e.g. core's Settings.effective()); a missing key
+    falls back to the default. errors: key → [messages]. error: a banner message.
+    action: when set, the fields sit in a <form method="post" action=action> with a
+    submit button (form_attrs adds e.g. hx-post/hx-target/hx-swap); without it the
+    caller supplies the form. The section's id is "gth-settings-<id>", the natural
+    hx-target for re-rendering it with a 422 response. -#}
+{%- set values = values or {} -%}
+{%- set errors = errors or {} -%}
+{%- set ns = namespace(groups=[]) -%}
+{%- for s in settings %}{% if (s.group or "") not in ns.groups %}{% set ns.groups = ns.groups + [s.group or ""] %}{% endif %}{% endfor -%}
+<section class="gth-settings-section mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
+  <h2 class="h5 mb-1" id="gth-settings-{{ id }}-title">{{ title }}</h2>
+  {%- if description %}
+  <p class="text-secondary small mb-3">{{ description }}</p>
+  {%- endif %}
+  {%- if action %}
+  <form method="post" action="{{ action }}" class="gth-form" novalidate
+    {%- for k, v in (form_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
+  {%- endif %}
+  {%- if error %}
+  <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
+  {%- endif %}
+  {%- for group in ns.groups %}
+  {%- if group %}
+  <h3 class="h6 text-secondary mt-3 mb-2">{{ group }}</h3>
+  {%- endif %}
+  {%- for s in settings if (s.group or "") == group %}
+  {{ gth_setting_field(s, values.get(s.key), errors.get(s.key)) }}
+  {%- endfor %}
+  {%- endfor %}
+  {%- if action %}
+  <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+  </form>
+  {%- endif %}
+</section>
+{% endmacro %}

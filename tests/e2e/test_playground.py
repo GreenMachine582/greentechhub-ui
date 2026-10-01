@@ -14,7 +14,7 @@ from playwright.sync_api import expect
 # Every playground page (the category pages the sidebar links to, plus the
 # data-table / tree / standalone sidebar demos).
 PAGES = ["/", "/layout", "/data", "/forms", "/feedback", "/overlays", "/navigation",
-         "/extensibility", "/tables", "/tree", "/layouts/sidebar"]
+         "/extensibility", "/settings", "/tables", "/tree", "/layouts/sidebar"]
 
 # Dynamically-triggered toasts land in #gth-toast-container. The static
 # gth_toast_flashes demo section on the page also renders `.toast.show`
@@ -46,6 +46,30 @@ def test_form_validation_and_success_toast(page, playground_url):
     page.fill("#gth-field-budget", "250")
     page.click("#form-demo-container button[type=submit]")
     expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Saved budget")
+
+
+def test_settings_section_validates_saves_and_submits_unchecked_switch(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    prefs = "#gth-settings-preferences"
+    page_size = "[id='gth-field-ui.page_size']"  # setting keys have dots, so no #id selector
+
+    page.fill(page_size, "500")
+    page.click(f"{prefs} button[type=submit]")
+    page.wait_for_selector(f"{page_size}.is-invalid")
+    assert "Must be between 5 and 200." in page.inner_text(prefs)
+    expect(page.locator(DYNAMIC_TOAST)).to_have_count(0)
+
+    page.fill(page_size, "50")
+    page.click(f"{prefs} label:has-text('Dark')")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    expect(page.locator(page_size)).to_have_value("50")
+
+    # An unchecked switch still submits "false" (gth_switch off_value) and saves.
+    app = "#gth-settings-app"
+    expect(page.locator("[id='gth-field-site.maintenance']")).not_to_be_checked()
+    page.click(f"{app} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
 def test_standalone_toast_trigger(page, playground_url):

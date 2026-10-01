@@ -1,0 +1,35 @@
+{% macro gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
+                    field_class="mb-3", input_attrs=None) %}
+{#- A labelled native <select> with the same ids, help and error layout as
+    gth_form_field. options: {"value", "label"} dicts, (value, label) pairs
+    (core Setting.choices' shape), or bare values (the label is the value).
+    value is compared as a string, so 25 selects "25". placeholder: an
+    empty first option (submits "") shown when nothing is selected.
+    input_attrs: extra attributes on the <select> (e.g. hx-post). -#}
+{%- set current = value|string if value is not none else none -%}
+<div class="{{ field_class }} gth-form-field gth-select">
+  <label class="form-label" for="gth-field-{{ name }}">{{ label }}</label>
+  <select id="gth-field-{{ name }}" name="{{ name }}" class="form-select{% if errors %} is-invalid{% endif %}"
+    {%- if errors %} aria-invalid="true"{% endif %}
+    {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}
+    {%- for k, v in (input_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
+    {%- if placeholder is not none %}
+    <option value=""{% if current is none or current == "" %} selected{% endif %}>{{ placeholder }}</option>
+    {%- endif %}
+    {%- for opt in options %}
+    {%- if opt is mapping %}{% set opt_value, opt_label = opt.value, opt.label %}
+    {%- elif opt is string or opt is number %}{% set opt_value, opt_label = opt, opt %}
+    {%- else %}{% set opt_value, opt_label = opt[0], opt[1] %}{% endif %}
+    <option value="{{ opt_value }}"{% if opt_value|string == current %} selected{% endif %}>{{ opt_label }}</option>
+    {%- endfor %}
+  </select>
+  {%- if help_text %}
+  <div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>
+  {%- endif %}
+  {%- if errors %}
+  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+    {%- for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor -%}
+  </div>
+  {%- endif %}
+</div>
+{% endmacro %}

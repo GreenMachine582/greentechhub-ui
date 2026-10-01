@@ -1,0 +1,10 @@
+{% extends "page.html" %}
+
+{% block page %}
+<p class="text-secondary small">
+  <code>gth_setting_field</code> picks the widget from the setting's type: a switch for bool, segmented
+  buttons for four or fewer choices, a select for more, number and text fields for int and str. Save a page
+  size of 500 to see the 422 path.
+</p>
+{% for section in sections %}{{ section }}{% endfor %}
+{% endblock %}

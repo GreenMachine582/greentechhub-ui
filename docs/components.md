@@ -19,7 +19,9 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
-| `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7) |
+| `gth-segmented` | Joined radio-button group for 2–4 mutually exclusive choices (v0.7); help text and errors (v0.12) |
+| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
+| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
@@ -27,7 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
-| `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7) |
+| `gth-chips` / `gth-switch` | Multi-select filter pills; brand-colored on/off switch (v0.7); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
 | `gth-empty-state` | "Nothing here yet" placeholder for empty tables/lists |
@@ -734,3 +736,74 @@ They're plain functions too, e.g. for a CSV export:
 ```python
 from greentechhub_ui.formatting import format_date, money, number
 ```
+
+## Shipped signatures (v0.12)
+
+### Select
+
+```jinja
+{# select.html #}
+gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
+           field_class="mb-3", input_attrs=None)
+{# options: {"value", "label"} dicts, (value, label) pairs (core Setting.choices' shape), or bare
+   values. value is compared as a string, so 25 selects "25". placeholder adds an empty first
+   option. Same ids, aria-describedby and error layout as gth_form_field. #}
+```
+
+`gth_segmented` gains `help_text=None, errors=None` and `gth_switch` gains `errors=None, off_value=None`.
+Without them both render exactly as before. With `off_value`, the switch adds a hidden input carrying it ahead of the
+checkbox, so an unchecked switch still submits a value. Starlette's and Django's form `get()` both return the last
+value, so a checked switch reads as its own `value`.
+
+### Settings
+
+Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
+The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
+`choices`, `min`, `max`, `group`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
+
+```jinja
+{# settings.html #}
+gth_setting_field(setting, value=None, errors=None, name=None, field_class="mb-3", segmented_max=4)
+gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
+                     error=None, submit_label="Save", form_attrs=None)
+```
+
+| `setting.type` | Widget |
+|---|---|
+| `bool` | `gth_switch`, submitting `"true"`, or `"false"` when unchecked (`off_value`) |
+| `choice` with `segmented_max` (4) or fewer options | `gth_segmented` |
+| `choice` with more | `gth_select` |
+| `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
+| `str` | `gth_form_field` |
+
+- `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
+  `StrEnum`; a plain `Enum`'s `SettingType.BOOL` also works).
+- `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
+  settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
+  `error` is a banner.
+- With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
+  it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
+  back with a 422.
+
+```jinja
+{{ gth_settings_section("preferences", "Preferences", preference_settings, values=effective,
+    errors=field_errors, action="/settings/preferences",
+    form_attrs={"hx-post": "/settings/preferences", "hx-target": "#gth-settings-preferences",
+                "hx-swap": "outerHTML"}) }}
+```
+
+The server side of that form, with core:
+
+```python
+form = await request.form()
+errors = {}
+for setting in preference_settings:
+    try:
+        await settings.set_user(identity, setting.key, registry.coerce(setting.key, form.get(setting.key, "")))
+    except ValueError as exc:
+        errors[setting.key] = [str(exc)]
+# 422 + the section re-rendered with errors, or 200 + the section + HX-Trigger toast
+```
+
+The playground's `/settings` page runs this flow, with dicts standing in for core's definitions.

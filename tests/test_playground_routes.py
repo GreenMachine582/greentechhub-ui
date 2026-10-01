@@ -342,3 +342,47 @@ def test_playground_pages_get_current_path_from_the_context_processor():
     # No route passes current_path any more: greentechhub_fastapi's ui_context does.
     html = _run(_get("/tree")).text
     assert 'aria-current="page"' in html and '<a href="/data">Data</a>' in html
+
+
+def test_settings_page_renders_each_widget():
+    page = _run(_get("/settings"))
+    assert page.status_code == 200
+    for marker in ('id="gth-settings-preferences"', 'id="gth-settings-app"', "gth-segmented",
+                   "gth-select", 'type="number"', 'role="switch"'):
+        assert marker in page.text, marker
+
+
+def test_settings_demo_saves_and_toasts():
+    playground_app.SETTINGS_VALUES.clear()
+    data = {"ui.theme": "dark", "locale.timezone": "Asia/Tokyo", "locale.date_format": "dmy",
+            "ui.page_size": "50"}
+    response = _run(_post("/settings-demo/preferences", data=data))
+    assert response.status_code == 200
+    assert "Preferences saved" in response.headers["HX-Trigger"]
+    assert playground_app.SETTINGS_VALUES["ui.page_size"] == 50
+    assert '<option value="Asia/Tokyo" selected>' in response.text
+    playground_app.SETTINGS_VALUES.clear()
+
+
+def test_settings_demo_returns_422_with_field_errors():
+    data = {"ui.theme": "dark", "locale.timezone": "UTC", "locale.date_format": "iso",
+            "ui.page_size": "500"}
+    response = _run(_post("/settings-demo/preferences", data=data))
+    assert response.status_code == 422
+    assert "Must be between 5 and 200." in response.text
+    assert 'value="500"' in response.text
+    assert "HX-Trigger" not in response.headers
+
+
+def test_settings_demo_unchecked_switch_submits_false():
+    playground_app.SETTINGS_VALUES.clear()
+    # what the browser sends for an unchecked gth_switch(off_value="false"): only the hidden input
+    unchecked = {"site.banner": "", "site.maintenance": "false"}
+    response = _run(_post("/settings-demo/app", data=unchecked))
+    assert response.status_code == 200
+    assert playground_app.SETTINGS_VALUES["site.maintenance"] is False
+    checked = _run(_post("/settings-demo/app",
+                         data={"site.banner": "Back soon", "site.maintenance": ["false", "true"]}))
+    assert checked.status_code == 200
+    assert playground_app.SETTINGS_VALUES["site.maintenance"] is True
+    playground_app.SETTINGS_VALUES.clear()
