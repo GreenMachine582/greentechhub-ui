@@ -25,13 +25,40 @@ Rendering for `greentechhub-core`'s settings and role resolution (design:
 [core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
 opt-in: new behaviour turns on only when the optional context keys (`theme_mode`/`theme_save_url`, `granted`,
 `user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
-there's no runtime import of core. Each PR updates any doc it would otherwise contradict. The numbers are the
-cross-repo order: core #1–#4, fastapi #5 and #9, and ui #6–#8 and #10 (settings rendering, server-saved theme,
-permission-aware nav and the user menu, dates and table page size following the viewer's settings) have shipped.
-- [ ] **#12 `docs: scope additional shared settings`** (with core)
-  - Compact density for forms and tables, reduced motion, number/currency format, landing page, sidebar default,
-    notification preferences.
-  - The outcome is newly registered items.
+there's no runtime import of core. Each PR updates any doc it would otherwise contradict.
+
+Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8 and #10, plus the ready-made
+settings and role-assignment page templates. ui's half of #12 is done: it registered the items below, which make ui
+honour core #13's shared settings. They read the values from `user_settings` (greentechhub-fastapi's
+`settings_context` supplies it), so they need no new context keys. Numbered from #15, after core's #13/#14.
+- [ ] **#15 `feat(theme): density and motion preferences`**
+  - `app.html` sets `data-gth-density` and `data-gth-motion` on `<html>` from `user_settings["ui.density"]` /
+    `["ui.motion"]`. Absent means no attribute, so output is unchanged.
+  - `theme.css`:
+    - Compact density tightens form controls, card and table padding.
+    - `data-gth-motion="reduce"` turns off transitions and animations: Bootstrap fades, toasts, the sidebar rail and
+      back-to-top's smooth scroll.
+    - `system` keeps following `prefers-reduced-motion`, which `theme.css` and `back-to-top.js` already honour.
+      `full` ignores it.
+  - `table-view.js`: a table's density defaults to the user's `ui.density` when that table has nothing stored. The
+    per-table toggle still wins.
+  - Docs: `docs/theming.md`, `docs/contract.md` (the `user_settings` keys read), `docs/components.md`.
+- [ ] **#16 `feat(navigation): sidebar default from the user's settings`**
+  - `app.html`'s pre-paint script applies `user_settings["ui.sidebar_default"]` (`expanded` / `rail`) when this
+    browser has no stored rail choice (`localStorage["gth-sidebar-mode"]`). Toggling still stores per browser and
+    wins from then on.
+  - Docs: `docs/components.md` (sidebar), `docs/contract.md`.
+- [ ] **#17 `feat(formatting): number format preference`**
+  - `number` / `money` gain `number_format=`: `comma_dot` (1,234.56), `dot_comma` (1.234,56), `space_comma` (1 234,56,
+    with a non-breaking space).
+  - The filters read `locale.number_format` from `user_settings`, like `date` does. The plain functions' defaults are
+    unchanged, so CSV exports stay `comma_dot` unless told otherwise.
+  - Docs: `docs/components.md` "Formatting filters".
+
+Notes, not items:
+- `locale.time_format` already shipped with #10 (`|datetime`).
+- The landing page has no ui work. It waits on core #14 (on hold) plus a fastapi redirect.
+- Notification preferences wait for the notification centre (Navigation, above).
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
@@ -90,7 +117,7 @@ permission-aware nav and the user menu, dates and table page size following the 
   registers (its own assignments after `install()` win until they're removed). `|string|qty` becomes `|number`, since
   floats are handled. **`money` now prints `$`** (`$1,234.50`), so check the stat cards and report columns and use
   `|money("")` where a `$` is already in the heading. `_fy` stays PyFinBot's own
-- [ ] Pass `theme_save_url`/`granted`/`user_menu_items`/`logout_url` (via fastapi's `register_settings` context, #9), replacing any hand-rolled theme or nav gating
+- [ ] Pass `theme_save_url`/`granted`/`user_menu_items`/`logout_url` (via fastapi's `register_settings` context, #9), replacing any hand-rolled theme or nav gating; `user_settings` from the same context is all #15–#17 need
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
