@@ -5,6 +5,23 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.13.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.12.0...v0.13.0) (2026-10-02)
+
+
+### Features
+
+* **display:** gth_description_list for record details ([#54](https://github.com/GreenMachine582/greentechhub-ui/issues/54)) ([ad68831](https://github.com/GreenMachine582/greentechhub-ui/commit/ad6883110cc6758f10c62dd455b751d1cc3ca1c1))
+* **display:** gth_progress for progress bars and meters ([#55](https://github.com/GreenMachine582/greentechhub-ui/issues/55)) ([6d07bc4](https://github.com/GreenMachine582/greentechhub-ui/commit/6d07bc45ec708170b0365b620e1efac52658b884))
+* **record-picker:** open full page to pick from the list screen ([#52](https://github.com/GreenMachine582/greentechhub-ui/issues/52)) ([9b32493](https://github.com/GreenMachine582/greentechhub-ui/commit/9b324934bbe25e262ddc530e599d7b91c735650c))
+* **settings:** write-only secret fields ([#50](https://github.com/GreenMachine582/greentechhub-ui/issues/50)) ([65b10ac](https://github.com/GreenMachine582/greentechhub-ui/commit/65b10acb74dae6f588db3a5a9cf3203af75a3607))
+* **shell:** gth_alert_banner site-wide banners ([#56](https://github.com/GreenMachine582/greentechhub-ui/issues/56)) ([b72ecc7](https://github.com/GreenMachine582/greentechhub-ui/commit/b72ecc7d48381880b007cfe0c795bff98e154b3c))
+* **table:** gth_action_menu row actions menu ([#53](https://github.com/GreenMachine582/greentechhub-ui/issues/53)) ([b4aa92d](https://github.com/GreenMachine582/greentechhub-ui/commit/b4aa92d1b7feae52fd111e1d5709fb40fca03044))
+
+
+### Build
+
+* **deps:** dev pins greentechhub-core v0.8.0 and greentechhub-fastapi v0.10.0 ([#51](https://github.com/GreenMachine582/greentechhub-ui/issues/51)) ([4dcae8a](https://github.com/GreenMachine582/greentechhub-ui/commit/4dcae8a9df57412e4da09c52dfd962219523fe2e))
+
 ## [0.12.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.11.0...v0.12.0) (2026-10-01)
 
 
