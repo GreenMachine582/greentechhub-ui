@@ -30,7 +30,8 @@ there's no runtime import of core. Each PR updates any doc it would otherwise co
 Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15–#17 (density
 and motion, sidebar default, number format), plus the ready-made settings and role-assignment page templates. ui's
 half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. Open: #19
-below (write-only secret fields). Core #14 (the landing page) stays on hold.
+below (write-only secret fields). Core #14 (the landing page setting) has shipped; fastapi #21 acts on it, and ui
+has no part.
 
 #### Secret settings
 Settings whose value is a credential (an email app password, an API token) can't be plain settings: stores keep JSON
@@ -47,7 +48,8 @@ PyFinBot's per-user email account for Commsec sync (its app password), registere
 
 Notes, not items:
 - `locale.time_format` already shipped with #10 (`|datetime`).
-- The landing page has no ui work. It waits on core #14 (on hold) plus a fastapi redirect.
+- The landing page has no ui work: the settings page renders `ui.landing_page` under Navigation like any choice
+  setting, and fastapi #21 redirects to it.
 - Notification preferences wait for the notification centre (Navigation, above).
 
 ### Display & charts
