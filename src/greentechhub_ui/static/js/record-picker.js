@@ -23,6 +23,10 @@
 // reloading; each open starts at data-gth-record-picker-size. At modal size
 // Tab wraps inside the panel, and the backdrop, ✕ or Esc close it.
 //
+// Full page (v0.13, full_page_url): an "Open full page" link opens the real
+// list screen in a new tab; its "Use this record" buttons send the pick back
+// over a BroadcastChannel (see the end of this file).
+//
 // Delegated from document, so it survives htmx swaps and 422 re-renders.
 // Requires htmx (htmx.ajax) and nothing else.
 (function () {
@@ -401,4 +405,95 @@
   }
   window.addEventListener("resize", reposition);
   window.addEventListener("scroll", reposition, true);
+
+  // Full page: the panel's [data-gth-record-picker-full] link opens the list
+  // screen in a new tab with ?pick_for=<token>. Its "Use this record"
+  // ([data-gth-pick-return]) posts {type: "pick", token, value, label} on a
+  // same-origin BroadcastChannel; the picker holding that token takes it
+  // (setValue, so the form keeps everything else typed) and acks with
+  // {type: "picked", token}, and the list tab closes itself (or says it
+  // was sent, when the browser won't let it close).
+  var CHANNEL = "gth-record-picker";
+  var channel = window.BroadcastChannel ? new BroadcastChannel(CHANNEL) : null;
+
+  function newToken() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+  function fullPageLink(picker) {
+    return panelOf(picker).querySelector("[data-gth-record-picker-full]");
+  }
+  function prepareFullPage(picker) {
+    var link = fullPageLink(picker);
+    if (!link) return;
+    if (!channel) { link.classList.add("d-none"); return; }
+    var token = picker.getAttribute("data-gth-record-picker-token");
+    if (!token) {
+      token = newToken();
+      picker.setAttribute("data-gth-record-picker-token", token);
+    }
+    var url = new URL(link.getAttribute("href"), location.href);
+    url.searchParams.set("pick_for", token);
+    link.setAttribute("href", url.pathname + url.search + url.hash);
+  }
+  // Ready before the panel opens, so even a middle-click carries the token.
+  document.addEventListener("mousedown", function (evt) {
+    var trig = evt.target.closest && evt.target.closest("[data-gth-record-picker-trigger]");
+    if (trig) prepareFullPage(pickerOf(trig));
+  }, true);
+  document.addEventListener("focusin", function (evt) {
+    var t = evt.target;
+    if (t.matches && t.matches("[data-gth-record-picker-trigger]")) prepareFullPage(pickerOf(t));
+  });
+  document.addEventListener("click", function (evt) {
+    var link = evt.target.closest && evt.target.closest("[data-gth-record-picker-full]");
+    var owner = link && ownerOf(link);
+    if (!owner) return;
+    prepareFullPage(owner);
+    close(owner, false); // the list screen takes over; the default click opens it
+  }, true);
+
+  if (channel) {
+    channel.addEventListener("message", function (evt) {
+      var msg = evt.data || {};
+      if (msg.type !== "pick" || !msg.token) return;
+      var picker = Array.prototype.find.call(
+        document.querySelectorAll("[data-gth-record-picker-token]"),
+        function (p) { return p.getAttribute("data-gth-record-picker-token") === msg.token; });
+      if (!picker) return;
+      if (openPicker === picker) close(picker, false);
+      setValue(picker, String(msg.value), String(msg.label));
+      channel.postMessage({ type: "picked", token: msg.token });
+    });
+  }
+
+  // The list screen's side.
+  function pickStatus(text, tone) {
+    var status = document.querySelector("[data-gth-pick-status]");
+    if (!status) return;
+    status.textContent = text;
+    status.classList.toggle("text-danger", tone === "danger");
+  }
+  document.addEventListener("click", function (evt) {
+    var btn = evt.target.closest && evt.target.closest("[data-gth-pick-return]");
+    if (!btn) return;
+    var token = btn.getAttribute("data-pick-for");
+    if (!channel) { pickStatus("This browser can't send the record back.", "danger"); return; }
+    var done = false;
+    function onAck(e) {
+      if (!e.data || e.data.type !== "picked" || e.data.token !== token) return;
+      done = true;
+      channel.removeEventListener("message", onAck);
+      pickStatus("Sent to the form. You can close this tab.");
+      window.close();
+    }
+    channel.addEventListener("message", onAck);
+    channel.postMessage({ type: "pick", token: token, value: btn.getAttribute("data-value"),
+                          label: btn.getAttribute("data-label") });
+    setTimeout(function () {
+      if (done) return;
+      channel.removeEventListener("message", onAck);
+      pickStatus("Couldn't find the form. Is its tab still open?", "danger");
+    }, 1000);
+  });
 })();

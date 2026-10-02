@@ -1,4 +1,5 @@
 {% from "table.html" import gth_data_table, gth_table_select_cell %}
+{% from "record_picker.html" import gth_record_pick_button %}
 {% call(r) gth_data_table(table, [
     {"label": "ID", "key": "id", "hidden": True},
     {"label": "Name", "sort_key": "name", "hideable": False},
@@ -15,7 +16,7 @@
 <tr data-record-id="{{ r.id }}">
   {{ gth_table_select_cell(r.id, r.name) }}
   <td class="text-secondary">#{{ r.id }}</td>
-  <td>{{ r.name }}</td>
+  <td>{{ r.name }}{% if pick_for %} {{ gth_record_pick_button(pick_for, r.id, r.name, "btn btn-sm btn-primary py-0 ms-2") }}{% endif %}</td>
   <td>{{ r.category }}</td>
   <td class="text-end">{{ r.stock }}</td>
   <td class="text-end">{{ r.price|money }}</td>

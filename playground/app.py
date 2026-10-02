@@ -921,13 +921,17 @@ async def tables_export(request: Request):
 async def tables(request: Request, mode: str = "pages", scroll: int = 0):
     if mode not in greentechhub_ui.table.MODES:
         mode = "pages"
-    fixed = {"mode": mode, **({"scroll": 1} if scroll else {})}
+    # pick_for: set when a record picker's "Open full page" opened this tab;
+    # kept in base_url so the table's own sort/filter/pager swaps keep it.
+    pick_for = request.query_params.get("pick_for", "")
+    fixed = {"mode": mode, **({"scroll": 1} if scroll else {}),
+             **({"pick_for": pick_for} if pick_for else {})}
     state = _records_state(request.query_params, user_settings=_preferences(request),
                            mode=mode, scroll=bool(scroll),
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
-               "category_options": CATEGORY_OPTIONS}
+               "category_options": CATEGORY_OPTIONS, "pick_for": pick_for}
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_records_table.html", context)
     return templates.TemplateResponse(request, "tables.html", context)

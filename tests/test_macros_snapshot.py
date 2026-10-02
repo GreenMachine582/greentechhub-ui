@@ -865,6 +865,46 @@ def test_record_picker_opens_at_modal_size_without_toggle():
     assert "data-gth-record-picker-close" in rendered
 
 
+def test_record_picker_full_page_link():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/p", full_page_url="/parts?view=all&x=1") }}"""
+    )
+    assert_snapshot(rendered, "record_picker_full_page")
+    assert 'href="/parts?view=all&amp;x=1" target="_blank"' in rendered
+    assert "data-gth-record-picker-full" in rendered
+
+
+def test_record_picker_without_full_page_url_has_no_link():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/p") }}"""
+    )
+    assert "data-gth-record-picker-full" not in rendered
+
+
+def test_record_pick_banner_and_button():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_pick_banner, gth_record_pick_button %}
+        {{ gth_record_pick_banner(token, "Part") }}
+        {{ gth_record_pick_button(token, 17, "Kilo <17>") }}""",
+        token="tok-1",
+    )
+    banner, button = rendered.split("</div>", 1)
+    assert_snapshot(banner + "</div>", "record_pick_banner")
+    assert_snapshot(button.strip(), "record_pick_button")
+    assert 'data-pick-for="tok-1" data-value="17" data-label="Kilo &lt;17&gt;"' in button
+    assert 'role="status" aria-live="polite" data-gth-pick-status' in banner
+
+
+def test_record_pick_banner_and_button_render_nothing_without_pick_for():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_pick_banner, gth_record_pick_button %}
+        {{ gth_record_pick_banner("") }}{{ gth_record_pick_button(none, 17, "Kilo") }}"""
+    )
+    assert rendered.strip() == ""
+
+
 _SIDEBAR_NAV = [
     {"label": "Home", "url": "/", "icon": "house"},
     {"label": "Data", "icon": "database", "children": [

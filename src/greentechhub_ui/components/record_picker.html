@@ -1,6 +1,6 @@
 {% from "skeleton.html" import gth_skeleton %}
 
-{% macro gth_record_picker(name, label, url, value=None, value_label=None, errors=None, placeholder="Select…", help_text=None, field_class="mb-3", panel_width="40rem", clearable=True, size="panel", expandable=True) %}
+{% macro gth_record_picker(name, label, url, value=None, value_label=None, errors=None, placeholder="Select…", help_text=None, field_class="mb-3", panel_width="40rem", clearable=True, size="panel", expandable=True, full_page_url=None) %}
 {# A field that opens a floating panel with a searchable, sortable, paged
    table for picking one record — for records too rich for a combobox row.
    Behaviour in static/js/record-picker.js (record_picker_js_url).
@@ -16,7 +16,13 @@
    Sizes: "panel" floats under the field; "modal" is a centred, modal-sized
    popover over a backdrop (dismissed by the backdrop, ✕ or Esc) for big
    tables. `size` is the one it opens at; `expandable` shows the
-   Expand/Shrink toggle in the panel header. Resizing keeps the content. #}
+   Expand/Shrink toggle in the panel header. Resizing keeps the content.
+   full_page_url: the third size — an "Open full page" link in the panel
+   header that opens the real list screen in a new tab, with
+   ?pick_for=<token> added by the JS. That screen shows
+   gth_record_pick_banner / gth_record_pick_button, and "Use this record"
+   sends the pick back to this field (BroadcastChannel, same origin), so
+   nothing typed in the form is lost. #}
 {% set has_value = value is not none and value != "" %}
 <div class="{{ field_class }} gth-form-field">
   <label class="form-label" for="gth-field-{{ name }}-trigger">{{ label }}</label>
@@ -42,6 +48,12 @@
       aria-labelledby="gth-field-{{ name }}-panel-title" style="--gth-picker-width: {{ panel_width|e }}" data-gth-record-picker-panel>
       <div class="card-header d-flex align-items-center gap-1 py-1 px-2 gth-record-picker-header">
         <span class="fw-semibold small me-auto" id="gth-field-{{ name }}-panel-title">{{ label }}</span>
+        {%- if full_page_url %}
+        <a class="btn btn-sm btn-link text-body gth-record-picker-full" href="{{ full_page_url|e }}" target="_blank"
+          data-gth-record-picker-full aria-label="Open full page" title="Open full page">
+          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </a>
+        {%- endif %}
         {% if expandable %}
         <button type="button" class="btn btn-sm btn-link text-body gth-record-picker-size" data-gth-record-picker-size
           aria-pressed="false" aria-label="Expand" title="Expand">
@@ -70,4 +82,27 @@
 <tr class="gth-record-picker-row {{ row_class }}" tabindex="-1" data-gth-pick data-value="{{ value|e }}" data-label="{{ label|e }}">
   {{- caller() -}}
 </tr>
+{% endmacro %}
+
+{% macro gth_record_pick_banner(pick_for, label="a form") %}
+{# For a list screen opened by a gth_record_picker's "Open full page" link:
+   pass request's ?pick_for= through. Renders nothing without it, so the
+   template can always include it. The status line reports the hand-off. #}
+{% if pick_for %}
+<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 gth-record-pick-banner" data-gth-pick-banner>
+  <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i>
+  <span>Choose a record for {{ label }} in your other tab: use <strong>Use this record</strong> on its row.</span>
+  <span class="ms-auto small fw-semibold" role="status" aria-live="polite" data-gth-pick-status></span>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro gth_record_pick_button(pick_for, value, label, button_class="btn btn-sm btn-primary") %}
+{# "Use this record" for one row of a list screen opened from a picker's
+   "Open full page": sends value/label back to the picker's tab. Renders
+   nothing without pick_for, so a row template can always include it. #}
+{% if pick_for %}
+<button type="button" class="{{ button_class }} gth-record-pick-button" data-gth-pick-return
+  data-pick-for="{{ pick_for|e }}" data-value="{{ value|e }}" data-label="{{ label|e }}">Use this record</button>
+{% endif %}
 {% endmacro %}
