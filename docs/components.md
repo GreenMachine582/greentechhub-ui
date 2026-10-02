@@ -335,7 +335,8 @@ gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js bui
 {# record_picker.html — behaviour in static/js/record-picker.js (record_picker_js_url) #}
 gth_record_picker(name, label, url, value=None, value_label=None, errors=None,
                   placeholder="Select…", help_text=None, field_class="mb-3",
-                  panel_width="40rem", clearable=True, size="panel", expandable=True)
+                  panel_width="40rem", clearable=True, size="panel", expandable=True,
+                  full_page_url=None)                 {# v0.13: see "Record picker: full page" #}
 gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells via {% call %} #}
 {# For records too rich for a combobox row. Clicking the field (or ↓ on it) opens
    a floating panel and loads `url` into it once. That endpoint returns
@@ -365,6 +366,38 @@ gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells v
    one. At modal size Tab wraps inside it. An open picker takes Esc first,
    wherever focus is. #}
 ```
+
+### Record picker: full page (v0.13)
+
+The third size: for a pick that needs the whole list screen (its filters, columns, bulk tools), the panel header can
+link to it. The list screen opens **in a new tab**, so nothing typed into the form is lost, and its "Use this record"
+buttons send the pick back.
+
+```jinja
+{# record_picker.html #}
+gth_record_picker(..., full_page_url=None)       {# "Open full page" (↗) in the panel header #}
+gth_record_pick_banner(pick_for, label="a form")  {# on the list screen: what's going on, plus a status line #}
+gth_record_pick_button(pick_for, value, label, button_class="btn btn-sm btn-primary")  {# "Use this record" #}
+```
+
+- `full_page_url` is the list screen's URL. When the panel is about to open, the JS adds `?pick_for=<token>`
+  (a random token per picker, other query params kept), so a middle-click carries it too. Opening it closes the panel.
+- The list screen reads `pick_for` from the query and passes it to the banner and to one button per row. Both render
+  nothing without it, so the same templates serve the normal list. Keep `pick_for` in the `TableState`'s `base_url`
+  so the table's own sort, filter and pager swaps keep the buttons:
+
+```python
+pick_for = request.query_params.get("pick_for", "")
+state = TableState.from_query(request.query_params, id="parts",
+                              base_url="/parts?" + urlencode({"pick_for": pick_for} if pick_for else {}), ...)
+```
+
+- "Use this record" posts `{value, label}` on a same-origin `BroadcastChannel`. The picker holding the token fills its
+  field (the same as picking a row: hidden `name` and `<name>_label`, and a `change` event) and acknowledges, and the
+  list tab closes itself. If the browser won't close it, the banner says it was sent. With no reply within a second
+  (the form tab was closed), it says the form couldn't be found and the button stays usable.
+- Without `BroadcastChannel` the link is hidden. Nothing leaves the origin, and there's no `return=` URL to redirect
+  through.
 
 ## Shipped signatures (v0.8)
 

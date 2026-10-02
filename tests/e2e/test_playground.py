@@ -1565,6 +1565,50 @@ def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playgroun
     expect(panel).to_be_hidden()
 
 
+def test_record_picker_full_page_picks_from_the_list_tab(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    full = panel.locator("[data-gth-record-picker-full]")
+    expect(full).to_have_attribute("href", re.compile(r"^/tables\?pick_for=[\w-]+$"))
+
+    with page.context.expect_page() as new_tab:
+        full.click()
+    expect(panel).to_be_hidden()
+    tab = new_tab.value
+    tab.wait_for_load_state()
+    expect(tab).to_have_url(re.compile(r"/tables\?pick_for="))
+    expect(tab.locator("[data-gth-pick-banner]")).to_contain_text("Choose a record for Part")
+
+    # The table's own swaps keep pick_for, so its rows keep their buttons.
+    _htmx_idle(tab)
+    tab.get_by_role("link", name="Page 2", exact=True).click()
+    expect(tab.locator(".gth-table-summary")).to_contain_text("11–20 of 120")
+    use = tab.locator("[data-gth-pick-return]")
+    expect(use).to_have_count(10)
+    label = use.first.get_attribute("data-label")
+    value = use.first.get_attribute("data-value")
+
+    with tab.expect_event("close", timeout=5000):
+        use.first.click()
+    expect(page.locator(PART_TRIGGER)).to_have_text(label)
+    expect(page.locator("#record-demo input[name=part]")).to_have_value(value)
+    expect(page.locator("#record-demo-result")).to_have_text(f"part={value} ({label})")
+
+
+def test_record_pick_without_a_form_tab_says_so(page, playground_url):
+    page.goto(f"{playground_url}/tables?pick_for=nobody")
+    page.locator("[data-gth-pick-return]").first.click()
+    expect(page.locator("[data-gth-pick-status]")).to_have_text(
+        "Couldn't find the form. Is its tab still open?")
+
+
+def test_tables_without_pick_for_has_no_pick_buttons(page, playground_url):
+    page.goto(f"{playground_url}/tables")
+    expect(page.locator("[data-gth-pick-banner]")).to_have_count(0)
+    expect(page.locator("[data-gth-pick-return]")).to_have_count(0)
+
+
 def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_url):
     _open_server_modal(page, playground_url)
     page.click("#gth-field-record-trigger")
