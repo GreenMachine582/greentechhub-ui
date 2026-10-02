@@ -1,0 +1,21 @@
+{% from "action_menu.html" import gth_action_menu %}
+{% for task in tasks %}
+<tr>
+  <td>{{ task.title }}</td>
+  <td><span class="badge text-bg-secondary">{{ task.status }}</span></td>
+  <td class="text-end text-nowrap">
+    {{ gth_action_menu([
+        {"label": "Edit", "icon": "pencil", "method": "get", "url": "/demo/modal",
+         "attrs": {"hx-target": "#gth-modal-host"}},
+        {"label": "Archive", "icon": "archive", "method": "post",
+         "url": "/demo/tasks/" ~ task.id ~ "/archive"},
+        {"divider": True},
+        {"label": "Open", "icon": "box-arrow-up-right", "url": "#table"},
+        {"label": "Duplicate", "icon": "copy", "url": "#", "disabled": True},
+        {"divider": True},
+        {"label": "Delete", "icon": "trash", "method": "delete", "url": "/demo/tasks/" ~ task.id,
+         "confirm": "Delete \"" ~ task.title ~ "\"?", "danger": True},
+      ], label=task.title, inline=inline|default(0)) }}
+  </td>
+</tr>
+{% endfor %}

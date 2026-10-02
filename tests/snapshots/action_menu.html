@@ -1,0 +1,18 @@
+
+        <div class="d-inline-flex align-items-center gap-1 gth-action-menu ">
+  <div class="dropdown">
+    <button type="button" class="btn btn-sm btn-link text-body gth-action-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+      data-bs-popper-config='{"strategy":"fixed"}' aria-label="Actions for BHP">
+      <i class="bi bi-three-dots" aria-hidden="true"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><button class="dropdown-item" type="button" hx-get="/t/1/edit" hx-target="#gth-modal-host"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Edit</button></li>
+      <li><button class="dropdown-item" type="button" hx-post="/t/1/archive" hx-swap="none"><i class="bi bi-archive me-2" aria-hidden="true"></i>Archive</button></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="/t/1?a=1&amp;b=2">Open</a></li>
+      <li><a class="dropdown-item disabled" aria-disabled="true" tabindex="-1"><i class="bi bi-copy me-2" aria-hidden="true"></i>Duplicate</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><button class="dropdown-item text-danger" type="button" hx-delete="/t/1" hx-swap="none" hx-confirm="Delete &#34;BHP &amp; co&#34;?"><i class="bi bi-trash me-2" aria-hidden="true"></i>Delete</button></li>
+    </ul>
+  </div>
+</div>

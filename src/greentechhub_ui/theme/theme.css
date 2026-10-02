@@ -468,6 +468,26 @@ th[aria-sort] .gth-table-sort .bi {
 .gth-col-hidden {
   display: none !important;
 }
+
+/* gth_action_menu (v0.13): compact row icon buttons and the "⋯" toggle,
+   tinted with the brand accent on hover; danger items stay red. */
+.gth-action-menu-button,
+.gth-action-menu-toggle {
+  padding: 0.125rem 0.375rem;
+  line-height: 1.25;
+  text-decoration: none;
+  border-radius: var(--bs-border-radius-sm);
+}
+.gth-action-menu-button:hover,
+.gth-action-menu-toggle:hover,
+.gth-action-menu-toggle[aria-expanded="true"] {
+  background-color: rgba(var(--gth-accent-rgb), 0.12);
+}
+.gth-action-menu .dropdown-item.text-danger:hover,
+.gth-action-menu .dropdown-item.text-danger:focus {
+  color: var(--bs-danger-text-emphasis) !important;
+  background-color: var(--bs-danger-bg-subtle);
+}
 .gth-table-compact {
   font-size: 0.875rem;
 }

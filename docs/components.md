@@ -29,6 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
+| `gth-action-menu` | Row actions as icon buttons and/or a "⋯" dropdown, `inline` choosing how many lead as icons (v0.13) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
@@ -398,6 +399,47 @@ state = TableState.from_query(request.query_params, id="parts",
   (the form tab was closed), it says the form couldn't be found and the button stays usable.
 - Without `BroadcastChannel` the link is hidden. Nothing leaves the origin, and there's no `return=` URL to redirect
   through.
+
+### Action menu (v0.13)
+
+Row actions (edit, archive, delete…) as icon buttons, a "⋯" dropdown, or both. `inline` is the knob, so a table
+can keep its icon buttons or fold them away without changing the item list.
+
+```jinja
+{# action_menu.html — Bootstrap's dropdown, no JS of its own #}
+gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn btn-sm btn-link text-body", align="end")
+```
+
+| Item key | Meaning |
+|---|---|
+| `label`, `url` | Required (except for a divider). A `javascript:` / `data:` / `vbscript:` url drops the item |
+| `method` | None: a link (`<a href=url>`). `get`/`post`/`put`/`patch`/`delete`: a button with `hx-<method>=url` and `hx-swap="none"`, unless `attrs` sets `hx-target`/`hx-swap` |
+| `icon` | Bootstrap icon name; inline buttons show only the icon (named "`label` `row label`") |
+| `confirm` | `hx-confirm` text (htmx items only) |
+| `danger`, `disabled` | Red text; a disabled button, or a link with no href and `aria-disabled` |
+| `attrs` | Extra attributes, e.g. `{"hx-target": "#gth-modal-host"}` to load an edit modal |
+| `divider` | `{"divider": True}`: a separator inside the menu (dropped when it would lead or trail) |
+
+- `inline`: how many leading actions show as icon buttons before the "⋯" (dividers don't count). `0` (default) puts
+  everything in the menu, `None` shows them all as buttons and no menu.
+- `label` is the row's name: the toggle is "Actions for `label`" and an icon button "Edit `label`".
+- htmx items follow the bulk-action contract: answer with `HX-Trigger` (a toast, plus the table's `refresh_event`)
+  rather than HTML. `greentechhub_fastapi.htmx.hx_response(toast(..., events=["recordsChanged"]))` does both.
+- The menu uses Popper's fixed strategy, so a `.table-responsive` or scroll-box table never clips it; keyboard
+  (Enter/↓/Esc) and click-away come from Bootstrap.
+
+```jinja
+<td class="text-end text-nowrap">
+  {{ gth_action_menu([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/stocks/" ~ s.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Archive", "icon": "archive", "method": "post", "url": "/stocks/" ~ s.id ~ "/archive"},
+      {"divider": True},
+      {"label": "Delete", "icon": "trash", "method": "delete", "url": "/stocks/" ~ s.id,
+       "confirm": "Delete " ~ s.code ~ "?", "danger": True},
+    ], label=s.code, inline=1) }}
+</td>
+```
 
 ## Shipped signatures (v0.8)
 

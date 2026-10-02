@@ -41,8 +41,6 @@ Notes, not items:
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
-- [ ] `gth_action_menu` — a row "⋯" dropdown for secondary actions (edit / archive / delete) instead of icon-button
-  pairs in table rows
 - [ ] `gth_description_list` — key/value details for record pages
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
 - [ ] `gth_progress` — meter/progress bar with an accessible value (sync progress, quotas)

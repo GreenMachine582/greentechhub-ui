@@ -1,6 +1,7 @@
 {% extends "page.html" %}
 {% from "card.html" import gth_card %}
 {% from "table.html" import gth_table %}
+{% from "segmented.html" import gth_segmented %}
 
 {% block page %}
 <section class="mb-5" id="table">
@@ -19,6 +20,26 @@
   {% call gth_table(headers=["Priority", "Title", "Status"], tbody_id="tasks-tbody") %}
   {% include "_tasks_tbody.html" %}
   {% endcall %}
+</section>
+
+<section class="mb-5" id="action-menu">
+  <h2 class="h4">gth-action-menu</h2>
+  <p class="text-secondary small">Row actions as icon buttons and/or a "&#8943;" menu. <code>inline</code> sets how
+    many lead as icons: Edit opens the server-rendered modal (<code>hx-target</code>), Archive and Delete post and
+    answer with a toast (<code>hx-swap="none"</code>), Delete asks first (<code>confirm</code>), Duplicate is
+    <code>disabled</code>. The box scrolls, and the last row's menu still opens in full.</p>
+  <form class="mb-2" hx-get="/demo/action-rows" hx-trigger="change" hx-target="#action-tasks-tbody">
+    {{ gth_segmented("inline", [
+        {"value": "0", "label": "Menu only (inline=0)"},
+        {"value": "2", "label": "Two icons (inline=2)"},
+        {"value": "all", "label": "All icons (inline=None)"},
+      ], value="0", label="Layout", field_class="mb-0") }}
+  </form>
+  <div class="gth-action-demo-scroll" style="max-height: 14rem; overflow-y: auto;">
+    {% call gth_table(headers=["Task", "Status", ""], tbody_id="action-tasks-tbody") %}
+    {% include "_action_rows.html" %}
+    {% endcall %}
+  </div>
 </section>
 
 <section class="mb-5" id="pagination">
