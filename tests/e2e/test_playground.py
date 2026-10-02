@@ -2406,3 +2406,45 @@ def test_progress_stripes_stop_under_reduced_motion(page, playground_url):
     page.evaluate("document.documentElement.setAttribute('data-gth-motion', 'reduce')")
     bar = page.locator("#progress .progress-bar-animated").first
     assert bar.evaluate("el => getComputedStyle(el).animationName") == "none"
+
+
+INTRO_BANNER = "[data-gth-banner='playground-intro']"
+
+
+def test_site_banner_dismissal_is_remembered_per_message(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    intro = page.locator(INTRO_BANNER)
+    expect(intro).to_be_visible()
+    assert intro.evaluate("el => el.compareDocumentPosition(document.querySelector('nav')) & 4")
+    intro.get_by_role("button", name="Dismiss").click()
+    expect(intro).to_have_count(0)
+
+    # Reload: hidden from first paint, not removed after a flash.
+    page.goto(f"{playground_url}/feedback", wait_until="domcontentloaded")
+    assert page.locator(INTRO_BANNER).evaluate("el => getComputedStyle(el).display") == "none"
+
+    # An edited message shows again.
+    page.goto(f"{playground_url}/feedback?banner_v=2")
+    expect(page.locator(INTRO_BANNER)).to_be_visible()
+    expect(page.locator(INTRO_BANNER)).to_contain_text("message changed")
+
+
+def test_banner_without_id_only_closes_for_the_page_view(page, playground_url):
+    page.goto(f"{playground_url}/feedback#alert-banner")
+    warn = page.locator("#banner-tones .gth-alert-banner", has_text="Degraded")
+    warn.get_by_role("button", name="Dismiss").click()
+    expect(warn).to_have_count(0)
+    page.reload()
+    expect(page.locator("#banner-tones .gth-alert-banner", has_text="Degraded")).to_be_visible()
+    # Non-dismissible ones have no close button; the bad tone announces as an alert.
+    bad = page.locator("#banner-tones .gth-alert-banner", has_text="Maintenance tonight")
+    expect(bad).to_have_attribute("role", "alert")
+    expect(bad.get_by_role("button", name="Dismiss")).to_have_count(0)
+
+
+def test_banner_dismiss_from_the_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/feedback#alert-banner")
+    good = page.locator("#banner-tones .gth-alert-banner", has_text="All systems normal")
+    good.get_by_role("button", name="Dismiss").focus()
+    page.keyboard.press("Enter")
+    expect(good).to_have_count(0)

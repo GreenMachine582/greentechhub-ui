@@ -29,6 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
+| `gth-alert-banner` | Site-wide maintenance/degraded-service strip above the navbar (`site_banners`), dismissal remembered per message (v0.13) |
 | `gth-progress` | Progress bar (task) or meter (level) with an accessible value, auto warn/bad tones for meters, and self-polling live progress (v0.13) |
 | `gth-description-list` | Key/value details for record pages: escaped values or trusted markup, "—" for empty, 1–4 columns that stack on phones (v0.13) |
 | `gth-action-menu` | Row actions as icon buttons and/or a "⋯" dropdown, `inline` choosing how many lead as icons (v0.13) |
@@ -506,6 +507,38 @@ async def sync_progress(request: Request):
         "poll_url": "/sync/progress" if done < total else None,  #   poll_url=poll_url, value_text=...)
     }, headers={} if done < total else {"HX-Trigger": toast("Sync complete")})
 ```
+
+### Alert banner (v0.13)
+
+Site-wide strips for maintenance or degraded service, above the navbar on every page.
+
+```jinja
+{# alert_banner.html — dismissal in static/js/alert-banner.js (alert_banner_js_url) #}
+gth_alert_banner(message, tone="info", id=None, dismissible=True, icon=None, action=None, html=False)
+```
+
+- `tone`: `info|warn|bad|good|neutral`, each with a default icon (or `icon=`). `bad`/`warn` announce as
+  `role="alert"`, the rest as `role="status"`.
+- `message` is text and escaped; `html=True` is for trusted, server-built markup only (as with `toast`).
+  `action={"label", "url"}` adds a link; only http(s) and relative URLs are kept.
+- **The slot.** `app.html` renders the optional `site_banners` context key (a list of these kwargs) inside its
+  `{% block banner %}`, so a page can still override the block. Nothing renders without it.
+- **Dismissing** needs `alert_banner_js_url` (`shell_globals()` sets it); without it there's no close button.
+  A banner with an `id` remembers the dismissal in `localStorage` against a hash of its message: it stays hidden on
+  every page, from before first paint (a small script in `app.html`'s head), and shows again once the message
+  changes. Without an `id` it only closes for that page view.
+
+Feeding it from greentechhub-core's settings, e.g. an APP setting `site.banner` an admin edits on `/settings`:
+
+```python
+from greentechhub_fastapi.settings import settings_context
+
+def banners_context(request):                    # another Jinja2Templates context processor
+    text = settings_context(request).get("user_settings", {}).get("site.banner")
+    return {"site_banners": [{"message": text, "tone": "warn", "id": "site"}]} if text else {}
+```
+
+Editing the text brings the banner back for everyone who dismissed the old one.
 
 ## Shipped signatures (v0.8)
 

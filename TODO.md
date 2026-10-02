@@ -23,7 +23,6 @@
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
-- [ ] `gth_alert_banner` — dismissible site-wide banner (maintenance, degraded service) with an `app.html` slot
 - [ ] `gth_embed_card` — iframe card with loading and error states — PyFinBot's Grafana slot
 - [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
   response)

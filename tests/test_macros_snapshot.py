@@ -1633,3 +1633,52 @@ def test_progress_clamps_and_hides_text():
     assert 'aria-label="Upload"' in hidden and 'aria-valuetext="30%"' in hidden
     assert 'aria-label="Progress"' in _progress(30)
     assert "gth-progress gth-progress-sm" in _progress(30, size="sm")
+
+
+# alert banner
+
+
+def _banner(*args, js=True, **kw):
+    env = _env()
+    if js:
+        env.globals["alert_banner_js_url"] = "/a/js/alert-banner.js"
+    return env.from_string(
+        """{% from "alert_banner.html" import gth_alert_banner %}
+        {{ gth_alert_banner(*args, **kw) }}"""
+    ).render(args=args, kw=kw)
+
+
+def test_alert_banner():
+    rendered = _banner("Email sync is delayed.", id="sync",
+                       action={"label": "Status", "url": "/status"})
+    assert_snapshot(rendered, "alert_banner")
+    assert 'class="alert alert-info' in rendered and 'role="status"' in rendered
+    assert 'data-gth-banner="sync"' in rendered and "bi-info-circle" in rendered
+    assert '<a class="alert-link text-nowrap" href="/status">Status</a>' in rendered
+    assert 'data-gth-banner-dismiss aria-label="Dismiss"' in rendered
+
+
+def test_alert_banner_bad_static():
+    rendered = _banner("Down for maintenance 22:00–23:00.", tone="bad", dismissible=False,
+                       icon="tools")
+    assert_snapshot(rendered, "alert_banner_bad_static")
+    assert "alert-danger" in rendered and 'role="alert"' in rendered and "bi-tools" in rendered
+    assert "data-gth-banner-dismiss" not in rendered and "data-gth-banner=" not in rendered
+
+
+def test_alert_banner_tones_escaping_and_actions():
+    warn, good = _banner("x", tone="warn"), _banner("x", tone="good")
+    assert "alert-warning" in warn and 'role="alert"' in warn
+    assert "alert-success" in good and 'role="status"' in good
+    assert "alert-info" in _banner("x", tone="bogus")
+    assert "&lt;b&gt;" in _banner("<b>hi</b>")
+    assert "<b>hi</b>" in _banner("<b>hi</b>", html=True)
+    for bad in ("javascript:alert(1)", " JavaScript:x", "data:text/html,x"):
+        assert "alert-link" not in _banner("x", action={"label": "Go", "url": bad}), bad
+    for good in ("/ok", "https://status.example.com", "status"):
+        assert 'class="alert-link' in _banner("x", action={"label": "Go", "url": good}), good
+
+
+def test_alert_banner_needs_its_script_to_be_dismissible():
+    assert "data-gth-banner-dismiss" not in _banner("x", js=False)
+    assert "data-gth-banner-dismiss" in _banner("x")

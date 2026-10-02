@@ -304,3 +304,27 @@ def test_navbar_layout_has_no_sidebar_script():
         **_context(user_settings={"ui.sidebar_default": "rail"}))
     assert "gth-sidebar-mode" not in html
 
+
+
+def test_app_shell_site_banners():
+    html = _env().get_template("app.html").render(**_context())
+    assert "gth-alert-banner" not in html and "gth-banner:" not in html  # opt-in
+
+    banners = [{"message": "Maintenance tonight 22:00", "tone": "warn", "id": "maint"},
+               {"message": "Hello <b>there</b>", "dismissible": False}]
+    html = _env().get_template("app.html").render(**_context(
+        site_banners=banners, alert_banner_js_url="/a/js/alert-banner.js"))
+    assert html.index('data-gth-banner="maint"') < html.index("<nav")  # above the navbar
+    assert "Hello &lt;b&gt;there&lt;/b&gt;" in html
+    assert '<script src="/a/js/alert-banner.js"></script>' in html
+    head = html.split("</head>")[0]
+    assert 'key.indexOf("gth-banner:") === 0' in head  # the pre-paint hide
+    assert html.count("data-gth-banner-dismiss") == 1
+
+
+def test_app_shell_banner_block_still_overridable():
+    env = _env()
+    page = env.from_string(
+        '{% extends "app.html" %}{% block banner %}<p id="own">x</p>{% endblock %}')
+    html = page.render(**_context(site_banners=[{"message": "site"}]))
+    assert 'id="own"' in html and "gth-alert-banner" not in html
