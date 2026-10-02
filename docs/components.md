@@ -29,6 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
+| `gth-description-list` | Key/value details for record pages: escaped values or trusted markup, "—" for empty, 1–4 columns that stack on phones (v0.13) |
 | `gth-action-menu` | Row actions as icon buttons and/or a "⋯" dropdown, `inline` choosing how many lead as icons (v0.13) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
@@ -439,6 +440,35 @@ gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn bt
        "confirm": "Delete " ~ s.code ~ "?", "danger": True},
     ], label=s.code, inline=1) }}
 </td>
+```
+
+### Description list (v0.13)
+
+Key/value details for a record page, e.g. inside a `gth_card`.
+
+```jinja
+{# description_list.html #}
+gth_description_list(items, columns=1, label_width="10rem", empty="—", dl_class="")
+```
+
+- `items`: a mapping (label → value), `(label, value)` pairs, or mappings `{"label", "value", "help"?, "mono"?}`,
+  rendered in order. `help` adds a small line under the value; `mono` sets `font-monospace` (ids, SKUs).
+- Values are text and are escaped. Another macro's output, or a `{% set x %}…{% endset %}` capture, is `Markup` and
+  passes through (the caller vouches for it, as with `gth_card`'s title), so a status can be a `gth_badge`.
+- `None` and `""` show `empty` in secondary text; `0` and `False` are values.
+- A `<dl>` on a CSS grid: `columns` label/value pairs per row from 768px (1–4), one pair per row below that, and the
+  label stacked above its value under 576px. `label_width` caps the label column.
+
+```jinja
+{% set status %}{{ gth_badge(part.status, "info") }}{% endset %}
+{% call gth_card(title=part.name) %}
+  {{ gth_description_list([
+      {"label": "SKU", "value": part.sku, "mono": True},
+      {"label": "Status", "value": status},
+      {"label": "Price", "value": part.price|money, "help": "Excludes GST."},
+      {"label": "Supplier", "value": part.supplier},
+    ], columns=2) }}
+{% endcall %}
 ```
 
 ## Shipped signatures (v0.8)

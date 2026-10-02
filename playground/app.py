@@ -259,6 +259,7 @@ PLAYGROUND_NAV = [
     {"label": "Data", "url": "/data", "icon": "table", "children": [
         {"label": "Table", "url": "/data#table"},
         {"label": "Action menu", "url": "/data#action-menu"},
+        {"label": "Description list", "url": "/data#description-list"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},

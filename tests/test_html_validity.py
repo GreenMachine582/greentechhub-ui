@@ -78,6 +78,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "action_menu_no_label",
         "action_menu_inline_2",
         "action_menu_all_inline",
+        "description_list",
+        "description_list_pairs_two_columns",
         "sidebar",
         "navbar_sidebar_mode",
         "navbar_dropdown",
