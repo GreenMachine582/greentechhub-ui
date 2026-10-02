@@ -260,6 +260,7 @@ PLAYGROUND_NAV = [
         {"label": "Table", "url": "/data#table"},
         {"label": "Action menu", "url": "/data#action-menu"},
         {"label": "Description list", "url": "/data#description-list"},
+        {"label": "Progress", "url": "/data#progress"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
@@ -583,6 +584,32 @@ async def data_page(request: Request):
     return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
 
 
+# gth_progress live demo: a fake sync that advances 25% per poll.
+PROGRESS_DEMO = {"value": 0}
+
+
+def _progress_live(request: Request, **kwargs) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_progress_live.html",
+                                      {"sync_value": PROGRESS_DEMO["value"]}, **kwargs)
+
+
+@app.post("/demo/progress/start", response_class=HTMLResponse)
+async def progress_start(request: Request):
+    """Restart the fake sync: the returned bar carries poll_url, so it polls."""
+    PROGRESS_DEMO["value"] = 0
+    return _progress_live(request)
+
+
+@app.get("/demo/progress", response_class=HTMLResponse)
+async def progress_poll(request: Request):
+    """One poll: advance, and at 100% return the bar without poll_url (polling
+    stops there) plus a toast."""
+    PROGRESS_DEMO["value"] = min(PROGRESS_DEMO["value"] + 25, 100)
+    if PROGRESS_DEMO["value"] < 100:
+        return _progress_live(request)
+    return _progress_live(request, headers={"HX-Trigger": greentechhub_ui.toast("Sync complete")})
+
+
 @app.get("/demo/action-rows", response_class=HTMLResponse)
 async def action_rows(request: Request, inline: str = "0"):
     """The gth_action_menu demo's rows at another `inline` (0, 2 or all)."""
@@ -759,6 +786,7 @@ async def demo_reset():
     health count) and refresh everything showing them."""
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
+    PROGRESS_DEMO["value"] = 0
     del RECORDS[_RECORDS_INITIAL:]
     for r, stock in zip(RECORDS, _RECORDS_STOCK, strict=True):
         r["stock"] = stock

@@ -1567,3 +1567,69 @@ def test_description_list_item_forms_agree():
 def test_description_list_clamps_columns():
     assert "--gth-dl-cols: 4;" in _dl({"A": 1}, columns=9)
     assert "--gth-dl-cols: 1;" in _dl({"A": 1}, columns=0)
+
+
+# progress
+
+
+def _progress(*args, **kw):
+    return _render(
+        """{% from "progress.html" import gth_progress %}
+        {{ gth_progress(*args, **kw) }}""",
+        args=args, kw=kw,
+    )
+
+
+def test_progress():
+    rendered = _progress(42, label="Syncing <emails>")
+    assert_snapshot(rendered, "progress")
+    assert 'role="progressbar" aria-label="Syncing &lt;emails&gt;"' in rendered
+    assert 'aria-valuemax="100" aria-valuenow="42" aria-valuetext="42%"' in rendered
+    assert 'aria-valuemin="0"' in rendered
+    assert 'style="width: 42%"' in rendered and ">42%</span>" in rendered
+
+
+def test_progress_indeterminate():
+    rendered = _progress(None, label="Sync")
+    assert_snapshot(rendered, "progress_indeterminate")
+    assert "aria-valuenow" not in rendered and 'aria-valuetext="Working…"' in rendered
+    assert "progress-bar-striped progress-bar-animated" in rendered and "width: 100%" in rendered
+
+
+def test_progress_meter_bad():
+    rendered = _progress(7.6, max=8, label="Storage", kind="meter", warn_at=0.75, bad_at=0.9,
+                         value_text="7.6 of 8 GB")
+    assert_snapshot(rendered, "progress_meter_bad")
+    assert 'role="meter"' in rendered and "bg-danger" in rendered
+    assert 'aria-valuemax="8" aria-valuenow="7.6" aria-valuetext="7.6 of 8 GB"' in rendered
+    assert "width: 95%" in rendered
+
+
+def test_progress_polling():
+    rendered = _progress(40, label="Sync", id="sync", poll_url="/p?a=1&b=2", striped=True)
+    assert_snapshot(rendered, "progress_polling")
+    assert 'id="sync" hx-get="/p?a=1&amp;b=2" hx-trigger="every 2s" hx-swap="outerHTML"' in rendered
+    assert "progress-bar-animated" in rendered
+
+
+def test_progress_meter_tones_and_overrides():
+    def bar(value, **kw):
+        return _progress(value, kind="meter", warn_at=0.75, bad_at=0.9, **kw)
+
+    assert "bg-warning" not in bar(50) and "bg-danger" not in bar(50)
+    assert "bg-warning" in bar(80)
+    assert "bg-danger" in bar(95)
+    assert "bg-info" in bar(95, tone="info")  # an explicit tone wins
+    assert "bg-success" in _progress(10, tone="good")  # progress takes a tone too
+    # A meter is never indeterminate: None reads as 0.
+    assert 'role="meter"' in bar(None) and 'aria-valuenow="0"' in bar(None)
+
+
+def test_progress_clamps_and_hides_text():
+    assert "width: 0%" in _progress(-5) and 'aria-valuenow="0"' in _progress(-5)
+    assert "width: 100%" in _progress(150) and 'aria-valuenow="100"' in _progress(150)
+    hidden = _progress(30, label="Upload", show_value=False)
+    assert "gth-progress-header" not in hidden
+    assert 'aria-label="Upload"' in hidden and 'aria-valuetext="30%"' in hidden
+    assert 'aria-label="Progress"' in _progress(30)
+    assert "gth-progress gth-progress-sm" in _progress(30, size="sm")

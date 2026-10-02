@@ -4,6 +4,7 @@
 {% from "segmented.html" import gth_segmented %}
 {% from "badge.html" import gth_badge %}
 {% from "description_list.html" import gth_description_list %}
+{% from "progress.html" import gth_progress %}
 
 {% block page %}
 <section class="mb-5" id="table">
@@ -70,6 +71,39 @@
       <div id="description-list-wide">{{ gth_description_list(details, columns=2, label_width="6rem") }}</div>
       {% endcall %}
     </div>
+  </div>
+</section>
+
+<section class="mb-5" id="progress">
+  <h2 class="h4">gth-progress</h2>
+  <p class="text-secondary small"><code>kind="progress"</code> for a task (role progressbar),
+    <code>kind="meter"</code> for a level (role meter) whose <code>warn_at</code>/<code>bad_at</code> pick the tone.
+    The value text always says the number, so colour is never the only cue. <code>value=None</code> is
+    indeterminate. A live bar polls <code>poll_url</code> and stops when the response leaves it out.</p>
+  <div class="row g-4">
+    <div class="col-md-6">
+      <h3 class="h6 text-secondary">Progress</h3>
+      {{ gth_progress(0, label="Import queued") }}
+      {{ gth_progress(42, label="Uploading statements", progress_class="mt-3") }}
+      {{ gth_progress(100, label="Backup", tone="good", value_text="Done", progress_class="mt-3") }}
+      {{ gth_progress(None, label="Contacting the mail server", progress_class="mt-3") }}
+      {{ gth_progress(65, label="Slim (size=\"sm\")", size="sm", progress_class="mt-3") }}
+    </div>
+    <div class="col-md-6">
+      <h3 class="h6 text-secondary">Meters (warn_at=0.75, bad_at=0.9)</h3>
+      {{ gth_progress(4, max=8, label="Storage", kind="meter", warn_at=0.75, bad_at=0.9,
+          value_text="4 of 8 GB") }}
+      {{ gth_progress(6.4, max=8, label="Storage", kind="meter", warn_at=0.75, bad_at=0.9,
+          value_text="6.4 of 8 GB", progress_class="mt-3") }}
+      {{ gth_progress(7.6, max=8, label="Storage", kind="meter", warn_at=0.75, bad_at=0.9,
+          value_text="7.6 of 8 GB", progress_class="mt-3") }}
+    </div>
+  </div>
+  <div class="mt-4" id="progress-demo">
+    <h3 class="h6 text-secondary">Live (poll_url)</h3>
+    <button type="button" class="btn btn-sm btn-outline-primary mb-2" hx-post="/demo/progress/start"
+      hx-target="#progress-live" hx-swap="outerHTML">Start sync</button>
+    {% set sync_value = 0 %}{% include "_progress_live.html" %}
   </div>
 </section>
 
