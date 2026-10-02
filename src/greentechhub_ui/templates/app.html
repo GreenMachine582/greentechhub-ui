@@ -48,6 +48,28 @@
     })();
   </script>
   {%- endif %}
+  {%- if alert_banner_js_url|default(none) %}
+  <script>
+    // gth_alert_banner: hide banners this browser dismissed before first
+    // paint (alert-banner.js reveals any whose message has since changed).
+    (function () {
+      var rules = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var key = localStorage.key(i);
+          if (key && key.indexOf("gth-banner:") === 0 && window.CSS && CSS.escape) {
+            rules.push('.gth-alert-banner[data-gth-banner="' + CSS.escape(key.slice(11)) +
+              '"]:not([data-gth-banner-current])');
+          }
+        }
+      } catch (e) {}
+      if (!rules.length) return;
+      var style = document.createElement("style");
+      style.textContent = rules.join(",") + "{display:none!important}";
+      document.head.appendChild(style);
+    })();
+  </script>
+  {%- endif %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ brand.service_name or brand.name }} {% block title %}{% endblock %}</title>
@@ -78,7 +100,14 @@
       Without `granted` it keeps the old behaviour; the navbar, sidebar and
       command palette below all use the filtered list. #}
   {%- set nav_items = nav_visible(nav_items, current_user|default(none), granted|default(none)) if nav_visible is defined else nav_items %}
-  {% block banner %}{% endblock %}
+  {% block banner %}
+  {%- if site_banners|default(none) %}
+  {% from "alert_banner.html" import gth_alert_banner with context %}
+  {%- for b in site_banners %}
+  {{ gth_alert_banner(**b) }}
+  {%- endfor %}
+  {%- endif %}
+  {% endblock %}
 
   {% from "navbar.html" import gth_navbar %}
   {%- if layout|default("navbar") == "sidebar" %}
@@ -154,6 +183,7 @@
   {% if table_select_js_url|default(none) %}<script src="{{ table_select_js_url }}"></script>{% endif %}
   {% if table_view_js_url|default(none) %}<script src="{{ table_view_js_url }}"></script>{% endif %}
   {% if char_counter_js_url|default(none) %}<script src="{{ char_counter_js_url }}"></script>{% endif %}
+  {% if alert_banner_js_url|default(none) %}<script src="{{ alert_banner_js_url }}"></script>{% endif %}
   {%- if tree_js_url|default(none) %}
   <script src="{{ tree_js_url }}"></script>
   {%- endif %}

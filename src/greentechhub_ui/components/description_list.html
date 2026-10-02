@@ -1,0 +1,32 @@
+{% macro gth_description_list(items, columns=1, label_width="10rem", empty="—", dl_class="") %}
+{#- Key/value details for a record page: a <dl> laid out as a label/value
+    grid, `columns` pairs wide from 768px (1–4), stacked under 576px.
+    items: a mapping (label → value), (label, value) pairs, or mappings
+      {"label", "value", "help"?, "mono"?}, in order.
+    Values are text (escaped). Pre-rendered markup — another macro's output
+    or a {% set %}…{% endset %} capture, e.g. a gth_badge — is Markup and
+    passes through: the caller vouches for it, as with gth_card's title.
+    None or "" shows `empty`; 0 and False are values. help: a small line
+    under the value. mono: font-monospace (ids, SKUs). -#}
+{%- set cols = [[columns|int, 1]|max, 4]|min -%}
+{%- set rows = [] -%}
+{%- if items is mapping -%}
+{%- for label, value in items.items() %}{% set _ = rows.append({"label": label, "value": value}) %}{% endfor -%}
+{%- else -%}
+{%- for it in items -%}
+{%- if it is mapping %}{% set _ = rows.append(it) %}
+{%- else %}{% set _ = rows.append({"label": it[0], "value": it[1]}) %}{% endif -%}
+{%- endfor -%}
+{%- endif %}
+<dl class="gth-dl {{ dl_class }}" style="--gth-dl-cols: {{ cols }}; --gth-dl-label: {{ label_width|e }}">
+  {%- for row in rows %}
+  {%- set value = row.value %}
+  <dt class="gth-dl-term">{{ row.label|e }}</dt>
+  <dd class="gth-dl-detail{% if row.mono %} font-monospace{% endif %}">
+    {%- if value is none or value == "" %}<span class="text-secondary">{{ empty|e }}</span>
+    {%- else %}{{ value|e }}{% endif %}
+    {%- if row.help %}<div class="form-text mt-0">{{ row.help|e }}</div>{% endif -%}
+  </dd>
+  {%- endfor %}
+</dl>
+{% endmacro %}

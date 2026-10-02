@@ -29,6 +29,10 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
+| `gth-alert-banner` | Site-wide maintenance/degraded-service strip above the navbar (`site_banners`), dismissal remembered per message (v0.13) |
+| `gth-progress` | Progress bar (task) or meter (level) with an accessible value, auto warn/bad tones for meters, and self-polling live progress (v0.13) |
+| `gth-description-list` | Key/value details for record pages: escaped values or trusted markup, "—" for empty, 1–4 columns that stack on phones (v0.13) |
+| `gth-action-menu` | Row actions as icon buttons and/or a "⋯" dropdown, `inline` choosing how many lead as icons (v0.13) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
 | `gth-date-range` | From/To date inputs plus Today / This month / This FY / Last FY preset chips (v0.11) |
 | `gth-file-drop` | Drop zone over a real file input: accept/size hint, per-file errors, htmx upload progress (v0.11) |
@@ -335,7 +339,8 @@ gth_multiselect_chip(name, value, label)    {# one picked value; combobox.js bui
 {# record_picker.html — behaviour in static/js/record-picker.js (record_picker_js_url) #}
 gth_record_picker(name, label, url, value=None, value_label=None, errors=None,
                   placeholder="Select…", help_text=None, field_class="mb-3",
-                  panel_width="40rem", clearable=True, size="panel", expandable=True)
+                  panel_width="40rem", clearable=True, size="panel", expandable=True,
+                  full_page_url=None)                 {# v0.13: see "Record picker: full page" #}
 gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells via {% call %} #}
 {# For records too rich for a combobox row. Clicking the field (or ↓ on it) opens
    a floating panel and loads `url` into it once. That endpoint returns
@@ -365,6 +370,175 @@ gth_record_picker_row(value, label, row_class="")    {# a pickable <tr>, cells v
    one. At modal size Tab wraps inside it. An open picker takes Esc first,
    wherever focus is. #}
 ```
+
+### Record picker: full page (v0.13)
+
+The third size: for a pick that needs the whole list screen (its filters, columns, bulk tools), the panel header can
+link to it. The list screen opens **in a new tab**, so nothing typed into the form is lost, and its "Use this record"
+buttons send the pick back.
+
+```jinja
+{# record_picker.html #}
+gth_record_picker(..., full_page_url=None)       {# "Open full page" (↗) in the panel header #}
+gth_record_pick_banner(pick_for, label="a form")  {# on the list screen: what's going on, plus a status line #}
+gth_record_pick_button(pick_for, value, label, button_class="btn btn-sm btn-primary")  {# "Use this record" #}
+```
+
+- `full_page_url` is the list screen's URL. When the panel is about to open, the JS adds `?pick_for=<token>`
+  (a random token per picker, other query params kept), so a middle-click carries it too. Opening it closes the panel.
+- The list screen reads `pick_for` from the query and passes it to the banner and to one button per row. Both render
+  nothing without it, so the same templates serve the normal list. Keep `pick_for` in the `TableState`'s `base_url`
+  so the table's own sort, filter and pager swaps keep the buttons:
+
+```python
+pick_for = request.query_params.get("pick_for", "")
+state = TableState.from_query(request.query_params, id="parts",
+                              base_url="/parts?" + urlencode({"pick_for": pick_for} if pick_for else {}), ...)
+```
+
+- "Use this record" posts `{value, label}` on a same-origin `BroadcastChannel`. The picker holding the token fills its
+  field (the same as picking a row: hidden `name` and `<name>_label`, and a `change` event) and acknowledges, and the
+  list tab closes itself. If the browser won't close it, the banner says it was sent. With no reply within a second
+  (the form tab was closed), it says the form couldn't be found and the button stays usable.
+- Without `BroadcastChannel` the link is hidden. Nothing leaves the origin, and there's no `return=` URL to redirect
+  through.
+
+### Action menu (v0.13)
+
+Row actions (edit, archive, delete…) as icon buttons, a "⋯" dropdown, or both. `inline` is the knob, so a table
+can keep its icon buttons or fold them away without changing the item list.
+
+```jinja
+{# action_menu.html — Bootstrap's dropdown, no JS of its own #}
+gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn btn-sm btn-link text-body", align="end")
+```
+
+| Item key | Meaning |
+|---|---|
+| `label`, `url` | Required (except for a divider). A `javascript:` / `data:` / `vbscript:` url drops the item |
+| `method` | None: a link (`<a href=url>`). `get`/`post`/`put`/`patch`/`delete`: a button with `hx-<method>=url` and `hx-swap="none"`, unless `attrs` sets `hx-target`/`hx-swap` |
+| `icon` | Bootstrap icon name; inline buttons show only the icon (named "`label` `row label`") |
+| `confirm` | `hx-confirm` text (htmx items only) |
+| `danger`, `disabled` | Red text; a disabled button, or a link with no href and `aria-disabled` |
+| `attrs` | Extra attributes, e.g. `{"hx-target": "#gth-modal-host"}` to load an edit modal |
+| `divider` | `{"divider": True}`: a separator inside the menu (dropped when it would lead or trail) |
+
+- `inline`: how many leading actions show as icon buttons before the "⋯" (dividers don't count). `0` (default) puts
+  everything in the menu, `None` shows them all as buttons and no menu.
+- `label` is the row's name: the toggle is "Actions for `label`" and an icon button "Edit `label`".
+- htmx items follow the bulk-action contract: answer with `HX-Trigger` (a toast, plus the table's `refresh_event`)
+  rather than HTML. `greentechhub_fastapi.htmx.hx_response(toast(..., events=["recordsChanged"]))` does both.
+- The menu uses Popper's fixed strategy, so a `.table-responsive` or scroll-box table never clips it; keyboard
+  (Enter/↓/Esc) and click-away come from Bootstrap.
+
+```jinja
+<td class="text-end text-nowrap">
+  {{ gth_action_menu([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/stocks/" ~ s.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Archive", "icon": "archive", "method": "post", "url": "/stocks/" ~ s.id ~ "/archive"},
+      {"divider": True},
+      {"label": "Delete", "icon": "trash", "method": "delete", "url": "/stocks/" ~ s.id,
+       "confirm": "Delete " ~ s.code ~ "?", "danger": True},
+    ], label=s.code, inline=1) }}
+</td>
+```
+
+### Description list (v0.13)
+
+Key/value details for a record page, e.g. inside a `gth_card`.
+
+```jinja
+{# description_list.html #}
+gth_description_list(items, columns=1, label_width="10rem", empty="—", dl_class="")
+```
+
+- `items`: a mapping (label → value), `(label, value)` pairs, or mappings `{"label", "value", "help"?, "mono"?}`,
+  rendered in order. `help` adds a small line under the value; `mono` sets `font-monospace` (ids, SKUs).
+- Values are text and are escaped. Another macro's output, or a `{% set x %}…{% endset %}` capture, is `Markup` and
+  passes through (the caller vouches for it, as with `gth_card`'s title), so a status can be a `gth_badge`.
+- `None` and `""` show `empty` in secondary text; `0` and `False` are values.
+- A `<dl>` on a CSS grid: `columns` label/value pairs per row from 768px (1–4), one pair per row below that, and the
+  label stacked above its value under 576px. `label_width` caps the label column.
+
+```jinja
+{% set status %}{{ gth_badge(part.status, "info") }}{% endset %}
+{% call gth_card(title=part.name) %}
+  {{ gth_description_list([
+      {"label": "SKU", "value": part.sku, "mono": True},
+      {"label": "Status", "value": status},
+      {"label": "Price", "value": part.price|money, "help": "Excludes GST."},
+      {"label": "Supplier", "value": part.supplier},
+    ], columns=2) }}
+{% endcall %}
+```
+
+### Progress (v0.13)
+
+A progress bar for a task, or a meter for a level, on Bootstrap's `.progress` with the brand accent.
+
+```jinja
+{# progress.html #}
+gth_progress(value, max=100, label=None, kind="progress", tone=None, show_value=True, value_text=None,
+             size=None, striped=False, warn_at=None, bad_at=None, poll_url=None, poll_every="2s",
+             id=None, progress_class="")
+```
+
+- `kind="progress"` (a sync, an upload) is `role="progressbar"`; `kind="meter"` (a quota, storage) is
+  `role="meter"`. Both carry `aria-valuenow`/`min`/`max`, `aria-valuetext` and `aria-label` (`label`, else
+  "Progress"). `value` is clamped to 0–`max`.
+- The header shows `label` and the value text (`value_text`, else "42%"); `show_value=False` hides it and keeps the
+  aria. `value=None` on a progress bar is indeterminate: a full animated striped bar, no `aria-valuenow`, "Working…".
+- `tone`: `good|bad|warn|info|neutral|brand` (default brand). A meter given `warn_at`/`bad_at` (fractions of `max`)
+  and no `tone` turns warn/bad by itself. The value text always says the number, so colour is never the only cue.
+- `size="sm"` is a slim bar; `striped` adds stripes (animated while polling). Under `ui.motion="reduce"` (or the OS's
+  reduced motion) the stripes stand still.
+
+**Live progress.** Give the bar an `id` and a `poll_url`: it re-fetches itself every `poll_every` (`hx-get`,
+`outerHTML`). The endpoint returns a fresh bar, still with `poll_url` while running and without it once done
+(or answers 286), so polling stops:
+
+```python
+@app.get("/sync/progress")
+async def sync_progress(request: Request):
+    done, total = await sync_status()
+    return templates.TemplateResponse(request, "_sync_progress.html", {
+        "done": done, "total": total,                     # gth_progress(done, max=total, id="sync",
+        "poll_url": "/sync/progress" if done < total else None,  #   poll_url=poll_url, value_text=...)
+    }, headers={} if done < total else {"HX-Trigger": toast("Sync complete")})
+```
+
+### Alert banner (v0.13)
+
+Site-wide strips for maintenance or degraded service, above the navbar on every page.
+
+```jinja
+{# alert_banner.html — dismissal in static/js/alert-banner.js (alert_banner_js_url) #}
+gth_alert_banner(message, tone="info", id=None, dismissible=True, icon=None, action=None, html=False)
+```
+
+- `tone`: `info|warn|bad|good|neutral`, each with a default icon (or `icon=`). `bad`/`warn` announce as
+  `role="alert"`, the rest as `role="status"`.
+- `message` is text and escaped; `html=True` is for trusted, server-built markup only (as with `toast`).
+  `action={"label", "url"}` adds a link; only http(s) and relative URLs are kept.
+- **The slot.** `app.html` renders the optional `site_banners` context key (a list of these kwargs) inside its
+  `{% block banner %}`, so a page can still override the block. Nothing renders without it.
+- **Dismissing** needs `alert_banner_js_url` (`shell_globals()` sets it); without it there's no close button.
+  A banner with an `id` remembers the dismissal in `localStorage` against a hash of its message: it stays hidden on
+  every page, from before first paint (a small script in `app.html`'s head), and shows again once the message
+  changes. Without an `id` it only closes for that page view.
+
+Feeding it from greentechhub-core's settings, e.g. an APP setting `site.banner` an admin edits on `/settings`:
+
+```python
+from greentechhub_fastapi.settings import settings_context
+
+def banners_context(request):                    # another Jinja2Templates context processor
+    text = settings_context(request).get("user_settings", {}).get("site.banner")
+    return {"site_banners": [{"message": text, "tone": "warn", "id": "site"}]} if text else {}
+```
+
+Editing the text brings the banner back for everyone who dismissed the old one.
 
 ## Shipped signatures (v0.8)
 
@@ -803,7 +977,7 @@ value, so a checked switch reads as its own `value`.
 
 Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
 The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
-`choices`, `min`, `max`, `group`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+`choices`, `min`, `max`, `group`, `secret`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
 core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
 
 ```jinja
@@ -820,9 +994,17 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 | `choice` with more | `gth_select` |
 | `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
 | `str` | `gth_form_field` |
+| `str` with `secret` | `gth_form_field(type="password")`, always empty, `autocomplete="new-password"`; when a value is saved, "Saved. Leave blank to keep it." and a `<key>.__clear` checkbox |
 
 - `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
   `StrEnum`; a plain `Enum`'s `SettingType.BOOL` also works).
+- **Secret settings are write-only.** Pass core's `SECRET_SET` marker (what `Settings.effective()` gives for a
+  stored secret) or `None` as the value, never the secret. The input is rendered empty whatever it's given, so even a
+  plaintext passed by mistake isn't echoed. The server's save follows one contract (greentechhub-fastapi's
+  `SettingsViews` does it for you):
+  - a blank field keeps the stored value;
+  - `<key>.__clear=true` resets it (`reset_user`/`reset_app`);
+  - anything else is the new value (`set_user`/`set_app`, which encrypt it).
 - `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
   settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
   `error` is a banner.
@@ -866,7 +1048,7 @@ for setting in preference_settings:
 ```
 
 The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
-definitions.
+definitions. Its "API token" preference is a secret: it keeps only "saved", never the text.
 
 ### Permission-filtered nav and the user menu
 

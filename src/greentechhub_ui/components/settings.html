@@ -6,7 +6,7 @@
 {#- Rendering for greentechhub-core's settings (core docs/settings.md). Duck-typed:
     a setting is anything with key, type ("bool" | "int" | "str" | "choice"), label,
     default, and optionally help_text, choices ((value, label) pairs), min, max,
-    group — core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
+    group, secret — core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
     imports core. Field names are the setting keys ("ui.theme"), which is what
     core's registry.coerce(key, raw) expects back. -#}
 
@@ -19,9 +19,26 @@
       choice, more                  → gth_select
       int                           → number gth_form_field with min/max, step 1
       str                           → text gth_form_field
+      secret (a str setting)        → write-only password gth_form_field
     value: the current (effective) value; None falls back to setting.default.
-    errors: this field's messages. name: defaults to setting.key. -#}
+    errors: this field's messages. name: defaults to setting.key.
+    A secret's value is only ever core's SECRET_SET marker or None: the input
+    is always empty (autocomplete="new-password"), whatever value is passed.
+    When one is saved, the help says so and a "<name>.__clear" checkbox
+    (value "true") asks the server to remove it; a blank field keeps it. -#}
 {%- set name = name or setting.key -%}
+{%- if setting.secret -%}
+{%- set is_set = value is not none and value != "" -%}
+{%- set help = [setting.help_text or "", "Saved. Leave blank to keep it." if is_set else ""]|select|join(" ") -%}
+{{ gth_form_field(name, setting.label, value="", type="password", input_attrs={"autocomplete": "new-password"},
+                  help_text=help or none, errors=errors, field_class="mb-2" if is_set else field_class) }}
+{%- if is_set %}
+<div class="form-check {{ field_class }} gth-setting-clear">
+  <input class="form-check-input" type="checkbox" id="gth-field-{{ name }}.__clear" name="{{ name }}.__clear" value="true">
+  <label class="form-check-label" for="gth-field-{{ name }}.__clear">Remove the saved value</label>
+</div>
+{%- endif -%}
+{%- else -%}
 {%- set value = value if value is not none else setting.default -%}
 {%- set kind = setting.type|string -%}
 {%- set kind = kind.split(".")[-1]|lower -%}
@@ -48,6 +65,7 @@
                   help_text=help, errors=errors, field_class=field_class) }}
 {%- else -%}
 {{ gth_form_field(name, setting.label, value=value, help_text=help, errors=errors, field_class=field_class) }}
+{%- endif -%}
 {%- endif -%}
 {% endmacro %}
 

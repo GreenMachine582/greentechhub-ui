@@ -1,5 +1,6 @@
 {% extends "page.html" %}
 {% from "toast.html" import gth_toast_flashes %}
+{% from "alert_banner.html" import gth_alert_banner %}
 
 {% macro _preset(name, label, style="btn-outline-secondary") -%}
 <button type="button" class="btn btn-sm {{ style }}" hx-post="/toast-demo?preset={{ name }}" hx-swap="none"
@@ -73,5 +74,28 @@
   <div class="d-flex flex-column gap-2" id="flashes-demo">
     {{ gth_toast_flashes(flashes_demo) }}
   </div>
+</section>
+
+<section class="mb-5" id="alert-banner">
+  <h2 class="h4">gth-alert-banner</h2>
+  <p class="text-secondary">
+    Site-wide strips for maintenance or degraded service. <code>app.html</code> renders the optional
+    <code>site_banners</code> list above the navbar: this page's banner at the top comes from it (the playground
+    only adds it here, so other pages keep their layout). Dismiss it and reload: it stays hidden, from before first
+    paint, because its <code>id</code> is remembered with its message. <a href="/feedback?banner_v=2">Change the
+    message</a> and it shows again. Without an <code>id</code> a banner only closes for this page view.
+  </p>
+  <div class="d-flex flex-column gap-2 mb-3" id="banner-tones">
+    {{ gth_alert_banner("Statements for June are ready to import.", id="demo-info",
+        action={"label": "Import now", "url": "/forms#file-drop"}) }}
+    {{ gth_alert_banner("Degraded: email sync is running behind (about 20 minutes).", tone="warn") }}
+    {{ gth_alert_banner("Maintenance tonight 22:00–23:00 AEST: saving is paused.", tone="bad",
+        icon="tools", dismissible=False) }}
+    {{ gth_alert_banner("All systems normal.", tone="good") }}
+    {{ gth_alert_banner("Read-only mode for the demo dataset.", tone="neutral", dismissible=False) }}
+  </div>
+  <button type="button" class="btn btn-sm btn-outline-secondary" id="banner-reset"
+    onclick="Object.keys(localStorage).filter(k => k.startsWith('gth-banner:')).forEach(k => localStorage.removeItem(k)); location.reload()">
+    Reset dismissed banners</button>
 </section>
 {% endblock %}

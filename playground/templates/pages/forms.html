@@ -55,7 +55,8 @@
   <form id="record-demo" class="gth-form" hx-post="/demo/record-pick" hx-target="#record-demo-result"
     hx-trigger="change">
     {{ gth_record_picker("part", "Part", "/demo/record-picker?for=page", placeholder="Choose a part…",
-        help_text="Click to search 120 parts. Expand (⤢) for a modal-sized view; also inside the server-rendered modal.") }}
+        full_page_url="/tables",
+        help_text="Click to search 120 parts. Expand (⤢) for a modal-sized view, or open the full list page (↗) in a new tab and pick there; also inside the server-rendered modal.") }}
     <p class="text-secondary small mb-0">Submitted: <code id="record-demo-result">nothing yet</code></p>
   </form>
 </section>

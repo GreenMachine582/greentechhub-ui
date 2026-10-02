@@ -656,3 +656,53 @@ def test_saved_number_format_changes_money_and_number_for_that_browser():
     mine, other = _run(flow())
     assert "$1.234,50" in mine and "1.234.567,891" in mine
     assert "$1,234.50" in other and "1,234,567.891" in other
+
+
+# gth_action_menu demo
+
+
+async def _delete(path, **kwargs):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        return await client.delete(path, **kwargs)
+
+
+def test_action_menu_archive_and_delete_answer_with_toasts():
+    archived = _run(_post("/demo/tasks/2/archive"))
+    assert archived.status_code == 204 and "Archived" in archived.headers["HX-Trigger"]
+    deleted = _run(_delete("/demo/tasks/2"))
+    assert deleted.status_code == 204 and "Deleted" in deleted.headers["HX-Trigger"]
+    assert "warning" in deleted.headers["HX-Trigger"]
+    assert _run(_post("/demo/tasks/99/archive")).status_code == 404
+    assert _run(_delete("/demo/tasks/99")).status_code == 404
+
+
+def test_action_rows_follow_inline():
+    menu_only = _run(_get("/demo/action-rows?inline=0")).text
+    two = _run(_get("/demo/action-rows?inline=2")).text
+    every = _run(_get("/demo/action-rows?inline=all")).text
+    assert "gth-action-menu-button" not in menu_only and "gth-action-menu-toggle" in menu_only
+    assert two.count("gth-action-menu-button") == 2 * 8
+    assert "gth-action-menu-toggle" not in every
+    assert _run(_get("/demo/action-rows?inline=bogus")).text == menu_only
+
+
+# gth_progress live demo
+
+
+def test_progress_demo_polls_until_done():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            started = await client.post("/demo/progress/start")
+            polls = [await client.get("/demo/progress") for _ in range(4)]
+            return started, polls
+
+    started, polls = _run(flow())
+    assert 'aria-valuenow="0"' in started.text and 'hx-get="/demo/progress"' in started.text
+    assert 'aria-valuenow="75"' in polls[2].text and "hx-trigger" in polls[2].text
+    done = polls[3]
+    assert 'aria-valuenow="100"' in done.text
+    assert "hx-trigger" not in done.text  # no poll_url: polling stops
+    assert "Sync complete" in done.headers["HX-Trigger"]
+    assert "HX-Trigger" not in polls[2].headers

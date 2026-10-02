@@ -241,9 +241,23 @@ def settings_values_context(request: Request) -> dict:
     return {"user_settings": prefs} if prefs else {}
 
 
+def site_banners_context(request: Request) -> dict:
+    """site_banners for app.html's banner slot — only on /feedback, so the
+    other pages (and their layout tests) stay as they are. ?banner_v=2 edits
+    the message, which brings a dismissed banner back."""
+    if request.url.path != "/feedback":
+        return {}
+    edited = request.query_params.get("banner_v") == "2"
+    message = ("Playground notice (edited): this banner's message changed, so it shows again."
+               if edited else
+               "Playground notice: dismiss this banner and reload — it stays hidden.")
+    action = {"label": "How it works", "url": "/feedback#alert-banner"}
+    return {"site_banners": [{"message": message, "id": "playground-intro", "action": action}]}
+
+
 templates = Jinja2Templates(directory=_here / "templates",
                             context_processors=[ui_context, theme_context, user_context,
-                                                settings_values_context])
+                                                settings_values_context, site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -258,6 +272,9 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Data", "url": "/data", "icon": "table", "children": [
         {"label": "Table", "url": "/data#table"},
+        {"label": "Action menu", "url": "/data#action-menu"},
+        {"label": "Description list", "url": "/data#description-list"},
+        {"label": "Progress", "url": "/data#progress"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
@@ -277,6 +294,7 @@ PLAYGROUND_NAV = [
         {"label": "Toast", "url": "/feedback#toast"},
         {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
+        {"label": "Alert banner", "url": "/feedback#alert-banner"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
         {"label": "Modal", "url": "/overlays#modal"},
@@ -422,6 +440,9 @@ SETTINGS_DEMO = {
                      ("space_comma", "1 234,56")]},
         {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
          "min": 5, "max": 200, "help_text": "5 to 200.", "group": "Tables"},
+        {"key": "demo.api_token", "type": "str", "secret": True, "label": "API token",
+         "default": "", "group": "Integrations",
+         "help_text": "A fake credential: write-only, like a service's secret setting."},
     ]),
     "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
         {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
@@ -490,7 +511,8 @@ async def settings_page(request: Request):
         "settings_intro": (
             "gth_setting_field picks the widget from the setting's type: a switch for bool, "
             "segmented buttons for four or fewer choices, a select for more, number and text "
-            "fields for int and str. Save a page size of 500 to see the 422 path."),
+            "fields for int and str, and a write-only password field for a secret (the API "
+            "token). Save a page size of 500 to see the 422 path."),
         "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
     })
 
@@ -505,9 +527,19 @@ async def settings_demo_save(request: Request, section: str):
         return denied  # a POST, so a 403
     form = await request.form()
     _, _, settings = SETTINGS_DEMO[section]
-    submitted, errors = {}, {}
+    submitted, errors, cleared = {}, {}, []
     for setting in settings:
         raw = form.get(setting["key"])
+        if setting.get("secret"):
+            # Write-only, as greentechhub-fastapi's SettingsViews treats core's
+            # secret settings: the Remove box clears it, a blank field keeps it,
+            # and a new value is saved. The demo keeps only "set" (True), never
+            # the text, so the field gets what core's SECRET_SET marker gives.
+            if form.get(f"{setting['key']}.__clear") == "true":
+                cleared.append(setting["key"])
+            elif raw:
+                submitted[setting["key"]] = True
+            continue
         if raw is None:
             continue  # not on this form: keep the saved value (as SettingsViews does)
         try:
@@ -524,11 +556,13 @@ async def settings_demo_save(request: Request, section: str):
     theme = submitted.pop("ui.theme", None)
     prefs = None
     if section == "preferences":
-        prefs = _preferences(request) | submitted
+        prefs = {k: v for k, v in (_preferences(request) | submitted).items() if k not in cleared}
     else:
         SETTINGS_VALUES.update(submitted)
     events = {"gth:theme": theme} if theme else {}
     values = _saved_settings(request) | (prefs or {}) | ({"ui.theme": theme} if theme else {})
+    for key in cleared:
+        values.pop(key, None)
     response = _render_section(request, _settings_section(request, section, values=values),
                                headers={"HX-Trigger": greentechhub_ui.toast(
                                    f"{SETTINGS_DEMO[section][0]} saved", events=events)})
@@ -562,7 +596,64 @@ async def layout_page(request: Request):
 
 @app.get("/data", response_class=HTMLResponse)
 async def data_page(request: Request):
-    return _page(request, "data", tasks=TASKS, **_paginate_widgets(0), **_widget_rows(1))
+    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
+
+
+# gth_progress live demo: a fake sync that advances 25% per poll.
+PROGRESS_DEMO = {"value": 0}
+
+
+def _progress_live(request: Request, **kwargs) -> HTMLResponse:
+    return templates.TemplateResponse(request, "_progress_live.html",
+                                      {"sync_value": PROGRESS_DEMO["value"]}, **kwargs)
+
+
+@app.post("/demo/progress/start", response_class=HTMLResponse)
+async def progress_start(request: Request):
+    """Restart the fake sync: the returned bar carries poll_url, so it polls."""
+    PROGRESS_DEMO["value"] = 0
+    return _progress_live(request)
+
+
+@app.get("/demo/progress", response_class=HTMLResponse)
+async def progress_poll(request: Request):
+    """One poll: advance, and at 100% return the bar without poll_url (polling
+    stops there) plus a toast."""
+    PROGRESS_DEMO["value"] = min(PROGRESS_DEMO["value"] + 25, 100)
+    if PROGRESS_DEMO["value"] < 100:
+        return _progress_live(request)
+    return _progress_live(request, headers={"HX-Trigger": greentechhub_ui.toast("Sync complete")})
+
+
+@app.get("/demo/action-rows", response_class=HTMLResponse)
+async def action_rows(request: Request, inline: str = "0"):
+    """The gth_action_menu demo's rows at another `inline` (0, 2 or all)."""
+    count = None if inline == "all" else (int(inline) if inline in ("0", "2") else 0)
+    return templates.TemplateResponse(request, "_action_rows.html",
+                                      {"tasks": TASKS, "inline": count})
+
+
+def _task(task_id: int) -> dict | None:
+    return next((t for t in TASKS if t["id"] == task_id), None)
+
+
+@app.post("/demo/tasks/{task_id}/archive")
+async def archive_task(task_id: int):
+    """An action-menu item posting with hx-swap="none": the answer is a toast."""
+    task = _task(task_id)
+    if task is None:
+        return Response(status_code=404)
+    return hx_response(greentechhub_ui.toast(
+        f"Archived \"{task['title']}\" (demo: nothing changed)."))
+
+
+@app.delete("/demo/tasks/{task_id}")
+async def delete_task(task_id: int):
+    task = _task(task_id)
+    if task is None:
+        return Response(status_code=404)
+    return hx_response(greentechhub_ui.toast(
+        f"Deleted \"{task['title']}\" (demo: nothing changed).", "warning"))
 
 
 @app.get("/forms", response_class=HTMLResponse)
@@ -710,6 +801,7 @@ async def demo_reset():
     health count) and refresh everything showing them."""
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
+    PROGRESS_DEMO["value"] = 0
     del RECORDS[_RECORDS_INITIAL:]
     for r, stock in zip(RECORDS, _RECORDS_STOCK, strict=True):
         r["stock"] = stock
@@ -905,13 +997,17 @@ async def tables_export(request: Request):
 async def tables(request: Request, mode: str = "pages", scroll: int = 0):
     if mode not in greentechhub_ui.table.MODES:
         mode = "pages"
-    fixed = {"mode": mode, **({"scroll": 1} if scroll else {})}
+    # pick_for: set when a record picker's "Open full page" opened this tab;
+    # kept in base_url so the table's own sort/filter/pager swaps keep it.
+    pick_for = request.query_params.get("pick_for", "")
+    fixed = {"mode": mode, **({"scroll": 1} if scroll else {}),
+             **({"pick_for": pick_for} if pick_for else {})}
     state = _records_state(request.query_params, user_settings=_preferences(request),
                            mode=mode, scroll=bool(scroll),
                            base_url="/tables?" + urlencode(fixed))
     rows, state = _query_records(state)
     context = {"table": state, "records": rows, "scroll": bool(scroll),
-               "category_options": CATEGORY_OPTIONS}
+               "category_options": CATEGORY_OPTIONS, "pick_for": pick_for}
     if wants_fragment(request.headers):
         return templates.TemplateResponse(request, "_records_table.html", context)
     return templates.TemplateResponse(request, "tables.html", context)

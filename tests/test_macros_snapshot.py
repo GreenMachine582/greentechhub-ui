@@ -865,6 +865,46 @@ def test_record_picker_opens_at_modal_size_without_toggle():
     assert "data-gth-record-picker-close" in rendered
 
 
+def test_record_picker_full_page_link():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/p", full_page_url="/parts?view=all&x=1") }}"""
+    )
+    assert_snapshot(rendered, "record_picker_full_page")
+    assert 'href="/parts?view=all&amp;x=1" target="_blank"' in rendered
+    assert "data-gth-record-picker-full" in rendered
+
+
+def test_record_picker_without_full_page_url_has_no_link():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_picker %}
+        {{ gth_record_picker("part", "Part", "/p") }}"""
+    )
+    assert "data-gth-record-picker-full" not in rendered
+
+
+def test_record_pick_banner_and_button():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_pick_banner, gth_record_pick_button %}
+        {{ gth_record_pick_banner(token, "Part") }}
+        {{ gth_record_pick_button(token, 17, "Kilo <17>") }}""",
+        token="tok-1",
+    )
+    banner, button = rendered.split("</div>", 1)
+    assert_snapshot(banner + "</div>", "record_pick_banner")
+    assert_snapshot(button.strip(), "record_pick_button")
+    assert 'data-pick-for="tok-1" data-value="17" data-label="Kilo &lt;17&gt;"' in button
+    assert 'role="status" aria-live="polite" data-gth-pick-status' in banner
+
+
+def test_record_pick_banner_and_button_render_nothing_without_pick_for():
+    rendered = _render(
+        """{% from "record_picker.html" import gth_record_pick_banner, gth_record_pick_button %}
+        {{ gth_record_pick_banner("") }}{{ gth_record_pick_button(none, 17, "Kilo") }}"""
+    )
+    assert rendered.strip() == ""
+
+
 _SIDEBAR_NAV = [
     {"label": "Home", "url": "/", "icon": "house"},
     {"label": "Data", "icon": "database", "children": [
@@ -1187,6 +1227,21 @@ _PAGE_SIZE = {"key": "ui.page_size", "type": "int", "label": "Rows per page", "d
 _BANNER = {"key": "site.banner", "type": "str", "label": "Banner", "default": ""}
 _MAINTENANCE = {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode",
                 "default": False, "help_text": "Shows the banner to everyone."}
+_API_TOKEN = {"key": "billing.api_token", "type": "str", "label": "API token", "default": "",
+              "secret": True, "help_text": "From your billing provider."}
+
+
+class _SecretSet:
+    """Stands in for core's SECRET_SET marker: truthy, renders as a mask."""
+
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        return "••••••••"
+
+
+_SECRET_SET = _SecretSet()
 
 
 def test_select():
@@ -1304,3 +1359,326 @@ def test_settings_section_without_action():
     )
     assert_snapshot(rendered, "settings_section_without_action")
     assert "<form" not in rendered and "<button" not in rendered
+
+
+def _secret_field(value=None, **kw):
+    return _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, value, **kw) }}""",
+        setting=_API_TOKEN, value=value, kw=kw,
+    )
+
+
+def test_secret_setting_field_unset():
+    rendered = _secret_field()
+    assert_snapshot(rendered, "setting_field_secret_unset")
+    assert 'type="password"' in rendered and 'autocomplete="new-password"' in rendered
+    assert 'value=""' in rendered
+    assert "Saved." not in rendered and ".__clear" not in rendered
+
+
+def test_secret_setting_field_set():
+    rendered = _secret_field(_SECRET_SET)
+    assert_snapshot(rendered, "setting_field_secret_set")
+    assert 'value=""' in rendered and "••••••••" not in rendered
+    assert "From your billing provider. Saved. Leave blank to keep it." in rendered
+    assert 'type="checkbox" id="gth-field-billing.api_token.__clear"' in rendered
+    assert 'name="billing.api_token.__clear" value="true"' in rendered
+
+
+def test_secret_setting_field_never_echoes_a_value():
+    # A caller passing the plaintext by mistake still gets an empty input.
+    rendered = _secret_field("hunter2", errors=["Too short."])
+    assert "hunter2" not in rendered
+    assert 'value=""' in rendered and "Too short." in rendered and "Saved." in rendered
+
+
+def test_secret_setting_field_without_help_text():
+    setting = {k: v for k, v in _API_TOKEN.items() if k != "help_text"}
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting) }}""",
+        setting=setting,
+    )
+    assert "form-text" not in rendered
+    with_marker = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, marker) }}""",
+        setting=setting, marker=_SECRET_SET,
+    )
+    help_div = '<div class="form-text" id="gth-field-billing.api_token-help">'
+    assert help_div + "Saved. Leave blank to keep it.</div>" in with_marker
+
+
+def test_non_secret_str_setting_is_unchanged():
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, "Down at 5pm") }}""",
+        setting=_BANNER | {"secret": False},
+    )
+    assert 'type="text"' in rendered and 'value="Down at 5pm"' in rendered
+
+
+def test_settings_section_with_secret():
+    rendered = _render(
+        """{% from "settings.html" import gth_settings_section %}
+        {{ gth_settings_section("integrations", "Integrations", settings,
+            values={"billing.api_token": marker}, action="/settings/integrations") }}""",
+        settings=[_BANNER, _API_TOKEN], marker=_SECRET_SET,
+    )
+    assert_snapshot(rendered, "settings_section_with_secret")
+    assert "••••••••" not in rendered
+
+
+# action menu
+
+_ACTIONS = [
+    {"label": "Edit", "icon": "pencil", "method": "get", "url": "/t/1/edit",
+     "attrs": {"hx-target": "#gth-modal-host"}},
+    {"label": "Archive", "icon": "archive", "method": "post", "url": "/t/1/archive"},
+    {"divider": True},
+    {"label": "Open", "url": "/t/1?a=1&b=2"},
+    {"label": "Duplicate", "icon": "copy", "url": "/t/1/copy", "disabled": True},
+    {"divider": True},
+    {"label": "Delete", "icon": "trash", "method": "DELETE", "url": "/t/1",
+     "confirm": 'Delete "BHP & co"?', "danger": True},
+]
+
+
+def _action_menu(items=_ACTIONS, **kw):
+    return _render(
+        """{% from "action_menu.html" import gth_action_menu %}
+        {{ gth_action_menu(items, **kw) }}""",
+        items=items, kw=kw,
+    )
+
+
+def test_action_menu():
+    rendered = _action_menu(label="BHP")
+    assert_snapshot(rendered, "action_menu")
+    assert 'aria-label="Actions for BHP"' in rendered
+    assert "gth-action-menu-button" not in rendered  # inline=0: everything in the menu
+    assert '<a class="dropdown-item" href="/t/1?a=1&amp;b=2">Open</a>' in rendered
+    assert 'hx-get="/t/1/edit" hx-target="#gth-modal-host">' in rendered  # attrs aim it: no hx-swap
+    assert 'hx-post="/t/1/archive" hx-swap="none">' in rendered
+    assert 'hx-delete="/t/1" hx-swap="none" hx-confirm="Delete &#34;BHP &amp; co&#34;?"' in rendered
+    assert 'class="dropdown-item text-danger"' in rendered
+    assert ('<a class="dropdown-item disabled" aria-disabled="true" tabindex="-1">'
+            in rendered)
+    assert 'data-bs-popper-config=\'{"strategy":"fixed"}\'' in rendered
+    assert rendered.count("dropdown-divider") == 2
+
+
+def test_action_menu_no_label():
+    rendered = _action_menu(items=_ACTIONS[:2])
+    assert_snapshot(rendered, "action_menu_no_label")
+    assert 'aria-label="Actions"' in rendered
+
+
+def test_action_menu_inline_2():
+    rendered = _action_menu(label="BHP", inline=2)
+    assert_snapshot(rendered, "action_menu_inline_2")
+    assert rendered.count("gth-action-menu-button") == 2
+    assert 'aria-label="Edit BHP" title="Edit BHP"' in rendered
+    assert 'aria-label="Archive BHP"' in rendered
+    menu = rendered.split('<ul class="dropdown-menu')[1]
+    # The divider after the inline pair would lead the menu, so it's dropped.
+    assert menu.index("Open") < menu.index("dropdown-divider")
+    assert menu.count("dropdown-divider") == 1
+
+
+def test_action_menu_all_inline():
+    rendered = _action_menu(label="BHP", inline=None)
+    assert_snapshot(rendered, "action_menu_all_inline")
+    assert "dropdown" not in rendered and "gth-action-menu-toggle" not in rendered
+    assert rendered.count("gth-action-menu-button") == 5
+    assert ">Open</a>" in rendered  # no icon: its text shows inline
+    assert "btn btn-sm btn-link text-body gth-action-menu-button text-danger" in rendered
+
+
+def test_action_menu_inline_counts_actions_not_dividers():
+    items = [{"divider": True}, {"label": "A", "url": "/a"}, {"divider": True},
+             {"label": "B", "url": "/b"}, {"label": "C", "url": "/c"}, {"divider": True}]
+    rendered = _action_menu(items=items, inline=1)
+    assert rendered.count("gth-action-menu-button") == 1
+    menu = rendered.split('<ul class="dropdown-menu')[1]
+    assert "dropdown-divider" not in menu  # leading and trailing dividers trimmed
+
+
+def test_action_menu_drops_script_urls():
+    items = [{"label": "Bad", "url": "  JavaScript:alert(1)"}, {"label": "Data", "url": "data:x"},
+             {"label": "Good", "url": "/ok"}]
+    rendered = _action_menu(items=items)
+    assert "alert" not in rendered and "data:x" not in rendered and 'href="/ok"' in rendered
+
+
+def test_action_menu_escapes_attrs():
+    items = [{"label": "X", "url": "/x", "method": "post", "attrs": {"hx-vals": '{"a": "<b>"}'}}]
+    rendered = _action_menu(items=items)
+    assert 'hx-vals="{&#34;a&#34;: &#34;&lt;b&gt;&#34;}"' in rendered
+
+
+# description list
+
+
+def _dl(items, **kw):
+    return _render(
+        """{% from "description_list.html" import gth_description_list %}
+        {{ gth_description_list(items, **kw) }}""",
+        items=items, kw=kw,
+    )
+
+
+def test_description_list():
+    from markupsafe import Markup
+
+    rendered = _dl([
+        {"label": "SKU", "value": "AP-006", "mono": True},
+        {"label": "Status", "value": Markup('<span class="badge text-bg-success">In stock</span>')},
+        {"label": "Note", "value": "Use <b>only</b> with board rev C."},
+        {"label": "Stock", "value": 0},
+        {"label": "Supplier", "value": None},
+        {"label": "Price", "value": "$36.79", "help": "Excludes GST."},
+    ])
+    assert_snapshot(rendered, "description_list")
+    assert "Use &lt;b&gt;only&lt;/b&gt;" in rendered  # text is escaped
+    assert '<span class="badge text-bg-success">In stock</span>' in rendered  # Markup isn't
+    assert '<dd class="gth-dl-detail">0</dd>' in rendered  # 0 is a value
+    assert '<span class="text-secondary">—</span>' in rendered
+    assert '<dd class="gth-dl-detail font-monospace">AP-006</dd>' in rendered
+    assert 'style="--gth-dl-cols: 1; --gth-dl-label: 10rem"' in rendered
+
+
+def test_description_list_pairs_two_columns():
+    items = [("Name", "Alpha part 006"), ("Category", "Cable"), ("Added", ""), ("Active", False)]
+    rendered = _dl(items, columns=2, label_width="8rem", empty="n/a", dl_class="mb-3")
+    assert_snapshot(rendered, "description_list_pairs_two_columns")
+    assert 'class="gth-dl mb-3" style="--gth-dl-cols: 2; --gth-dl-label: 8rem"' in rendered
+    assert '<span class="text-secondary">n/a</span>' in rendered and ">False</dd>" in rendered
+
+
+def test_description_list_item_forms_agree():
+    mapping = _dl({"A": "1", "B": "2"})
+    assert mapping == _dl([("A", "1"), ("B", "2")])
+    assert mapping == _dl([{"label": "A", "value": "1"}, {"label": "B", "value": "2"}])
+    assert mapping.index(">A</dt>") < mapping.index(">B</dt>")
+
+
+def test_description_list_clamps_columns():
+    assert "--gth-dl-cols: 4;" in _dl({"A": 1}, columns=9)
+    assert "--gth-dl-cols: 1;" in _dl({"A": 1}, columns=0)
+
+
+# progress
+
+
+def _progress(*args, **kw):
+    return _render(
+        """{% from "progress.html" import gth_progress %}
+        {{ gth_progress(*args, **kw) }}""",
+        args=args, kw=kw,
+    )
+
+
+def test_progress():
+    rendered = _progress(42, label="Syncing <emails>")
+    assert_snapshot(rendered, "progress")
+    assert 'role="progressbar" aria-label="Syncing &lt;emails&gt;"' in rendered
+    assert 'aria-valuemax="100" aria-valuenow="42" aria-valuetext="42%"' in rendered
+    assert 'aria-valuemin="0"' in rendered
+    assert 'style="width: 42%"' in rendered and ">42%</span>" in rendered
+
+
+def test_progress_indeterminate():
+    rendered = _progress(None, label="Sync")
+    assert_snapshot(rendered, "progress_indeterminate")
+    assert "aria-valuenow" not in rendered and 'aria-valuetext="Working…"' in rendered
+    assert "progress-bar-striped progress-bar-animated" in rendered and "width: 100%" in rendered
+
+
+def test_progress_meter_bad():
+    rendered = _progress(7.6, max=8, label="Storage", kind="meter", warn_at=0.75, bad_at=0.9,
+                         value_text="7.6 of 8 GB")
+    assert_snapshot(rendered, "progress_meter_bad")
+    assert 'role="meter"' in rendered and "bg-danger" in rendered
+    assert 'aria-valuemax="8" aria-valuenow="7.6" aria-valuetext="7.6 of 8 GB"' in rendered
+    assert "width: 95%" in rendered
+
+
+def test_progress_polling():
+    rendered = _progress(40, label="Sync", id="sync", poll_url="/p?a=1&b=2", striped=True)
+    assert_snapshot(rendered, "progress_polling")
+    assert 'id="sync" hx-get="/p?a=1&amp;b=2" hx-trigger="every 2s" hx-swap="outerHTML"' in rendered
+    assert "progress-bar-animated" in rendered
+
+
+def test_progress_meter_tones_and_overrides():
+    def bar(value, **kw):
+        return _progress(value, kind="meter", warn_at=0.75, bad_at=0.9, **kw)
+
+    assert "bg-warning" not in bar(50) and "bg-danger" not in bar(50)
+    assert "bg-warning" in bar(80)
+    assert "bg-danger" in bar(95)
+    assert "bg-info" in bar(95, tone="info")  # an explicit tone wins
+    assert "bg-success" in _progress(10, tone="good")  # progress takes a tone too
+    # A meter is never indeterminate: None reads as 0.
+    assert 'role="meter"' in bar(None) and 'aria-valuenow="0"' in bar(None)
+
+
+def test_progress_clamps_and_hides_text():
+    assert "width: 0%" in _progress(-5) and 'aria-valuenow="0"' in _progress(-5)
+    assert "width: 100%" in _progress(150) and 'aria-valuenow="100"' in _progress(150)
+    hidden = _progress(30, label="Upload", show_value=False)
+    assert "gth-progress-header" not in hidden
+    assert 'aria-label="Upload"' in hidden and 'aria-valuetext="30%"' in hidden
+    assert 'aria-label="Progress"' in _progress(30)
+    assert "gth-progress gth-progress-sm" in _progress(30, size="sm")
+
+
+# alert banner
+
+
+def _banner(*args, js=True, **kw):
+    env = _env()
+    if js:
+        env.globals["alert_banner_js_url"] = "/a/js/alert-banner.js"
+    return env.from_string(
+        """{% from "alert_banner.html" import gth_alert_banner %}
+        {{ gth_alert_banner(*args, **kw) }}"""
+    ).render(args=args, kw=kw)
+
+
+def test_alert_banner():
+    rendered = _banner("Email sync is delayed.", id="sync",
+                       action={"label": "Status", "url": "/status"})
+    assert_snapshot(rendered, "alert_banner")
+    assert 'class="alert alert-info' in rendered and 'role="status"' in rendered
+    assert 'data-gth-banner="sync"' in rendered and "bi-info-circle" in rendered
+    assert '<a class="alert-link text-nowrap" href="/status">Status</a>' in rendered
+    assert 'data-gth-banner-dismiss aria-label="Dismiss"' in rendered
+
+
+def test_alert_banner_bad_static():
+    rendered = _banner("Down for maintenance 22:00–23:00.", tone="bad", dismissible=False,
+                       icon="tools")
+    assert_snapshot(rendered, "alert_banner_bad_static")
+    assert "alert-danger" in rendered and 'role="alert"' in rendered and "bi-tools" in rendered
+    assert "data-gth-banner-dismiss" not in rendered and "data-gth-banner=" not in rendered
+
+
+def test_alert_banner_tones_escaping_and_actions():
+    warn, good = _banner("x", tone="warn"), _banner("x", tone="good")
+    assert "alert-warning" in warn and 'role="alert"' in warn
+    assert "alert-success" in good and 'role="status"' in good
+    assert "alert-info" in _banner("x", tone="bogus")
+    assert "&lt;b&gt;" in _banner("<b>hi</b>")
+    assert "<b>hi</b>" in _banner("<b>hi</b>", html=True)
+    for bad in ("javascript:alert(1)", " JavaScript:x", "data:text/html,x"):
+        assert "alert-link" not in _banner("x", action={"label": "Go", "url": bad}), bad
+    for good in ("/ok", "https://status.example.com", "status"):
+        assert 'class="alert-link' in _banner("x", action={"label": "Go", "url": good}), good
+
+
+def test_alert_banner_needs_its_script_to_be_dismissible():
+    assert "data-gth-banner-dismiss" not in _banner("x", js=False)
+    assert "data-gth-banner-dismiss" in _banner("x")

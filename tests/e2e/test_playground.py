@@ -110,6 +110,36 @@ def test_settings_section_validates_saves_and_submits_unchecked_switch(page, pla
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
+def test_secret_setting_is_write_only(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    prefs = "#gth-settings-preferences"
+    token = page.locator("[id='gth-field-demo.api_token']")
+    help_text = page.locator("[id='gth-field-demo.api_token-help']")
+    remove = page.locator("[id='gth-field-demo.api_token.__clear']")
+    expect(token).to_have_attribute("type", "password")
+    expect(remove).to_have_count(0)
+
+    token.fill("tok-s3cret")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    expect(help_text).to_contain_text("Saved. Leave blank to keep it.")
+    expect(token).to_have_value("")
+    assert "tok-s3cret" not in page.content()
+
+    # A blank field keeps it, across a reload too.
+    page.reload()
+    expect(help_text).to_contain_text("Saved.")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Preferences saved")
+    expect(help_text).to_contain_text("Saved.")
+
+    # Remove clears it.
+    remove.check()
+    page.click(f"{prefs} button[type=submit]")
+    expect(remove).to_have_count(0)
+    expect(help_text).not_to_contain_text("Saved.")
+
+
 def test_theme_saved_from_settings_applies_without_reload_and_persists(page, playground_url):
     page.goto(f"{playground_url}/settings")
     html = page.locator("html")
@@ -1535,6 +1565,50 @@ def test_record_picker_row_swapped_out_mid_click_is_still_picked(page, playgroun
     expect(panel).to_be_hidden()
 
 
+def test_record_picker_full_page_picks_from_the_list_tab(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    page.click(PART_TRIGGER)
+    panel = page.locator(PART_PANEL)
+    full = panel.locator("[data-gth-record-picker-full]")
+    expect(full).to_have_attribute("href", re.compile(r"^/tables\?pick_for=[\w-]+$"))
+
+    with page.context.expect_page() as new_tab:
+        full.click()
+    expect(panel).to_be_hidden()
+    tab = new_tab.value
+    tab.wait_for_load_state()
+    expect(tab).to_have_url(re.compile(r"/tables\?pick_for="))
+    expect(tab.locator("[data-gth-pick-banner]")).to_contain_text("Choose a record for Part")
+
+    # The table's own swaps keep pick_for, so its rows keep their buttons.
+    _htmx_idle(tab)
+    tab.get_by_role("link", name="Page 2", exact=True).click()
+    expect(tab.locator(".gth-table-summary")).to_contain_text("11–20 of 120")
+    use = tab.locator("[data-gth-pick-return]")
+    expect(use).to_have_count(10)
+    label = use.first.get_attribute("data-label")
+    value = use.first.get_attribute("data-value")
+
+    with tab.expect_event("close", timeout=5000):
+        use.first.click()
+    expect(page.locator(PART_TRIGGER)).to_have_text(label)
+    expect(page.locator("#record-demo input[name=part]")).to_have_value(value)
+    expect(page.locator("#record-demo-result")).to_have_text(f"part={value} ({label})")
+
+
+def test_record_pick_without_a_form_tab_says_so(page, playground_url):
+    page.goto(f"{playground_url}/tables?pick_for=nobody")
+    page.locator("[data-gth-pick-return]").first.click()
+    expect(page.locator("[data-gth-pick-status]")).to_have_text(
+        "Couldn't find the form. Is its tab still open?")
+
+
+def test_tables_without_pick_for_has_no_pick_buttons(page, playground_url):
+    page.goto(f"{playground_url}/tables")
+    expect(page.locator("[data-gth-pick-banner]")).to_have_count(0)
+    expect(page.locator("[data-gth-pick-return]")).to_have_count(0)
+
+
 def test_record_picker_escape_before_panel_loads_keeps_modal(page, playground_url):
     _open_server_modal(page, playground_url)
     page.click("#gth-field-record-trigger")
@@ -2221,3 +2295,156 @@ def test_data_table_refresh_event_keeps_sort_and_filters(page, playground_url):
         expect(stock_header).to_have_attribute("aria-sort", "ascending")
     finally:
         page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_action_menu_row_actions(page, playground_url):
+    page.goto(f"{playground_url}/data#action-menu")
+    section = page.locator("#action-menu")
+    toggles = section.locator(".gth-action-menu-toggle")
+    expect(toggles).to_have_count(8)
+    expect(section.locator(".gth-action-menu-button")).to_have_count(0)
+
+    # The last row's menu opens in full although its box scrolls (fixed strategy).
+    last = toggles.last
+    last.scroll_into_view_if_needed()
+    last.click()
+    menu = section.locator(".dropdown-menu.show")
+    expect(menu).to_be_visible()
+    box = menu.bounding_box()
+    hit = page.evaluate(
+        "([x, y]) => !!document.elementFromPoint(x, y)?.closest('.dropdown-menu.show')",
+        [box["x"] + box["width"] / 2, box["y"] + box["height"] - 4])
+    assert hit, "the menu's bottom edge is clipped"
+
+    # Keyboard: Esc closes and returns focus; Enter reopens; ↓ moves in.
+    page.keyboard.press("Escape")
+    expect(menu).to_have_count(0)
+    expect(last).to_be_focused()
+    page.keyboard.press("Enter")
+    page.keyboard.press("ArrowDown")
+    expect(section.locator(".dropdown-menu.show .dropdown-item").first).to_be_focused()
+    page.keyboard.press("Escape")
+
+    # Archive posts and toasts; Delete confirms first.
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Archive").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Archived")
+    page.once("dialog", lambda dialog: dialog.accept())
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Delete").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Deleted")
+
+    # Edit opens the server-rendered modal (hx-target in attrs).
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Edit").click()
+    expect(page.locator("#server-modal")).to_be_visible()
+    page.locator("#server-modal").get_by_role("button", name="Cancel").click()
+    expect(page.locator("#server-modal")).to_be_hidden()
+
+
+def test_action_menu_inline_layouts(page, playground_url):
+    page.goto(f"{playground_url}/data#action-menu")
+    section = page.locator("#action-menu")
+    section.locator("label:has-text('Two icons')").click()
+    expect(section.locator(".gth-action-menu-button")).to_have_count(16)
+    expect(section.get_by_role("button", name="Edit Fix flaky CI job")).to_be_visible()
+    expect(section.locator(".gth-action-menu-toggle")).to_have_count(8)
+    section.locator("label:has-text('All icons')").click()
+    expect(section.locator(".gth-action-menu-toggle")).to_have_count(0)
+    expect(section.get_by_role("button", name="Delete Fix flaky CI job")).to_be_visible()
+
+
+def test_description_list_layouts(page, playground_url):
+    page.set_viewport_size({"width": 1400, "height": 900})
+    page.goto(f"{playground_url}/data#description-list")
+    section = page.locator("#description-list")
+    expect(section.locator("dd", has_text="—").first).to_be_visible()  # Supplier: None
+    expect(section.locator(".badge", has_text="Cable").first).to_be_visible()  # Markup value
+
+    # columns=2: two label/value pairs share a row.
+    # (Measured in one evaluate: the #hash scroll may still be moving the page.)
+    rects = """sel => [...document.querySelectorAll(sel)].slice(0, 2).map(e => {
+        const r = e.getBoundingClientRect(); return {x: r.x, y: r.y, h: r.height}; })"""
+    first, second = page.evaluate(rects, "#description-list-wide .gth-dl-term")
+    assert abs(first["y"] - second["y"]) < 1 and second["x"] > first["x"]
+
+    # Phone: each value sits under its label.
+    page.set_viewport_size({"width": 400, "height": 900})
+    t, d = page.evaluate(rects, "#description-list .gth-dl > :is(dt, dd)")
+    assert d["y"] >= t["y"] + t["h"] - 1 and abs(d["x"] - t["x"]) < 1
+
+
+def test_progress_bars_and_live_sync(page, playground_url):
+    page.goto(f"{playground_url}/data#progress")
+    section = page.locator("#progress")
+    upload = section.get_by_role("progressbar", name="Uploading statements")
+    expect(upload).to_have_attribute("aria-valuenow", "42")
+    expect(upload.locator(".progress-bar")).to_have_attribute("style", "width: 42%")
+    full = section.get_by_role("meter").nth(2)
+    expect(full).to_have_attribute("aria-valuetext", "7.6 of 8 GB")
+    expect(full.locator(".progress-bar")).to_have_class(re.compile(r"\bbg-danger\b"))
+    expect(section.get_by_role("meter").nth(1).locator(".progress-bar")).to_have_class(
+        re.compile(r"\bbg-warning\b"))
+    busy = section.get_by_role("progressbar", name="Contacting the mail server")
+    assert busy.get_attribute("aria-valuenow") is None
+
+    # Live: polls every second until 100%, then stops and toasts.
+    polls = []
+    page.on("request", lambda r: polls.append(r.url) if r.url.endswith("/demo/progress") else None)
+    section.get_by_role("button", name="Start sync").click()
+    live = page.locator("#progress-live [role=progressbar]")
+    expect(live).to_have_attribute("aria-valuenow", "100", timeout=10000)
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Sync complete")
+    expect(page.locator("#progress-live")).not_to_have_attribute("hx-trigger", re.compile("."))
+    count = len(polls)
+    page.wait_for_timeout(2500)
+    assert len(polls) == count == 4  # stopped once the bar came back without poll_url
+
+
+def test_progress_stripes_stop_under_reduced_motion(page, playground_url):
+    page.goto(f"{playground_url}/data#progress")
+    page.evaluate("document.documentElement.setAttribute('data-gth-motion', 'reduce')")
+    bar = page.locator("#progress .progress-bar-animated").first
+    assert bar.evaluate("el => getComputedStyle(el).animationName") == "none"
+
+
+INTRO_BANNER = "[data-gth-banner='playground-intro']"
+
+
+def test_site_banner_dismissal_is_remembered_per_message(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    intro = page.locator(INTRO_BANNER)
+    expect(intro).to_be_visible()
+    assert intro.evaluate("el => el.compareDocumentPosition(document.querySelector('nav')) & 4")
+    intro.get_by_role("button", name="Dismiss").click()
+    expect(intro).to_have_count(0)
+
+    # Reload: hidden from first paint, not removed after a flash.
+    page.goto(f"{playground_url}/feedback", wait_until="domcontentloaded")
+    assert page.locator(INTRO_BANNER).evaluate("el => getComputedStyle(el).display") == "none"
+
+    # An edited message shows again.
+    page.goto(f"{playground_url}/feedback?banner_v=2")
+    expect(page.locator(INTRO_BANNER)).to_be_visible()
+    expect(page.locator(INTRO_BANNER)).to_contain_text("message changed")
+
+
+def test_banner_without_id_only_closes_for_the_page_view(page, playground_url):
+    page.goto(f"{playground_url}/feedback#alert-banner")
+    warn = page.locator("#banner-tones .gth-alert-banner", has_text="Degraded")
+    warn.get_by_role("button", name="Dismiss").click()
+    expect(warn).to_have_count(0)
+    page.reload()
+    expect(page.locator("#banner-tones .gth-alert-banner", has_text="Degraded")).to_be_visible()
+    # Non-dismissible ones have no close button; the bad tone announces as an alert.
+    bad = page.locator("#banner-tones .gth-alert-banner", has_text="Maintenance tonight")
+    expect(bad).to_have_attribute("role", "alert")
+    expect(bad.get_by_role("button", name="Dismiss")).to_have_count(0)
+
+
+def test_banner_dismiss_from_the_keyboard(page, playground_url):
+    page.goto(f"{playground_url}/feedback#alert-banner")
+    good = page.locator("#banner-tones .gth-alert-banner", has_text="All systems normal")
+    good.get_by_role("button", name="Dismiss").focus()
+    page.keyboard.press("Enter")
+    expect(good).to_have_count(0)

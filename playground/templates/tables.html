@@ -3,6 +3,7 @@
 {% from "table.html" import gth_table_filter %}
 {% from "segmented.html" import gth_segmented %}
 {% from "date_range.html" import gth_date_range %}
+{% from "record_picker.html" import gth_record_pick_banner %}
 
 {% block title %}Tables{% endblock %}
 
@@ -31,6 +32,8 @@
     sort (<code>TableState(export_base_url=...)</code>).</span>
   <button type="button" class="btn btn-sm btn-link" hx-post="/demo/reset" hx-swap="none">Reset demo data</button>
 </p>
+
+{{ gth_record_pick_banner(pick_for, "Part") }}
 
 {% call gth_table_filter(table, placeholder="Search records…") %}
   {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),

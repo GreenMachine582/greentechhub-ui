@@ -8,9 +8,6 @@
 
 ## 🗺️ Milestones
 
-### Components
-- [ ] `gth_record_picker` third size — hand the pick off to the real list screen for full room (e.g. an "Open full page" link carrying `?pick_for=<field>&return=<url>`, the list screen offering a "Use this record" action that returns the pick)
-
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
@@ -18,36 +15,38 @@
 - [ ] Sidebar: pinned/favourite items
 - [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
-  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
-
-### Settings & permissions
-Rendering for `greentechhub-core`'s settings and role resolution (design:
-[core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
-opt-in: new behaviour turns on only when the optional context keys (`theme_mode`/`theme_save_url`, `granted`,
-`user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
-there's no runtime import of core. Each PR updates any doc it would otherwise contradict.
-
-Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15–#17 (density
-and motion, sidebar default, number format), plus the ready-made settings and role-assignment page templates. ui's
-half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. Every ui item
-here has shipped; the only open roadmap item is core #14 (the landing page, on hold).
-
-Notes, not items:
-- `locale.time_format` already shipped with #10 (`|datetime`).
-- The landing page has no ui work. It waits on core #14 (on hold) plus a fastapi redirect.
-- Notification preferences wait for the notification centre (Navigation, above).
+  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea);
+  its user preferences (core settings) come with it
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
-- [ ] `gth_action_menu` — a row "⋯" dropdown for secondary actions (edit / archive / delete) instead of icon-button
-  pairs in table rows
-- [ ] `gth_description_list` — key/value details for record pages
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
-- [ ] `gth_progress` — meter/progress bar with an accessible value (sync progress, quotas)
-- [ ] `gth_alert_banner` — dismissible site-wide banner (maintenance, degraded service) with an `app.html` slot
 - [ ] `gth_embed_card` — iframe card with loading and error states — PyFinBot's Grafana slot
+- [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
+  response)
+  - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
+    wrap=False)`, plus an inline `gth_code_inline(text, copy=False)`.
+  - A header strip with the filename and/or language and a Copy button (clipboard, a "Copied" tick, a toast as the
+    fallback); the body an escaped `<pre><code>` with an optional line-number gutter (CSS counters, so copying skips
+    them), highlighted lines and a `max_height` scroll box.
+  - Syntax colours from server-side Pygments when an optional `[highlight]` extra is installed, else plain text;
+    token colours from theme variables so light and dark both work.
+
+### Data & forms
+- [ ] `gth_query_builder` — an "Advanced filter" for `gth_data_table`, beyond the search box and chips
+  - `gth_query_builder(name, fields, value=None, table=None, max_rows=10)`; fields are duck-typed
+    `{"key", "label", "type": "text|number|date|choice|bool", "choices"?, "operators"?}`.
+  - Rows of [field] [operator] [value]: the operator list follows the field's type, from greentechhub-core's
+    `Operator` (eq, ne, gt…, in, contains, is_null), and the value input does too (text, number, date, a choice
+    multiselect for `in`, nothing for `is_null`). Add/remove rows, an all/any (AND/OR) toggle, at most one level of
+    nested groups.
+  - Serialises to one hidden JSON field (`[{"field", "op", "value"}]`) that core's `Filter` can parse; a
+    greentechhub-fastapi helper validates it against the allowed fields and operators (like `TableState`'s
+    `filter_params` allow-list). The table re-request keeps it in the URL, so a filtered view is shareable.
+  - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
+    Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
 - [ ] Top loading bar for htmx requests slower than ~300ms
