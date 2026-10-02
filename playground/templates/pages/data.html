@@ -2,6 +2,8 @@
 {% from "card.html" import gth_card %}
 {% from "table.html" import gth_table %}
 {% from "segmented.html" import gth_segmented %}
+{% from "badge.html" import gth_badge %}
+{% from "description_list.html" import gth_description_list %}
 
 {% block page %}
 <section class="mb-5" id="table">
@@ -39,6 +41,35 @@
     {% call gth_table(headers=["Task", "Status", ""], tbody_id="action-tasks-tbody") %}
     {% include "_action_rows.html" %}
     {% endcall %}
+  </div>
+</section>
+
+<section class="mb-5" id="description-list">
+  <h2 class="h4">gth-description-list</h2>
+  <p class="text-secondary small">Key/value details for a record page. Text is escaped; another macro's output (the
+    badge) passes through. An empty value shows "—", <code>help</code> adds a line, <code>mono</code> suits ids.
+    Two columns from 768px with <code>columns=2</code>; one under, stacked on phones.</p>
+  {% set status %}{{ gth_badge("Cable", "info") }}{% endset %}
+  {% set details = [
+      {"label": "SKU", "value": "AP-006", "mono": True},
+      {"label": "Category", "value": status},
+      {"label": "Stock", "value": 222|number},
+      {"label": "Price", "value": 36.79|money, "help": "Excludes GST."},
+      {"label": "Added", "value": "2025-01-31"|date},
+      {"label": "Supplier", "value": None},
+      {"label": "Notes", "value": "Use only with board rev C or later; earlier boards need the 4-pin adapter cable, which ships separately."},
+  ] %}
+  <div class="row g-3">
+    <div class="col-lg-5">
+      {% call gth_card(title="Alpha part 006") %}
+      {{ gth_description_list(details) }}
+      {% endcall %}
+    </div>
+    <div class="col-lg-7">
+      {% call gth_card(title="Alpha part 006 (columns=2)") %}
+      <div id="description-list-wide">{{ gth_description_list(details, columns=2, label_width="6rem") }}</div>
+      {% endcall %}
+    </div>
   </div>
 </section>
 

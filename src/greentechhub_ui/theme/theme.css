@@ -1451,3 +1451,35 @@ body.gth-picker-modal-open {
 :root[data-gth-density="compact"] .table.gth-table-comfortable > :not(caption) > * > * {
   padding: 0.5rem 0.5rem;
 }
+
+/* gth_description_list (v0.13): label/value pairs on a grid, --gth-dl-cols
+   pairs wide from 768px, one pair per row below, stacked under 576px. */
+.gth-dl {
+  display: grid;
+  grid-template-columns: minmax(0, var(--gth-dl-label, 10rem)) minmax(0, 1fr);
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+  margin-bottom: 0;
+}
+@media (min-width: 768px) {
+  .gth-dl {
+    grid-template-columns: repeat(var(--gth-dl-cols, 1), minmax(0, var(--gth-dl-label, 10rem)) minmax(0, 1fr));
+  }
+}
+.gth-dl-term {
+  font-weight: normal;
+  color: var(--bs-secondary-color);
+}
+.gth-dl-detail {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 575.98px) {
+  .gth-dl {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+  .gth-dl-detail {
+    margin-bottom: 0.5rem;
+  }
+}

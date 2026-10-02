@@ -1516,3 +1516,54 @@ def test_action_menu_escapes_attrs():
     items = [{"label": "X", "url": "/x", "method": "post", "attrs": {"hx-vals": '{"a": "<b>"}'}}]
     rendered = _action_menu(items=items)
     assert 'hx-vals="{&#34;a&#34;: &#34;&lt;b&gt;&#34;}"' in rendered
+
+
+# description list
+
+
+def _dl(items, **kw):
+    return _render(
+        """{% from "description_list.html" import gth_description_list %}
+        {{ gth_description_list(items, **kw) }}""",
+        items=items, kw=kw,
+    )
+
+
+def test_description_list():
+    from markupsafe import Markup
+
+    rendered = _dl([
+        {"label": "SKU", "value": "AP-006", "mono": True},
+        {"label": "Status", "value": Markup('<span class="badge text-bg-success">In stock</span>')},
+        {"label": "Note", "value": "Use <b>only</b> with board rev C."},
+        {"label": "Stock", "value": 0},
+        {"label": "Supplier", "value": None},
+        {"label": "Price", "value": "$36.79", "help": "Excludes GST."},
+    ])
+    assert_snapshot(rendered, "description_list")
+    assert "Use &lt;b&gt;only&lt;/b&gt;" in rendered  # text is escaped
+    assert '<span class="badge text-bg-success">In stock</span>' in rendered  # Markup isn't
+    assert '<dd class="gth-dl-detail">0</dd>' in rendered  # 0 is a value
+    assert '<span class="text-secondary">—</span>' in rendered
+    assert '<dd class="gth-dl-detail font-monospace">AP-006</dd>' in rendered
+    assert 'style="--gth-dl-cols: 1; --gth-dl-label: 10rem"' in rendered
+
+
+def test_description_list_pairs_two_columns():
+    items = [("Name", "Alpha part 006"), ("Category", "Cable"), ("Added", ""), ("Active", False)]
+    rendered = _dl(items, columns=2, label_width="8rem", empty="n/a", dl_class="mb-3")
+    assert_snapshot(rendered, "description_list_pairs_two_columns")
+    assert 'class="gth-dl mb-3" style="--gth-dl-cols: 2; --gth-dl-label: 8rem"' in rendered
+    assert '<span class="text-secondary">n/a</span>' in rendered and ">False</dd>" in rendered
+
+
+def test_description_list_item_forms_agree():
+    mapping = _dl({"A": "1", "B": "2"})
+    assert mapping == _dl([("A", "1"), ("B", "2")])
+    assert mapping == _dl([{"label": "A", "value": "1"}, {"label": "B", "value": "2"}])
+    assert mapping.index(">A</dt>") < mapping.index(">B</dt>")
+
+
+def test_description_list_clamps_columns():
+    assert "--gth-dl-cols: 4;" in _dl({"A": 1}, columns=9)
+    assert "--gth-dl-cols: 1;" in _dl({"A": 1}, columns=0)

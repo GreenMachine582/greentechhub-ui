@@ -15,33 +15,13 @@
 - [ ] Sidebar: pinned/favourite items
 - [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
-  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea)
-
-### Settings & permissions
-Rendering for `greentechhub-core`'s settings and role resolution (design:
-[core docs/settings.md](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md)). Everything is
-opt-in: new behaviour turns on only when the optional context keys (`theme_mode`/`theme_save_url`, `granted`,
-`user_menu_items`/`logout_url`, `user_settings`) are present, so it isn't breaking. Macros duck-type attributes, so
-there's no runtime import of core. Each PR updates any doc it would otherwise contradict.
-
-Shipped, in cross-repo order: core #1–#4 and #13, fastapi #5, #9 and #11, and ui #6–#8, #10 and #15–#17 (density
-and motion, sidebar default, number format), plus the ready-made settings and role-assignment page templates. ui's
-half of #12 registered #15–#17, which make ui honour core #13's shared settings from `user_settings`. #19
-(write-only secret fields, for core #18's secret settings) has shipped too, so nothing here is open; fastapi #20
-handles the save side. Core #14 (the landing page setting) has shipped; fastapi #21 acts on it, and ui
-has no part.
-
-Notes, not items:
-- `locale.time_format` already shipped with #10 (`|datetime`).
-- The landing page has no ui work: the settings page renders `ui.landing_page` under Navigation like any choice
-  setting, and fastapi #21 redirects to it.
-- Notification preferences wait for the notification centre (Navigation, above).
+  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea);
+  its user preferences (core settings) come with it
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
-- [ ] `gth_description_list` — key/value details for record pages
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
 - [ ] `gth_progress` — meter/progress bar with an accessible value (sync progress, quotas)
 - [ ] `gth_alert_banner` — dismissible site-wide banner (maintenance, degraded service) with an `app.html` slot

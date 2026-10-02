@@ -2352,3 +2352,23 @@ def test_action_menu_inline_layouts(page, playground_url):
     section.locator("label:has-text('All icons')").click()
     expect(section.locator(".gth-action-menu-toggle")).to_have_count(0)
     expect(section.get_by_role("button", name="Delete Fix flaky CI job")).to_be_visible()
+
+
+def test_description_list_layouts(page, playground_url):
+    page.set_viewport_size({"width": 1400, "height": 900})
+    page.goto(f"{playground_url}/data#description-list")
+    section = page.locator("#description-list")
+    expect(section.locator("dd", has_text="—").first).to_be_visible()  # Supplier: None
+    expect(section.locator(".badge", has_text="Cable").first).to_be_visible()  # Markup value
+
+    # columns=2: two label/value pairs share a row.
+    # (Measured in one evaluate: the #hash scroll may still be moving the page.)
+    rects = """sel => [...document.querySelectorAll(sel)].slice(0, 2).map(e => {
+        const r = e.getBoundingClientRect(); return {x: r.x, y: r.y, h: r.height}; })"""
+    first, second = page.evaluate(rects, "#description-list-wide .gth-dl-term")
+    assert abs(first["y"] - second["y"]) < 1 and second["x"] > first["x"]
+
+    # Phone: each value sits under its label.
+    page.set_viewport_size({"width": 400, "height": 900})
+    t, d = page.evaluate(rects, "#description-list .gth-dl > :is(dt, dd)")
+    assert d["y"] >= t["y"] + t["h"] - 1 and abs(d["x"] - t["x"]) < 1
