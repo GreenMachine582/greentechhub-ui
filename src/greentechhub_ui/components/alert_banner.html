@@ -1,0 +1,31 @@
+{% macro gth_alert_banner(message, tone="info", id=None, dismissible=True, icon=None, action=None, html=False) %}
+{#- A full-width, site-wide strip (maintenance, degraded service) — app.html
+    renders the optional `site_banners` list (each item this macro's kwargs)
+    above the navbar; it also works anywhere in a page.
+    tone: info|warn|bad|good|neutral (bad/warn announce as role="alert",
+      the rest as role="status"). icon: a Bootstrap icon name, defaulting
+      per tone. message: text, escaped; html=True for trusted, server-built
+      markup only. action: {"label", "url"} — http(s) or relative only.
+    dismissible: a close button, when alert-banner.js is loaded
+      (alert_banner_js_url). With an `id`, the dismissal is remembered in
+      localStorage against the message, so the same banner stays hidden on
+      every page (from before first paint) and an edited message shows
+      again; without one it only closes for this page view. -#}
+{%- set bs = {"good": "success", "bad": "danger", "warn": "warning", "info": "info", "neutral": "secondary"}.get(tone, "info") -%}
+{%- set icons = {"success": "check-circle", "danger": "x-octagon", "warning": "exclamation-triangle", "info": "info-circle", "secondary": "megaphone"} -%}
+{%- set url = (action.url if action else "")|string|trim -%}
+{%- set safe_action = action and action.label and (url.startswith("/") or url.lower().startswith(("http://", "https://")) or not (":" in url.split("/")[0])) -%}
+{%- set can_dismiss = dismissible and alert_banner_js_url is defined and alert_banner_js_url -%}
+<div class="alert alert-{{ bs }} rounded-0 border-0 border-bottom mb-0 py-2 d-flex align-items-center gap-2 gth-alert-banner"
+  role="{{ 'alert' if bs in ('danger', 'warning') else 'status' }}"
+  {%- if id %} data-gth-banner="{{ id|e }}"{% endif %}>
+  <i class="bi bi-{{ icon or icons[bs] }} flex-shrink-0" aria-hidden="true"></i>
+  <div class="gth-alert-banner-message me-auto">{% if html %}{{ message|safe }}{% else %}{{ message|e }}{% endif %}</div>
+  {%- if safe_action %}
+  <a class="alert-link text-nowrap" href="{{ url|e }}">{{ action.label|e }}</a>
+  {%- endif %}
+  {%- if can_dismiss %}
+  <button type="button" class="btn-close flex-shrink-0" data-gth-banner-dismiss aria-label="Dismiss"></button>
+  {%- endif %}
+</div>
+{% endmacro %}

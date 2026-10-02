@@ -241,9 +241,23 @@ def settings_values_context(request: Request) -> dict:
     return {"user_settings": prefs} if prefs else {}
 
 
+def site_banners_context(request: Request) -> dict:
+    """site_banners for app.html's banner slot — only on /feedback, so the
+    other pages (and their layout tests) stay as they are. ?banner_v=2 edits
+    the message, which brings a dismissed banner back."""
+    if request.url.path != "/feedback":
+        return {}
+    edited = request.query_params.get("banner_v") == "2"
+    message = ("Playground notice (edited): this banner's message changed, so it shows again."
+               if edited else
+               "Playground notice: dismiss this banner and reload — it stays hidden.")
+    action = {"label": "How it works", "url": "/feedback#alert-banner"}
+    return {"site_banners": [{"message": message, "id": "playground-intro", "action": action}]}
+
+
 templates = Jinja2Templates(directory=_here / "templates",
                             context_processors=[ui_context, theme_context, user_context,
-                                                settings_values_context])
+                                                settings_values_context, site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -280,6 +294,7 @@ PLAYGROUND_NAV = [
         {"label": "Toast", "url": "/feedback#toast"},
         {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
+        {"label": "Alert banner", "url": "/feedback#alert-banner"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
         {"label": "Modal", "url": "/overlays#modal"},

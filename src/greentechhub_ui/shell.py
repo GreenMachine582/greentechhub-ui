@@ -68,6 +68,7 @@ def shell_globals(
         "table_select_js_url": f"{assets_prefix}/js/table-select.js",
         "table_view_js_url": f"{assets_prefix}/js/table-view.js",
         "char_counter_js_url": f"{assets_prefix}/js/char-counter.js",
+        "alert_banner_js_url": f"{assets_prefix}/js/alert-banner.js",
         "sidebar_js_url": f"{assets_prefix}/js/sidebar.js",
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",

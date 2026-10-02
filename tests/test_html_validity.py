@@ -84,6 +84,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "progress_indeterminate",
         "progress_meter_bad",
         "progress_polling",
+        "alert_banner",
+        "alert_banner_bad_static",
         "sidebar",
         "navbar_sidebar_mode",
         "navbar_dropdown",
