@@ -685,3 +685,24 @@ def test_action_rows_follow_inline():
     assert two.count("gth-action-menu-button") == 2 * 8
     assert "gth-action-menu-toggle" not in every
     assert _run(_get("/demo/action-rows?inline=bogus")).text == menu_only
+
+
+# gth_progress live demo
+
+
+def test_progress_demo_polls_until_done():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            started = await client.post("/demo/progress/start")
+            polls = [await client.get("/demo/progress") for _ in range(4)]
+            return started, polls
+
+    started, polls = _run(flow())
+    assert 'aria-valuenow="0"' in started.text and 'hx-get="/demo/progress"' in started.text
+    assert 'aria-valuenow="75"' in polls[2].text and "hx-trigger" in polls[2].text
+    done = polls[3]
+    assert 'aria-valuenow="100"' in done.text
+    assert "hx-trigger" not in done.text  # no poll_url: polling stops
+    assert "Sync complete" in done.headers["HX-Trigger"]
+    assert "HX-Trigger" not in polls[2].headers

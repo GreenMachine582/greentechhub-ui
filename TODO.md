@@ -23,9 +23,31 @@
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
-- [ ] `gth_progress` — meter/progress bar with an accessible value (sync progress, quotas)
 - [ ] `gth_alert_banner` — dismissible site-wide banner (maintenance, degraded service) with an `app.html` slot
 - [ ] `gth_embed_card` — iframe card with loading and error states — PyFinBot's Grafana slot
+- [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
+  response)
+  - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
+    wrap=False)`, plus an inline `gth_code_inline(text, copy=False)`.
+  - A header strip with the filename and/or language and a Copy button (clipboard, a "Copied" tick, a toast as the
+    fallback); the body an escaped `<pre><code>` with an optional line-number gutter (CSS counters, so copying skips
+    them), highlighted lines and a `max_height` scroll box.
+  - Syntax colours from server-side Pygments when an optional `[highlight]` extra is installed, else plain text;
+    token colours from theme variables so light and dark both work.
+
+### Data & forms
+- [ ] `gth_query_builder` — an "Advanced filter" for `gth_data_table`, beyond the search box and chips
+  - `gth_query_builder(name, fields, value=None, table=None, max_rows=10)`; fields are duck-typed
+    `{"key", "label", "type": "text|number|date|choice|bool", "choices"?, "operators"?}`.
+  - Rows of [field] [operator] [value]: the operator list follows the field's type, from greentechhub-core's
+    `Operator` (eq, ne, gt…, in, contains, is_null), and the value input does too (text, number, date, a choice
+    multiselect for `in`, nothing for `is_null`). Add/remove rows, an all/any (AND/OR) toggle, at most one level of
+    nested groups.
+  - Serialises to one hidden JSON field (`[{"field", "op", "value"}]`) that core's `Filter` can parse; a
+    greentechhub-fastapi helper validates it against the allowed fields and operators (like `TableState`'s
+    `filter_params` allow-list). The table re-request keeps it in the URL, so a filtered view is shareable.
+  - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
+    Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
 - [ ] Top loading bar for htmx requests slower than ~300ms

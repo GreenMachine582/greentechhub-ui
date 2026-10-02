@@ -2372,3 +2372,37 @@ def test_description_list_layouts(page, playground_url):
     page.set_viewport_size({"width": 400, "height": 900})
     t, d = page.evaluate(rects, "#description-list .gth-dl > :is(dt, dd)")
     assert d["y"] >= t["y"] + t["h"] - 1 and abs(d["x"] - t["x"]) < 1
+
+
+def test_progress_bars_and_live_sync(page, playground_url):
+    page.goto(f"{playground_url}/data#progress")
+    section = page.locator("#progress")
+    upload = section.get_by_role("progressbar", name="Uploading statements")
+    expect(upload).to_have_attribute("aria-valuenow", "42")
+    expect(upload.locator(".progress-bar")).to_have_attribute("style", "width: 42%")
+    full = section.get_by_role("meter").nth(2)
+    expect(full).to_have_attribute("aria-valuetext", "7.6 of 8 GB")
+    expect(full.locator(".progress-bar")).to_have_class(re.compile(r"\bbg-danger\b"))
+    expect(section.get_by_role("meter").nth(1).locator(".progress-bar")).to_have_class(
+        re.compile(r"\bbg-warning\b"))
+    busy = section.get_by_role("progressbar", name="Contacting the mail server")
+    assert busy.get_attribute("aria-valuenow") is None
+
+    # Live: polls every second until 100%, then stops and toasts.
+    polls = []
+    page.on("request", lambda r: polls.append(r.url) if r.url.endswith("/demo/progress") else None)
+    section.get_by_role("button", name="Start sync").click()
+    live = page.locator("#progress-live [role=progressbar]")
+    expect(live).to_have_attribute("aria-valuenow", "100", timeout=10000)
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Sync complete")
+    expect(page.locator("#progress-live")).not_to_have_attribute("hx-trigger", re.compile("."))
+    count = len(polls)
+    page.wait_for_timeout(2500)
+    assert len(polls) == count == 4  # stopped once the bar came back without poll_url
+
+
+def test_progress_stripes_stop_under_reduced_motion(page, playground_url):
+    page.goto(f"{playground_url}/data#progress")
+    page.evaluate("document.documentElement.setAttribute('data-gth-motion', 'reduce')")
+    bar = page.locator("#progress .progress-bar-animated").first
+    assert bar.evaluate("el => getComputedStyle(el).animationName") == "none"

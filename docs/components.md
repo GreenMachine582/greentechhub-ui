@@ -29,6 +29,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-tabs` | Bootstrap tabs; panes static (`{% call(key) %}`) or htmx-loaded once on first show (v0.7) |
 | `gth-multiselect` | Searchable multi-select with removable chips; tags mode for free text (v0.7) |
 | `gth-record-picker` | Field that opens a floating, searchable, sortable, paged table to pick one record (v0.7) |
+| `gth-progress` | Progress bar (task) or meter (level) with an accessible value, auto warn/bad tones for meters, and self-polling live progress (v0.13) |
 | `gth-description-list` | Key/value details for record pages: escaped values or trusted markup, "—" for empty, 1–4 columns that stack on phones (v0.13) |
 | `gth-action-menu` | Row actions as icon buttons and/or a "⋯" dropdown, `inline` choosing how many lead as icons (v0.13) |
 | `gth-chips` / `gth-switch` | Multi-select filter pills (with a hover tint, like `gth-segmented`'s options); brand-colored on/off switch (v0.7), both on the shared brand accent (v0.12, see [docs/theming.md](theming.md)); the switch takes errors and an `off_value` (v0.12) |
@@ -469,6 +470,41 @@ gth_description_list(items, columns=1, label_width="10rem", empty="—", dl_clas
       {"label": "Supplier", "value": part.supplier},
     ], columns=2) }}
 {% endcall %}
+```
+
+### Progress (v0.13)
+
+A progress bar for a task, or a meter for a level, on Bootstrap's `.progress` with the brand accent.
+
+```jinja
+{# progress.html #}
+gth_progress(value, max=100, label=None, kind="progress", tone=None, show_value=True, value_text=None,
+             size=None, striped=False, warn_at=None, bad_at=None, poll_url=None, poll_every="2s",
+             id=None, progress_class="")
+```
+
+- `kind="progress"` (a sync, an upload) is `role="progressbar"`; `kind="meter"` (a quota, storage) is
+  `role="meter"`. Both carry `aria-valuenow`/`min`/`max`, `aria-valuetext` and `aria-label` (`label`, else
+  "Progress"). `value` is clamped to 0–`max`.
+- The header shows `label` and the value text (`value_text`, else "42%"); `show_value=False` hides it and keeps the
+  aria. `value=None` on a progress bar is indeterminate: a full animated striped bar, no `aria-valuenow`, "Working…".
+- `tone`: `good|bad|warn|info|neutral|brand` (default brand). A meter given `warn_at`/`bad_at` (fractions of `max`)
+  and no `tone` turns warn/bad by itself. The value text always says the number, so colour is never the only cue.
+- `size="sm"` is a slim bar; `striped` adds stripes (animated while polling). Under `ui.motion="reduce"` (or the OS's
+  reduced motion) the stripes stand still.
+
+**Live progress.** Give the bar an `id` and a `poll_url`: it re-fetches itself every `poll_every` (`hx-get`,
+`outerHTML`). The endpoint returns a fresh bar, still with `poll_url` while running and without it once done
+(or answers 286), so polling stops:
+
+```python
+@app.get("/sync/progress")
+async def sync_progress(request: Request):
+    done, total = await sync_status()
+    return templates.TemplateResponse(request, "_sync_progress.html", {
+        "done": done, "total": total,                     # gth_progress(done, max=total, id="sync",
+        "poll_url": "/sync/progress" if done < total else None,  #   poll_url=poll_url, value_text=...)
+    }, headers={} if done < total else {"HX-Trigger": toast("Sync complete")})
 ```
 
 ## Shipped signatures (v0.8)

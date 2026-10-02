@@ -1,0 +1,48 @@
+{% macro gth_progress(value, max=100, label=None, kind="progress", tone=None, show_value=True, value_text=None,
+                      size=None, striped=False, warn_at=None, bad_at=None, poll_url=None, poll_every="2s",
+                      id=None, progress_class="") %}
+{#- A progress bar (kind="progress": a task — sync, upload; role
+    progressbar) or a meter (kind="meter": a level — quota, storage; role
+    meter), on Bootstrap's .progress.
+    value: 0..max, clamped. None (progress only) is indeterminate: a full
+      animated striped bar, no aria-valuenow, "Working…".
+    label: the visible and accessible name ("Progress" when omitted).
+    value_text: what's shown and announced (aria-valuetext); default "42%".
+    tone: good|bad|warn|info|neutral|brand (default brand). A meter with
+      warn_at / bad_at (fractions of max, e.g. 0.75 / 0.9) and no tone
+      picks warn / bad itself. The value text always carries the meaning,
+      not colour alone.
+    size: None or "sm" (a slim bar). striped: Bootstrap's stripes, animated
+      while indeterminate or polling.
+    poll_url: re-fetch every poll_every (hx-get, outerHTML swap). The
+      endpoint returns a fresh gth_progress — without poll_url once done
+      (or answers 286) — so polling stops. Give it an `id`. -#}
+{%- set indeterminate = value is none and kind != "meter" -%}
+{%- set top = max if max and max > 0 else 100 -%}
+{%- set v = 0 if value is none else [[value, 0]|max, top]|min -%}
+{%- set pct = 100 if indeterminate else (v * 100 / top) -%}
+{%- if tone is none and kind == "meter" -%}
+{%- set frac = v / top -%}
+{%- set tone = "bad" if bad_at is not none and frac >= bad_at else ("warn" if warn_at is not none and frac >= warn_at else none) -%}
+{%- endif -%}
+{%- set bg = {"good": "bg-success", "bad": "bg-danger", "warn": "bg-warning", "info": "bg-info", "neutral": "bg-secondary"}.get(tone, "") -%}
+{%- set text = "Working…" if indeterminate else (value_text if value_text is not none else (pct|round|int) ~ "%") -%}
+{%- set name = label or "Progress" -%}
+{%- set animate = indeterminate or (striped and poll_url) -%}
+<div class="gth-progress{% if size == 'sm' %} gth-progress-sm{% endif %} {{ progress_class }}"
+  {%- if id %} id="{{ id|e }}"{% endif %}
+  {%- if poll_url %} hx-get="{{ poll_url|e }}" hx-trigger="every {{ poll_every|e }}" hx-swap="outerHTML"{% endif %}>
+  {%- if show_value and (label or text) %}
+  <div class="gth-progress-header small">
+    {%- if label %}<span class="gth-progress-label">{{ label|e }}</span>{% endif %}
+    <span class="gth-progress-value" aria-hidden="true">{{ text|e }}</span>
+  </div>
+  {%- endif %}
+  <div class="progress" role="{{ 'meter' if kind == 'meter' else 'progressbar' }}" aria-label="{{ name|e }}"
+    aria-valuemin="0" aria-valuemax="{{ top }}"
+    {%- if not indeterminate %} aria-valuenow="{{ v }}"{% endif %} aria-valuetext="{{ text|e }}">
+    <div class="progress-bar {{ bg }}{% if striped or indeterminate %} progress-bar-striped{% endif %}{% if animate %} progress-bar-animated{% endif %}"
+      style="width: {{ '%.4g'|format(pct) }}%"></div>
+  </div>
+</div>
+{% endmacro %}

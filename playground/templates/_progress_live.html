@@ -1,0 +1,4 @@
+{% from "progress.html" import gth_progress %}
+{{ gth_progress(sync_value, label="Syncing emails", id="progress-live", striped=True,
+    value_text=(sync_value ~ "% · " ~ (sync_value // 25) ~ " of 4 batches"),
+    poll_url=("/demo/progress" if sync_value < 100 else none), poll_every="1s") }}
