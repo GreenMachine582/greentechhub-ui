@@ -258,6 +258,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Data", "url": "/data", "icon": "table", "children": [
         {"label": "Table", "url": "/data#table"},
+        {"label": "Action menu", "url": "/data#action-menu"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
@@ -578,7 +579,38 @@ async def layout_page(request: Request):
 
 @app.get("/data", response_class=HTMLResponse)
 async def data_page(request: Request):
-    return _page(request, "data", tasks=TASKS, **_paginate_widgets(0), **_widget_rows(1))
+    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
+
+
+@app.get("/demo/action-rows", response_class=HTMLResponse)
+async def action_rows(request: Request, inline: str = "0"):
+    """The gth_action_menu demo's rows at another `inline` (0, 2 or all)."""
+    count = None if inline == "all" else (int(inline) if inline in ("0", "2") else 0)
+    return templates.TemplateResponse(request, "_action_rows.html",
+                                      {"tasks": TASKS, "inline": count})
+
+
+def _task(task_id: int) -> dict | None:
+    return next((t for t in TASKS if t["id"] == task_id), None)
+
+
+@app.post("/demo/tasks/{task_id}/archive")
+async def archive_task(task_id: int):
+    """An action-menu item posting with hx-swap="none": the answer is a toast."""
+    task = _task(task_id)
+    if task is None:
+        return Response(status_code=404)
+    return hx_response(greentechhub_ui.toast(
+        f"Archived \"{task['title']}\" (demo: nothing changed)."))
+
+
+@app.delete("/demo/tasks/{task_id}")
+async def delete_task(task_id: int):
+    task = _task(task_id)
+    if task is None:
+        return Response(status_code=404)
+    return hx_response(greentechhub_ui.toast(
+        f"Deleted \"{task['title']}\" (demo: nothing changed).", "warning"))
 
 
 @app.get("/forms", response_class=HTMLResponse)

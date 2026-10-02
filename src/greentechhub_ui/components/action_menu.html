@@ -1,0 +1,76 @@
+{% macro _gth_action_attrs(it) -%}
+{#- A link's href, or an htmx button's hx-<method> (hx-swap="none" unless
+    attrs aims it somewhere), plus confirm and the item's own attrs. -#}
+{%- set attrs = it.attrs or {} -%}
+{%- set method = (it.method or "")|lower -%}
+{%- if method in ("get", "post", "put", "patch", "delete") %} hx-{{ method }}="{{ it.url|e }}"
+{%- if "hx-swap" not in attrs and "hx-target" not in attrs %} hx-swap="none"{% endif %}
+{%- if it.confirm %} hx-confirm="{{ it.confirm|e }}"{% endif %}
+{%- elif not it.disabled %} href="{{ it.url|e }}"{% endif %}
+{%- if it.disabled %}{% if method %} disabled{% else %} aria-disabled="true" tabindex="-1"{% endif %}{% endif %}
+{%- for k, v in attrs.items() %} {{ k|e }}="{{ v|e }}"{% endfor %}
+{%- endmacro %}
+
+{% macro _gth_action_tag(it) -%}
+{{ "button" if (it.method or "")|lower in ("get", "post", "put", "patch", "delete") else "a" }}
+{%- endmacro %}
+
+{% macro gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn btn-sm btn-link text-body", align="end") %}
+{#- Row actions: icon buttons and/or a "⋯" dropdown (Bootstrap's, so ↑/↓,
+    Esc and auto-close come with it).
+    items: mappings {"label", "url", "icon"?, "method"?, "confirm"?,
+      "danger"?, "disabled"?, "attrs"?}, or {"divider": True}.
+      No method → a link to url. method get/post/put/patch/delete → a button
+      with hx-<method>=url and, unless attrs sets hx-target/hx-swap,
+      hx-swap="none" (answer with HX-Trigger: a toast and a refresh event,
+      as for gth_data_table's bulk actions). confirm → hx-confirm (buttons
+      only). A url with a javascript:/data:/vbscript: scheme is dropped.
+    label: the row's name, for "Actions for <label>" and "Edit <label>".
+    inline: how many leading actions show as icon buttons before the menu
+      (dividers don't count): 0 = all in the menu, None = all inline, no ⋯.
+    The menu is positioned with Popper's fixed strategy, so a
+    .table-responsive or scroll-box table never clips it. -#}
+{%- set cap = 1000000 if inline is none else inline|int -%}
+{%- set ns = namespace(n=0) -%}
+{%- set shown = [] -%}
+{%- set menu = [] -%}
+{%- for it in items -%}
+{%- if it.divider -%}
+{%- if ns.n >= cap and menu and not menu[-1].divider %}{% set _ = menu.append(it) %}{% endif -%}
+{%- elif not ((it.url or "")|string|trim|lower).startswith(("javascript:", "data:", "vbscript:")) -%}
+{%- if ns.n < cap %}{% set _ = shown.append(it) %}{% else %}{% set _ = menu.append(it) %}{% endif -%}
+{%- set ns.n = ns.n + 1 -%}
+{%- endif -%}
+{%- endfor -%}
+{%- if menu and menu[-1].divider %}{% set _ = menu.pop() %}{% endif -%}
+<div class="d-inline-flex align-items-center gap-1 gth-action-menu {{ menu_class }}">
+  {%- for it in shown %}
+  {%- set name = it.label ~ (" " ~ label if label else "") %}
+  <{{ _gth_action_tag(it) }} class="{{ button_class }} gth-action-menu-button{% if it.danger %} text-danger{% endif %}{% if it.disabled %} disabled{% endif %}"
+    {%- if _gth_action_tag(it) == "button" %} type="button"{% endif %}
+    {%- if it.icon %} aria-label="{{ name|e }}" title="{{ name|e }}"{% endif %}{{ _gth_action_attrs(it) }}>
+    {%- if it.icon %}<i class="bi bi-{{ it.icon }}" aria-hidden="true"></i>{% else %}{{ it.label }}{% endif -%}
+  </{{ _gth_action_tag(it) }}>
+  {%- endfor %}
+  {%- if menu %}
+  <div class="dropdown">
+    <button type="button" class="{{ button_class }} gth-action-menu-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+      data-bs-popper-config='{"strategy":"fixed"}' aria-label="Actions{% if label %} for {{ label|e }}{% endif %}">
+      <i class="bi bi-three-dots" aria-hidden="true"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-{{ align }}">
+      {%- for it in menu %}
+      {%- if it.divider %}
+      <li><hr class="dropdown-divider"></li>
+      {%- else %}
+      <li><{{ _gth_action_tag(it) }} class="dropdown-item{% if it.danger %} text-danger{% endif %}{% if it.disabled %} disabled{% endif %}"
+        {%- if _gth_action_tag(it) == "button" %} type="button"{% endif %}{{ _gth_action_attrs(it) }}>
+        {%- if it.icon %}<i class="bi bi-{{ it.icon }} me-2" aria-hidden="true"></i>{% endif %}{{ it.label -}}
+      </{{ _gth_action_tag(it) }}></li>
+      {%- endif %}
+      {%- endfor %}
+    </ul>
+  </div>
+  {%- endif %}
+</div>
+{% endmacro %}

@@ -1428,3 +1428,91 @@ def test_settings_section_with_secret():
     )
     assert_snapshot(rendered, "settings_section_with_secret")
     assert "••••••••" not in rendered
+
+
+# action menu
+
+_ACTIONS = [
+    {"label": "Edit", "icon": "pencil", "method": "get", "url": "/t/1/edit",
+     "attrs": {"hx-target": "#gth-modal-host"}},
+    {"label": "Archive", "icon": "archive", "method": "post", "url": "/t/1/archive"},
+    {"divider": True},
+    {"label": "Open", "url": "/t/1?a=1&b=2"},
+    {"label": "Duplicate", "icon": "copy", "url": "/t/1/copy", "disabled": True},
+    {"divider": True},
+    {"label": "Delete", "icon": "trash", "method": "DELETE", "url": "/t/1",
+     "confirm": 'Delete "BHP & co"?', "danger": True},
+]
+
+
+def _action_menu(items=_ACTIONS, **kw):
+    return _render(
+        """{% from "action_menu.html" import gth_action_menu %}
+        {{ gth_action_menu(items, **kw) }}""",
+        items=items, kw=kw,
+    )
+
+
+def test_action_menu():
+    rendered = _action_menu(label="BHP")
+    assert_snapshot(rendered, "action_menu")
+    assert 'aria-label="Actions for BHP"' in rendered
+    assert "gth-action-menu-button" not in rendered  # inline=0: everything in the menu
+    assert '<a class="dropdown-item" href="/t/1?a=1&amp;b=2">Open</a>' in rendered
+    assert 'hx-get="/t/1/edit" hx-target="#gth-modal-host">' in rendered  # attrs aim it: no hx-swap
+    assert 'hx-post="/t/1/archive" hx-swap="none">' in rendered
+    assert 'hx-delete="/t/1" hx-swap="none" hx-confirm="Delete &#34;BHP &amp; co&#34;?"' in rendered
+    assert 'class="dropdown-item text-danger"' in rendered
+    assert ('<a class="dropdown-item disabled" aria-disabled="true" tabindex="-1">'
+            in rendered)
+    assert 'data-bs-popper-config=\'{"strategy":"fixed"}\'' in rendered
+    assert rendered.count("dropdown-divider") == 2
+
+
+def test_action_menu_no_label():
+    rendered = _action_menu(items=_ACTIONS[:2])
+    assert_snapshot(rendered, "action_menu_no_label")
+    assert 'aria-label="Actions"' in rendered
+
+
+def test_action_menu_inline_2():
+    rendered = _action_menu(label="BHP", inline=2)
+    assert_snapshot(rendered, "action_menu_inline_2")
+    assert rendered.count("gth-action-menu-button") == 2
+    assert 'aria-label="Edit BHP" title="Edit BHP"' in rendered
+    assert 'aria-label="Archive BHP"' in rendered
+    menu = rendered.split('<ul class="dropdown-menu')[1]
+    # The divider after the inline pair would lead the menu, so it's dropped.
+    assert menu.index("Open") < menu.index("dropdown-divider")
+    assert menu.count("dropdown-divider") == 1
+
+
+def test_action_menu_all_inline():
+    rendered = _action_menu(label="BHP", inline=None)
+    assert_snapshot(rendered, "action_menu_all_inline")
+    assert "dropdown" not in rendered and "gth-action-menu-toggle" not in rendered
+    assert rendered.count("gth-action-menu-button") == 5
+    assert ">Open</a>" in rendered  # no icon: its text shows inline
+    assert "btn btn-sm btn-link text-body gth-action-menu-button text-danger" in rendered
+
+
+def test_action_menu_inline_counts_actions_not_dividers():
+    items = [{"divider": True}, {"label": "A", "url": "/a"}, {"divider": True},
+             {"label": "B", "url": "/b"}, {"label": "C", "url": "/c"}, {"divider": True}]
+    rendered = _action_menu(items=items, inline=1)
+    assert rendered.count("gth-action-menu-button") == 1
+    menu = rendered.split('<ul class="dropdown-menu')[1]
+    assert "dropdown-divider" not in menu  # leading and trailing dividers trimmed
+
+
+def test_action_menu_drops_script_urls():
+    items = [{"label": "Bad", "url": "  JavaScript:alert(1)"}, {"label": "Data", "url": "data:x"},
+             {"label": "Good", "url": "/ok"}]
+    rendered = _action_menu(items=items)
+    assert "alert" not in rendered and "data:x" not in rendered and 'href="/ok"' in rendered
+
+
+def test_action_menu_escapes_attrs():
+    items = [{"label": "X", "url": "/x", "method": "post", "attrs": {"hx-vals": '{"a": "<b>"}'}}]
+    rendered = _action_menu(items=items)
+    assert 'hx-vals="{&#34;a&#34;: &#34;&lt;b&gt;&#34;}"' in rendered

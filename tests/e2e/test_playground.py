@@ -2295,3 +2295,60 @@ def test_data_table_refresh_event_keeps_sort_and_filters(page, playground_url):
         expect(stock_header).to_have_attribute("aria-sort", "ascending")
     finally:
         page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_action_menu_row_actions(page, playground_url):
+    page.goto(f"{playground_url}/data#action-menu")
+    section = page.locator("#action-menu")
+    toggles = section.locator(".gth-action-menu-toggle")
+    expect(toggles).to_have_count(8)
+    expect(section.locator(".gth-action-menu-button")).to_have_count(0)
+
+    # The last row's menu opens in full although its box scrolls (fixed strategy).
+    last = toggles.last
+    last.scroll_into_view_if_needed()
+    last.click()
+    menu = section.locator(".dropdown-menu.show")
+    expect(menu).to_be_visible()
+    box = menu.bounding_box()
+    hit = page.evaluate(
+        "([x, y]) => !!document.elementFromPoint(x, y)?.closest('.dropdown-menu.show')",
+        [box["x"] + box["width"] / 2, box["y"] + box["height"] - 4])
+    assert hit, "the menu's bottom edge is clipped"
+
+    # Keyboard: Esc closes and returns focus; Enter reopens; ↓ moves in.
+    page.keyboard.press("Escape")
+    expect(menu).to_have_count(0)
+    expect(last).to_be_focused()
+    page.keyboard.press("Enter")
+    page.keyboard.press("ArrowDown")
+    expect(section.locator(".dropdown-menu.show .dropdown-item").first).to_be_focused()
+    page.keyboard.press("Escape")
+
+    # Archive posts and toasts; Delete confirms first.
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Archive").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Archived")
+    page.once("dialog", lambda dialog: dialog.accept())
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Delete").click()
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Deleted")
+
+    # Edit opens the server-rendered modal (hx-target in attrs).
+    toggles.first.click()
+    section.locator(".dropdown-menu.show").get_by_text("Edit").click()
+    expect(page.locator("#server-modal")).to_be_visible()
+    page.locator("#server-modal").get_by_role("button", name="Cancel").click()
+    expect(page.locator("#server-modal")).to_be_hidden()
+
+
+def test_action_menu_inline_layouts(page, playground_url):
+    page.goto(f"{playground_url}/data#action-menu")
+    section = page.locator("#action-menu")
+    section.locator("label:has-text('Two icons')").click()
+    expect(section.locator(".gth-action-menu-button")).to_have_count(16)
+    expect(section.get_by_role("button", name="Edit Fix flaky CI job")).to_be_visible()
+    expect(section.locator(".gth-action-menu-toggle")).to_have_count(8)
+    section.locator("label:has-text('All icons')").click()
+    expect(section.locator(".gth-action-menu-toggle")).to_have_count(0)
+    expect(section.get_by_role("button", name="Delete Fix flaky CI job")).to_be_visible()
