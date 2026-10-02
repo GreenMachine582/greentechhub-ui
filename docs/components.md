@@ -803,7 +803,7 @@ value, so a checked switch reads as its own `value`.
 
 Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
 The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
-`choices`, `min`, `max`, `group`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+`choices`, `min`, `max`, `group`, `secret`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
 core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
 
 ```jinja
@@ -820,9 +820,17 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 | `choice` with more | `gth_select` |
 | `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
 | `str` | `gth_form_field` |
+| `str` with `secret` | `gth_form_field(type="password")`, always empty, `autocomplete="new-password"`; when a value is saved, "Saved. Leave blank to keep it." and a `<key>.__clear` checkbox |
 
 - `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
   `StrEnum`; a plain `Enum`'s `SettingType.BOOL` also works).
+- **Secret settings are write-only.** Pass core's `SECRET_SET` marker (what `Settings.effective()` gives for a
+  stored secret) or `None` as the value, never the secret. The input is rendered empty whatever it's given, so even a
+  plaintext passed by mistake isn't echoed. The server's save follows one contract (greentechhub-fastapi's
+  `SettingsViews` does it for you):
+  - a blank field keeps the stored value;
+  - `<key>.__clear=true` resets it (`reset_user`/`reset_app`);
+  - anything else is the new value (`set_user`/`set_app`, which encrypt it).
 - `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
   settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
   `error` is a banner.
@@ -866,7 +874,7 @@ for setting in preference_settings:
 ```
 
 The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
-definitions.
+definitions. Its "API token" preference is a secret: it keeps only "saved", never the text.
 
 ### Permission-filtered nav and the user menu
 

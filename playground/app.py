@@ -422,6 +422,9 @@ SETTINGS_DEMO = {
                      ("space_comma", "1 234,56")]},
         {"key": "ui.page_size", "type": "int", "label": "Rows per page", "default": 25,
          "min": 5, "max": 200, "help_text": "5 to 200.", "group": "Tables"},
+        {"key": "demo.api_token", "type": "str", "secret": True, "label": "API token",
+         "default": "", "group": "Integrations",
+         "help_text": "A fake credential: write-only, like a service's secret setting."},
     ]),
     "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
         {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
@@ -490,7 +493,8 @@ async def settings_page(request: Request):
         "settings_intro": (
             "gth_setting_field picks the widget from the setting's type: a switch for bool, "
             "segmented buttons for four or fewer choices, a select for more, number and text "
-            "fields for int and str. Save a page size of 500 to see the 422 path."),
+            "fields for int and str, and a write-only password field for a secret (the API "
+            "token). Save a page size of 500 to see the 422 path."),
         "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
     })
 
@@ -505,9 +509,19 @@ async def settings_demo_save(request: Request, section: str):
         return denied  # a POST, so a 403
     form = await request.form()
     _, _, settings = SETTINGS_DEMO[section]
-    submitted, errors = {}, {}
+    submitted, errors, cleared = {}, {}, []
     for setting in settings:
         raw = form.get(setting["key"])
+        if setting.get("secret"):
+            # Write-only, as greentechhub-fastapi's SettingsViews treats core's
+            # secret settings: the Remove box clears it, a blank field keeps it,
+            # and a new value is saved. The demo keeps only "set" (True), never
+            # the text, so the field gets what core's SECRET_SET marker gives.
+            if form.get(f"{setting['key']}.__clear") == "true":
+                cleared.append(setting["key"])
+            elif raw:
+                submitted[setting["key"]] = True
+            continue
         if raw is None:
             continue  # not on this form: keep the saved value (as SettingsViews does)
         try:
@@ -524,11 +538,13 @@ async def settings_demo_save(request: Request, section: str):
     theme = submitted.pop("ui.theme", None)
     prefs = None
     if section == "preferences":
-        prefs = _preferences(request) | submitted
+        prefs = {k: v for k, v in (_preferences(request) | submitted).items() if k not in cleared}
     else:
         SETTINGS_VALUES.update(submitted)
     events = {"gth:theme": theme} if theme else {}
     values = _saved_settings(request) | (prefs or {}) | ({"ui.theme": theme} if theme else {})
+    for key in cleared:
+        values.pop(key, None)
     response = _render_section(request, _settings_section(request, section, values=values),
                                headers={"HX-Trigger": greentechhub_ui.toast(
                                    f"{SETTINGS_DEMO[section][0]} saved", events=events)})
