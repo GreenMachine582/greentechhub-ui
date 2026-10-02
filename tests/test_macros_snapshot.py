@@ -1187,6 +1187,21 @@ _PAGE_SIZE = {"key": "ui.page_size", "type": "int", "label": "Rows per page", "d
 _BANNER = {"key": "site.banner", "type": "str", "label": "Banner", "default": ""}
 _MAINTENANCE = {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode",
                 "default": False, "help_text": "Shows the banner to everyone."}
+_API_TOKEN = {"key": "billing.api_token", "type": "str", "label": "API token", "default": "",
+              "secret": True, "help_text": "From your billing provider."}
+
+
+class _SecretSet:
+    """Stands in for core's SECRET_SET marker: truthy, renders as a mask."""
+
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        return "••••••••"
+
+
+_SECRET_SET = _SecretSet()
 
 
 def test_select():
@@ -1304,3 +1319,72 @@ def test_settings_section_without_action():
     )
     assert_snapshot(rendered, "settings_section_without_action")
     assert "<form" not in rendered and "<button" not in rendered
+
+
+def _secret_field(value=None, **kw):
+    return _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, value, **kw) }}""",
+        setting=_API_TOKEN, value=value, kw=kw,
+    )
+
+
+def test_secret_setting_field_unset():
+    rendered = _secret_field()
+    assert_snapshot(rendered, "setting_field_secret_unset")
+    assert 'type="password"' in rendered and 'autocomplete="new-password"' in rendered
+    assert 'value=""' in rendered
+    assert "Saved." not in rendered and ".__clear" not in rendered
+
+
+def test_secret_setting_field_set():
+    rendered = _secret_field(_SECRET_SET)
+    assert_snapshot(rendered, "setting_field_secret_set")
+    assert 'value=""' in rendered and "••••••••" not in rendered
+    assert "From your billing provider. Saved. Leave blank to keep it." in rendered
+    assert 'type="checkbox" id="gth-field-billing.api_token.__clear"' in rendered
+    assert 'name="billing.api_token.__clear" value="true"' in rendered
+
+
+def test_secret_setting_field_never_echoes_a_value():
+    # A caller passing the plaintext by mistake still gets an empty input.
+    rendered = _secret_field("hunter2", errors=["Too short."])
+    assert "hunter2" not in rendered
+    assert 'value=""' in rendered and "Too short." in rendered and "Saved." in rendered
+
+
+def test_secret_setting_field_without_help_text():
+    setting = {k: v for k, v in _API_TOKEN.items() if k != "help_text"}
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting) }}""",
+        setting=setting,
+    )
+    assert "form-text" not in rendered
+    with_marker = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, marker) }}""",
+        setting=setting, marker=_SECRET_SET,
+    )
+    help_div = '<div class="form-text" id="gth-field-billing.api_token-help">'
+    assert help_div + "Saved. Leave blank to keep it.</div>" in with_marker
+
+
+def test_non_secret_str_setting_is_unchanged():
+    rendered = _render(
+        """{% from "settings.html" import gth_setting_field %}
+        {{ gth_setting_field(setting, "Down at 5pm") }}""",
+        setting=_BANNER | {"secret": False},
+    )
+    assert 'type="text"' in rendered and 'value="Down at 5pm"' in rendered
+
+
+def test_settings_section_with_secret():
+    rendered = _render(
+        """{% from "settings.html" import gth_settings_section %}
+        {{ gth_settings_section("integrations", "Integrations", settings,
+            values={"billing.api_token": marker}, action="/settings/integrations") }}""",
+        settings=[_BANNER, _API_TOKEN], marker=_SECRET_SET,
+    )
+    assert_snapshot(rendered, "settings_section_with_secret")
+    assert "••••••••" not in rendered

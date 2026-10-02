@@ -110,6 +110,36 @@ def test_settings_section_validates_saves_and_submits_unchecked_switch(page, pla
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
+def test_secret_setting_is_write_only(page, playground_url):
+    page.goto(f"{playground_url}/settings")
+    prefs = "#gth-settings-preferences"
+    token = page.locator("[id='gth-field-demo.api_token']")
+    help_text = page.locator("[id='gth-field-demo.api_token-help']")
+    remove = page.locator("[id='gth-field-demo.api_token.__clear']")
+    expect(token).to_have_attribute("type", "password")
+    expect(remove).to_have_count(0)
+
+    token.fill("tok-s3cret")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Preferences saved")
+    expect(help_text).to_contain_text("Saved. Leave blank to keep it.")
+    expect(token).to_have_value("")
+    assert "tok-s3cret" not in page.content()
+
+    # A blank field keeps it, across a reload too.
+    page.reload()
+    expect(help_text).to_contain_text("Saved.")
+    page.click(f"{prefs} button[type=submit]")
+    expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Preferences saved")
+    expect(help_text).to_contain_text("Saved.")
+
+    # Remove clears it.
+    remove.check()
+    page.click(f"{prefs} button[type=submit]")
+    expect(remove).to_have_count(0)
+    expect(help_text).not_to_contain_text("Saved.")
+
+
 def test_theme_saved_from_settings_applies_without_reload_and_persists(page, playground_url):
     page.goto(f"{playground_url}/settings")
     html = page.locator("html")
