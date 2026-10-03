@@ -1,4 +1,5 @@
 {% from "empty_state.html" import gth_empty_state %}
+{% from "action_menu.html" import gth_action_menu %}
 
 {% macro gth_table(headers, table_class="", tbody_id=None) %}
 <div class="table-responsive gth-table-wrapper">
@@ -92,7 +93,8 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 {%- endmacro %}
 
 {% macro gth_data_table(state, headers, rows, empty_message="Nothing here yet.", table_class="", load_more_label="Load more", refresh_event=None,
-                         bulk_actions=None, select_name="ids", view_options=False, export_label="Export CSV") %}
+                         bulk_actions=None, select_name="ids", view_options=False, export_label="Export CSV",
+                         row_actions=False, row_actions_label="Actions") %}
 {# One call for the full page AND every htmx partial of a table whose
    navigation comes from `state` (greentechhub_ui.TableState): "none",
    "load_more", "infinite" or "pages". Rows via {% call(row) %}.
@@ -114,6 +116,10 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    toast("Archived 3", events=[refresh_event])). Behaviour in
    static/js/table-select.js (table_select_js_url): the selection survives
    sorting, paging and load-more, and clears when the filters change.
+   row_actions: a trailing actions column — end each row with
+   gth_table_actions_cell(items, label=...) (gth_action_menu's items). Its
+   header is visually hidden (row_actions_label) and has no data-gth-col, so
+   the View menu never lists it and view options never hide it.
    view_options: a "View" menu above the table to show/hide columns and switch
    between comfortable and compact density, remembered per table (and page)
    in localStorage by static/js/table-view.js (table_view_js_url). Header
@@ -123,7 +129,7 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    above the table to the consumer's CSV endpoint with the current filters
    and sort — inside the wrapper, so every swap keeps it current. #}
 {% set selectable = (bulk_actions or [])|length > 0 -%}
-{% set colspan = headers|length + (1 if selectable else 0) %}
+{% set colspan = headers|length + (1 if selectable else 0) + (1 if row_actions else 0) %}
 {% set root = ("#" ~ state.id ~ "-scroll") if state.max_height else none %}
 {% if state.rows_only %}
 {% for row in rows %}{{ caller(row) }}{% endfor %}
@@ -145,7 +151,8 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 <table class="table table-hover align-middle gth-table {{ table_class }}">
   <thead><tr>
     {%- if selectable %}<th scope="col" class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select-all aria-label="Select all rows shown"></th>{% endif %}
-    {%- for h in headers %}{{ _header(state, h, view_options) }}{% endfor %}</tr></thead>
+    {%- for h in headers %}{{ _header(state, h, view_options) }}{% endfor %}
+    {%- if row_actions %}<th scope="col" class="gth-table-actions"><span class="visually-hidden">{{ row_actions_label }}</span></th>{% endif %}</tr></thead>
   <tbody id="{{ state.id }}-tbody">
   {% if rows %}
     {% for row in rows %}{{ caller(row) }}{% endfor %}
@@ -238,6 +245,14 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
    checkbox for `value` (what the bulk actions post), named "Select <label>"
    for assistive tech. It has no name, so it never submits with a form. #}
 <td class="gth-table-select"><input type="checkbox" class="form-check-input" data-gth-select value="{{ value|e }}" aria-label="Select {{ label|e }}"></td>
+{%- endmacro %}
+
+{% macro gth_table_actions_cell(items, label=None, inline=None, button_class="btn btn-sm btn-link text-body", align="end") %}
+{# The last cell of each row in a gth_data_table with row_actions=True: a
+   gth_action_menu (same items; label names the row, e.g. "Edit <label>").
+   inline=None (default) shows every action as an icon button, 0 puts them
+   all in the "⋯" menu, N shows the first N as buttons. #}
+<td class="gth-table-actions">{{ gth_action_menu(items, label=label, inline=inline, button_class=button_class, align=align) }}</td>
 {%- endmacro %}
 
 {% macro gth_table_pager(state, label="Table pages") %}

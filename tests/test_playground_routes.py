@@ -68,6 +68,8 @@ def test_every_sidebar_link_returns_200():
     for path in sorted(paths):
         response = _run(get_as_admin(path))
         assert response.status_code == 200, path
+        if path == "/login-demo":  # layout="auth": no sidebar to mark it
+            continue
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
 
 
@@ -206,6 +208,33 @@ def test_tables_date_range_filter():
     assert "of 36" in _run(_get("/tables", params={"date_to": "2025-06-30"}, headers=HX)).text
     # A malformed date is ignored, not a 500.
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
+
+
+def test_login_demo_mirrors_login_views():
+    page = _run(_get("/login-demo"))
+    assert page.status_code == 200 and 'action="/login-demo"' in page.text
+    assert "gth-toast-danger" not in page.text
+    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
+    assert bad.status_code == 401
+    assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
+    assert "Demo account: demo / demo." in bad.text
+    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    assert good.status_code == 303 and good.headers["location"] == "/"
+
+
+def test_tables_stock_filter(monkeypatch):
+    records = [dict(r) for r in playground_app.RECORDS]
+    records[0]["stock"] = records[1]["stock"] = 0
+    monkeypatch.setattr(playground_app, "RECORDS", records)
+    def total(stock):
+        return _run(_get("/tables", params={"stock": stock}, headers=HX)).text
+
+    assert "of 2" in total("out")
+    assert f"of {len(records) - 2}" in total("in")
+    assert f"of {len(records)}" in total("x")  # anything else is no filter
+    page = _run(_get("/tables", params={"stock": "out"})).text
+    assert '<label class="form-label visually-hidden" for="gth-field-stock">Stock</label>' in page
+    assert '<option value="out" selected>Sold out</option>' in page
 
 
 def test_demo_upload_rechecks_type_and_size(monkeypatch):

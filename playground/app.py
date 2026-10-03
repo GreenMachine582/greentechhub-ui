@@ -19,7 +19,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -294,6 +294,7 @@ PLAYGROUND_NAV = [
         {"label": "Toast", "url": "/feedback#toast"},
         {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
+        {"label": "Inline alert", "url": "/feedback#inline-alert"},
         {"label": "Alert banner", "url": "/feedback#alert-banner"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
@@ -315,6 +316,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
+    {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
     # Only the demo admin (sign in on /extensibility) sees this.
     {"label": "Roles", "url": "/roles", "icon": "people",
      "required_permission": "settings.manage"},
@@ -733,6 +735,30 @@ def _picked_roles(form) -> list[str]:
     return [r for r in form.getlist("roles") if r in known]
 
 
+# gth-ui's login_page.html with the context greentechhub-fastapi's LoginViews
+# passes: nothing on GET, `error` (and a 401) after a failed sign-in.
+LOGIN_DEMO = {
+    "login_url": "/login-demo",
+    "login_help": "Demo account: demo / demo.",
+    "login_links": [{"label": "Playground", "url": "/"},
+                    {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
+}
+
+
+@app.get("/login-demo", response_class=HTMLResponse)
+async def login_demo(request: Request):
+    return templates.TemplateResponse(request, "login_page.html", LOGIN_DEMO)
+
+
+@app.post("/login-demo", response_class=HTMLResponse)
+async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form("")):
+    if user_id == "demo" and password == "demo":
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "login_page.html", {
+        **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
+    }, status_code=401)
+
+
 @app.get("/roles", response_class=HTMLResponse)
 async def roles_page(request: Request):
     if denied := _require_persona(request, MANAGE_PERMISSION):
@@ -940,7 +966,7 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         page_sizes=(10, 25, 50),
         sortable=("name", "category", "stock", "price", "added"),
         default_sort="name",
-        filter_params=("q", "category", "date_from", "date_to"),
+        filter_params=("q", "category", "stock", "date_from", "date_to"),
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
         export_base_url="/tables/export.csv" if table_id == "records" else None,
@@ -963,6 +989,8 @@ def _query_records(state: greentechhub_ui.TableState):
         rows = [r for r in rows if q in r["name"].lower()]
     if category := state.filters.get("category"):
         rows = [r for r in rows if r["category"] == category]
+    if (stock := state.filters.get("stock")) in ("in", "out"):
+        rows = [r for r in rows if (r["stock"] > 0) == (stock == "in")]
     if date_from := _parse_date(state.filters.get("date_from")):
         rows = [r for r in rows if r["added"] >= date_from]
     if date_to := _parse_date(state.filters.get("date_to")):

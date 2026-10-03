@@ -636,7 +636,7 @@ def test_modal_form_422_then_success_closes_modal(page, playground_url):
 
 def test_busy_button_shows_busy_state_then_resets(page, playground_url):
     page.goto(f"{playground_url}/forms")
-    button = page.locator(".gth-busy-button")
+    button = page.locator("#busy-button .gth-busy-button[type=button]")
     button.click()
     expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Slow job started")
     expect(button).to_be_disabled()
@@ -648,6 +648,26 @@ def test_busy_button_shows_busy_state_then_resets(page, playground_url):
     expect(button).to_be_enabled()
     expect(button.locator(".gth-busy-button-idle")).to_be_visible()
     expect(button.locator(".gth-busy-button-busy")).to_be_hidden()
+
+
+def test_busy_submit_button_busy_while_form_request_runs(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    button = page.locator("#busy-submit-demo .gth-busy-button")
+    for submit in (button.click, lambda: page.locator("#busy-report-name").press("Enter")):
+        submit()
+        # start_toast comes from the submitter, though the form sends the request.
+        expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Report started")
+        expect(button).to_be_disabled()  # the form's hx-disabled-elt
+        expect(button.locator(".gth-busy-button-busy")).to_be_visible()
+        expect(button.locator(".gth-busy-button-idle")).to_be_hidden()
+
+        expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Slow job finished", timeout=10000)
+        expect(button).to_be_enabled()
+        expect(button.locator(".gth-busy-button-idle")).to_be_visible()
+        # Clear the toasts, so the Enter round checks fresh ones.
+        closes = page.locator(f"{DYNAMIC_TOAST} .btn-close")
+        closes.evaluate_all("els => els.forEach(b => b.click())")
+        expect(page.locator(DYNAMIC_TOAST)).to_have_count(0)
 
 
 def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
@@ -710,7 +730,7 @@ def test_navbar_follows_color_mode(page, playground_url):
 
 def test_secondary_buttons_follow_color_mode(page, playground_url):
     page.goto(f"{playground_url}/forms")
-    button = page.locator(".gth-busy-button")  # btn-outline-secondary
+    button = page.locator("#busy-button .gth-busy-button[type=button]")  # btn-outline-secondary
     # to_have_css retries: .btn transitions its color
     expect(button).to_have_css("color", "rgb(206, 212, 218)")  # #ced4da: 10.3:1 on dark
     page.click(".gth-theme-toggle")
@@ -881,7 +901,7 @@ def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
         expect(page.locator(BULK_COUNT)).to_contain_text("on other pages")
         _htmx_idle(page)
         _row_box(page, 0).check()
-        page.get_by_role("button", name="Restock +50").click()
+        page.get_by_role("button", name="Restock +50", exact=True).click()
         expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 2 records.")
         expect(page.locator(BULK_BAR)).to_be_hidden()
         assert len(posted) == 1 and posted[0].count("ids=") == 2
@@ -893,7 +913,7 @@ def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
 
         page.on("dialog", lambda d: d.accept())  # "Mark sold out" confirms first
         _row_box(page, 0).check()
-        page.get_by_role("button", name="Mark sold out").click()
+        page.get_by_role("button", name="Mark sold out", exact=True).click()
         expect(stock).to_have_text("0")
     finally:
         page.request.post(f"{playground_url}/demo/reset")
@@ -904,7 +924,9 @@ def test_bulk_selection_by_keyboard(page, playground_url):
     _row_box(page, 0).focus()
     page.keyboard.press("Space")
     expect(page.locator(BULK_COUNT)).to_have_text("1 selected")
-    page.keyboard.press("Tab")
+    # Tab passes the row's actions (the Restock button, then "⋯") on its way.
+    for _ in range(3):
+        page.keyboard.press("Tab")
     expect(_row_box(page, 1)).to_be_focused()
     page.keyboard.press("Space")
     expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
@@ -984,8 +1006,39 @@ def test_view_keeps_one_column_and_covers_appended_rows(page, playground_url):
         expect(page.locator(RECORD_ROWS)).to_have_count(20)
         expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=3")).to_be_hidden()  # Category
         expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=0")).to_be_visible()  # checkbox
+        # The row actions column is never listed in the menu or hidden.
+        expect(page.locator("#records [data-gth-col-toggle]")).to_have_count(6)
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td.gth-table-actions")).to_be_visible()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td.gth-table-actions")).to_be_visible()
     finally:
         _clear_views(page)
+
+
+def test_row_actions_post_their_row(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    row = page.locator(RECORD_ROWS).nth(0)
+    name = row.locator("td").nth(2).inner_text()
+    stock = row.locator("td.text-end").first
+    first_stock = int(stock.inner_text())
+    try:
+        # inline=1: Restock is an icon button, the rest sit in the "⋯" menu.
+        row.get_by_role("button", name=f"Restock +50 {name}").click()
+        expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 1 record.")
+        expect(stock).to_have_text(str(first_stock + 50))  # refresh_event re-queried the table
+
+        page.on("dialog", lambda d: d.accept())
+        row.get_by_role("button", name=f"Actions for {name}").click()
+        row.get_by_role("button", name="Mark sold out").click()
+        expect(stock).to_have_text("0")
+        expect(page.locator(BULK_BAR)).to_be_hidden()  # row actions don't touch the selection
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_picker_mode_has_no_row_actions(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages&pick_for=demo")
+    expect(page.locator(RECORD_ROWS).first).to_be_visible()
+    expect(page.locator("#records .gth-table-actions")).to_have_count(0)
 
 
 def test_view_density_compact_persists(page, playground_url):
@@ -1211,6 +1264,28 @@ def test_date_range_filters_the_data_table(page, playground_url):
     # The filter bar isn't swapped, so the chip stays pressed.
     fy_chip = page.locator(".gth-table-filter [data-preset=fy]")
     expect(fy_chip).to_have_attribute("aria-pressed", "true")
+
+
+def test_filter_bar_select_with_hidden_label(page, playground_url):
+    # No record starts sold out: mark two, then filter for them.
+    page.request.post(f"{playground_url}/demo/records/sold-out", form={"ids": "1"})
+    page.request.post(f"{playground_url}/demo/records/sold-out", form={"ids": "2"})
+    try:
+        page.goto(f"{playground_url}/tables?mode=pages")
+        select = page.locator(".gth-table-filter").get_by_label("Stock", exact=True)
+        expect(select).to_be_visible()  # the hidden label still names it
+        expect(page.locator(".gth-table-filter label[for='gth-field-stock']")).to_have_class(
+            re.compile("visually-hidden"))
+        summary = page.locator("#records .gth-table-summary")
+        select.select_option("out")
+        expect(summary).to_contain_text("1–2 of 2")
+        assert "stock=out" in page.url
+        stocks = page.locator(f"{RECORD_ROWS} td:nth-child(5)")  # select, ID, Name, Category, Stock
+        expect(stocks).to_have_text(["0", "0"])
+        select.select_option("")  # "Any stock"
+        expect(summary).to_contain_text("of 120")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
 
 
 # ── gth-file-drop ─────────────────────────────────────────────────────────
@@ -2044,6 +2119,44 @@ def test_toast_warning_close_button_is_readable(page, playground_url):
         # The white close is an inverting filter; on a light fill it must be off.
         inverted = close.evaluate("el => getComputedStyle(el).filter") not in ("none", "")
         assert inverted is not dark_close, kind
+
+
+def test_login_page_is_a_branded_auth_screen(page, playground_url):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{playground_url}/login-demo")
+    expect(page.locator(".gth-navbar")).to_have_count(0)  # layout="auth": no app chrome
+    expect(page.locator(".gth-auth-service")).to_have_text("Playground")
+    expect(page.locator("#gth-field-user_id")).to_be_focused()
+    assert not page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+    # The colour mode can change before signing in.
+    html = page.locator("html")
+    expect(html).to_have_attribute("data-bs-theme", "dark")
+    page.click(".gth-auth-corner .gth-theme-toggle")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    page.click(".gth-auth-corner .gth-theme-toggle")  # back, for the tests after this one
+    # A failed sign-in keeps the user ID and moves focus to the password.
+    page.fill("#gth-field-user_id", "bob")
+    page.fill("#gth-field-password", "nope")
+    page.click("form[action='/login-demo'] button[type=submit]")
+    expect(page.locator(".gth-auth-card .gth-toast-danger")).to_contain_text("Incorrect user ID")
+    expect(page.locator("#gth-field-user_id")).to_have_value("bob")
+    expect(page.locator("#gth-field-password")).to_be_focused()
+
+
+def test_inline_alert_is_page_content_not_a_toast(page, playground_url):
+    page.goto(f"{playground_url}/feedback#inline-alert")
+    alerts = page.locator("#alerts-demo .gth-toast-inline")
+    expect(alerts).to_have_count(6)
+    first = alerts.first
+    expect(first).to_be_visible()
+    # Its container's width (a toast is a 24rem card) and no shadow or close button.
+    width = first.evaluate("el => el.getBoundingClientRect().width")
+    container = page.locator("#alerts-demo").evaluate("el => el.getBoundingClientRect().width")
+    assert abs(width - container) < 1 and width > 24 * 16
+    expect(first).to_have_css("box-shadow", "none")
+    expect(page.locator("#alerts-demo .btn-close")).to_have_count(0)
+    # The surface variant keeps the toast's kind accent bar.
+    expect(first).to_have_css("border-left-width", "4px")
 
 
 def _preset(page, name):

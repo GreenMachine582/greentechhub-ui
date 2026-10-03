@@ -14,13 +14,14 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Toasts over `HX-Trigger` (`greentechhub_ui.toast()`) and server-side `flashes` in one markup: kinds, title, icon, action link, duration/sticky, surface or solid (v0.8 look) |
+| `gth-alert` | The toast card as inline page content — form/result errors, setup notices; no close button (v0.14) |
 | `gth-back-to-top` | Floating "back to top" button past a scroll threshold (v0.8) |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
-| `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
+| `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
-| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
+| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
@@ -158,12 +159,22 @@ gth_table_load_more(next_url, label="Load more", colspan=99, total=None)
    next_url is None. Pair with greentechhub_fastapi.query.next_page_url. #}
 
 {# busy_button.html #}
-gth_busy_button(label, busy_label, hx_attrs, icon=None, btn_class="btn-outline-secondary", start_toast=None)
+gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outline-secondary", start_toast=None,
+                submit=False)
 {# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
    busy_label + spinner while the request runs; start_toast pops at once
    (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
    .htmx-request — see theme.css for the htmx 1.9.10 bug that forces it.
-   Still guard the action server-side: this only stops double-clicks in one tab. #}
+   Still guard the action server-side: this only stops double-clicks in one tab.
+   submit=True (v0.14): a form's submit button. The form sends the request, so
+   the form disables the button — give it hx-disabled-elt="find button[type=submit]";
+   without that it still submits but never shows busy. hx_attrs is optional, and
+   start_toast still pops (toast.js reads it from the submit event's submitter). #}
+{% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-target": "#result",
+    "hx-disabled-elt": "find button[type=submit]"}) %}
+  …
+  {{ gth_busy_button("Import", "Importing…", icon="upload", btn_class="btn-primary", submit=True) }}
+{% endcall %}
 
 {# combobox.html — behaviour in static/js/combobox.js (combobox_js_url) #}
 gth_combobox(name, label, url, value=None, value_label=None, errors=None,
@@ -431,6 +442,9 @@ gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn bt
 - The menu uses Popper's fixed strategy, so a `.table-responsive` or scroll-box table never clips it; keyboard
   (Enter/↓/Esc) and click-away come from Bootstrap.
 
+In a `gth_data_table`, use its row actions column instead of a hand-built `<td>` (see
+[Row actions](#row-actions)). The macro also works on its own, e.g. in a card header or a plain `gth_table`:
+
 ```jinja
 <td class="text-end text-nowrap">
   {{ gth_action_menu([
@@ -658,6 +672,33 @@ toast shows a countdown bar that pauses while hovered or focused, in step with B
 Before v0.8 the message was injected as HTML (`innerHTML`) — a toast built from user input could inject
 markup; it's text now.
 
+### Inline alerts (v0.14)
+
+```jinja
+{# toast.html — the toast card as page content #}
+gth_alert(message, kind="info", title=None, icon=None, action=None, variant="surface", html=False, alert_class="mb-3")
+{# Same vocabulary as toast() and flashes: kind (aliases warn, error), title, icon,
+   action {label, url} (javascript: etc. dropped), variant, html (trusted markup only). #}
+```
+
+The same card as a toast, used where the message belongs to a place on the page rather than to a moment:
+
+| | Toast / static flash | `gth_alert` | `gth_alert_banner` |
+|---|---|---|---|
+| For | Something that just happened | A form or result error, a "not set up yet" notice | Site-wide notice (maintenance) |
+| Lifetime | Auto-hides or closes | Stays until the page or panel changes; no close button | Dismissal remembered per message |
+| Layout | Floating 24rem card in `#gth-toast-container` | Its container's width, in the flow, no shadow | Full-width strip above the navbar |
+
+Warning/danger alerts are `role="alert"`, so one swapped in (an htmx result panel) is announced; the rest are
+`role="status"`. There's no `aria-live`, since it's page content rather than a notification.
+
+```jinja
+{% if error %}
+  {{ gth_alert(error, kind="danger", title="Couldn't import " ~ filename,
+      action={"label": "Open Settings", "url": "/settings#email"}) }}
+{% endif %}
+```
+
 ### Back to top (v0.8)
 
 ```jinja
@@ -825,6 +866,36 @@ async def archive(request: Request):
 {% endcall %}
 ```
 
+### Row actions
+
+```jinja
+{# table.html — gth_action_menu in a column of its own #}
+gth_data_table(state, headers, rows, ..., row_actions=False, row_actions_label="Actions")
+gth_table_actions_cell(items, label=None, inline=None, button_class="btn btn-sm btn-link text-body", align="end")
+{# row_actions=True adds a trailing column for per-row actions; end each row with
+   gth_table_actions_cell. Its header is visually hidden (row_actions_label, for
+   screen readers) and the empty-state and load-more rows span it. #}
+```
+
+`items`, `label` and `inline` are [`gth_action_menu`](#action-menu-v013)'s. Here `inline` defaults to `None`, so every
+action is an icon button; pass `0` to fold them into the "⋯" menu or `N` to keep the first `N` as buttons. Don't
+add a `""` header for the column yourself: with [view options](#column-visibility-and-density) a blank header
+would be listed in the View menu as an unlabelled toggle. The row-actions column is never listed and never hidden.
+
+```jinja
+{% call(s) gth_data_table(table, headers, stocks, refresh_event="stocksChanged", view_options=True, row_actions=True) %}
+<tr>
+  <td>{{ s.symbol }}</td>…
+  {{ gth_table_actions_cell([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/stocks/" ~ s.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Delete", "icon": "trash", "method": "get", "url": "/stocks/" ~ s.id ~ "/delete",
+       "attrs": {"hx-target": "#gth-modal-host"}, "danger": True},
+    ], label=s.symbol) }}
+</tr>
+{% endcall %}
+```
+
 ### Column visibility and density
 
 ```jinja
@@ -843,7 +914,7 @@ per table. With nothing stored, density starts from the viewer's `ui.density` (`
 Comfortable on a compact page keeps comfortable cells. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
 load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
 cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
-so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
+so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column and the [row actions](#row-actions) column are never listed or hidden. At least one
 column always stays shown. Without JS the menu stays hidden and every column shows.
 
 ### Export
@@ -962,10 +1033,21 @@ The plain functions never read `user_settings`, so a CSV export keeps `1,234.56`
 ```jinja
 {# select.html #}
 gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
-           field_class="mb-3", input_attrs=None)
+           field_class="mb-3", input_attrs=None, hide_label=False)
 {# options: {"value", "label"} dicts, (value, label) pairs (core Setting.choices' shape), or bare
    values. value is compared as a string, so 25 selects "25". placeholder adds an empty first
-   option. Same ids, aria-describedby and error layout as gth_form_field. #}
+   option. Same ids, aria-describedby and error layout as gth_form_field.
+   hide_label (v0.14): the label stays for assistive tech only. #}
+```
+
+In a `gth_table_filter` bar, hide the label and drop the margin, as with `gth_date_range`. The name goes in the
+`TableState`'s `filter_params`, and the placeholder option ("All types", submitting `""`) clears the filter:
+
+```jinja
+{% call gth_table_filter(table) %}
+  {{ gth_select("type", "Type", types, value=table.filters.get("type"), placeholder="All types",
+      hide_label=True, field_class="mb-0") }}
+{% endcall %}
 ```
 
 `gth_segmented` gains `help_text=None, errors=None` and `gth_switch` gains `errors=None, off_value=None`.
@@ -1019,6 +1101,22 @@ markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 |---|---|
 | `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
 | `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
+
+`login_page.html` (v0.14) is the same kind of page for local auth. It uses `app.html`'s `layout="auth"`, so a
+signed-out visitor sees no app navbar: the brand (logo, swapped per colour mode, or a shield mark without one)
+above a sign-in card, the theme toggle in the corner, and a footer with the brand and optional links. It takes
+`LoginViews`' context — `error` after a failed sign-in — plus optional `login_url`, `login_title`,
+`login_subtitle`, `user_id_label`, `user_id`, `login_help` and `login_links` ([contract](contract.md)). It's a plain
+form rather than `gth_form`, so the browser stops an empty submit before `LoginViews`' required fields would answer
+FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own:
+
+```python
+class MyLoginViews(LoginViews):
+    login_template = "login_page.html"   # until greentechhub-fastapi defaults to it
+```
+
+`layout="auth"` is open to other signed-out pages too: extend `app.html` and `{% set layout = "auth" %}` at the top
+level, then fill `{% block content %}` (`.gth-auth` centres it).
 
 A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
 optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no

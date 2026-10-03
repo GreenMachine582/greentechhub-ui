@@ -359,6 +359,34 @@ def test_toast_flashes_empty():
     assert_snapshot(rendered, "toast_flashes_empty")
 
 
+_ALERTS = """{% from "toast.html" import gth_alert %}
+{{ gth_alert("Your email account isn't set up yet.") }}
+{{ gth_alert("Imported 3 transactions.", kind="success") }}
+{{ gth_alert("Row 4 has no date.", kind="warn", title="Couldn't import trades.csv",
+    action={"label": "Open Settings", "url": "/settings#email"}) }}
+{{ gth_alert("Wrong user ID or password.", kind="error", variant="solid", alert_class="mb-0") }}
+{{ gth_alert("Plain <b>text</b>", kind="neutral",
+    action={"label": "x", "url": "javascript:alert(1)"}) }}
+{{ gth_alert("Add it under <a href='/settings'>Settings</a>.", kind="info", html=True) }}"""
+
+
+def test_alert():
+    rendered = _render(_ALERTS)
+    assert_snapshot(rendered, "alert")
+    # The toast card as page content: no toast classes, close button or live region.
+    assert rendered.count("gth-toast gth-toast-inline") == 6
+    assert "toast show" not in rendered and "btn-close" not in rendered
+    assert "aria-live" not in rendered
+    assert 'gth-toast-info gth-toast-surface mb-3"\n  role="status"' in rendered  # the defaults
+    assert 'gth-toast-warning gth-toast-surface mb-3"\n  role="alert"' in rendered  # warn alias
+    assert 'gth-toast-danger gth-toast-solid text-bg-danger mb-0"\n  role="alert"' in rendered
+    assert '<div class="gth-toast-title">Couldn&#39;t import trades.csv</div>' in rendered
+    assert 'href="/settings#email">Open Settings</a>' in rendered
+    assert "javascript:" not in rendered  # an unsafe action is dropped
+    assert "Plain &lt;b&gt;text&lt;/b&gt;" in rendered  # escaped unless html=True
+    assert "<a href='/settings'>Settings</a>" in rendered
+
+
 def test_toast_flashes_with_items():
     rendered = _render(
         """{% from "toast.html" import gth_toast_flashes %}
@@ -396,6 +424,20 @@ def test_busy_button():
             icon="arrow-repeat", start_toast="ASX sync started") }}"""
     )
     assert_snapshot(rendered, "busy_button")
+
+
+def test_busy_button_submit():
+    rendered = _render(
+        """{% from "busy_button.html" import gth_busy_button %}
+        {{ gth_busy_button("Import", "Importing…", icon="upload", btn_class="btn-primary",
+            start_toast="Import started", submit=True) }}"""
+    )
+    assert_snapshot(rendered, "busy_button_submit")
+    assert '<button type="submit" class="btn btn-primary gth-busy-button"' in rendered
+    # The form's hx-disabled-elt disables it, not its own.
+    assert "hx-disabled-elt" not in rendered
+    assert 'data-gth-start-toast="Import started"' in rendered
+    assert "gth-busy-button-idle" in rendered and "Importing…" in rendered
 
 
 def test_combobox_empty():
@@ -685,6 +727,60 @@ def test_data_table_view_options_off_by_default():
     state = _table_state(mode="pages")
     rendered = _render(_DATA_TABLE, state=state, rows=_ROWS)
     assert "data-gth-col" not in rendered and "gth-table-toolbar" not in rendered
+
+
+_ACTIONS_TABLE = """{% from "table.html" import gth_data_table, gth_table_actions_cell %}
+{% call(r) gth_data_table(state, [
+    {"label": "Name", "sort_key": "name", "hideable": False},
+    {"label": "Qty", "key": "quantity", "class": "text-end"},
+    {"label": "Notes", "hidden": True},
+    "Owner",
+  ], rows, view_options=True, row_actions=True) %}
+<tr><td>{{ r.name }}</td><td>{{ r.qty }}</td><td></td><td></td>
+{{ gth_table_actions_cell([
+    {"label": "Edit", "icon": "pencil", "method": "get", "url": "/parts/" ~ r.name ~ "/edit",
+     "attrs": {"hx-target": "#gth-modal-host"}},
+    {"label": "Delete", "icon": "trash", "method": "delete", "url": "/parts/" ~ r.name,
+     "danger": True},
+  ], label=r.name) }}</tr>
+{% endcall %}"""
+
+
+def test_data_table_row_actions():
+    state = _table_state({"sort": "name"}, mode="pages")
+    rendered = _render(_ACTIONS_TABLE, state=state, rows=_ROWS)
+    assert_snapshot(rendered, "data_table_row_actions")
+    head = rendered.split("<thead>")[1].split("</thead>")[0]
+    # The last header: named for screen readers, and outside view options.
+    assert head.endswith('<th scope="col" class="gth-table-actions">'
+                         '<span class="visually-hidden">Actions</span></th></tr>')
+    assert head.count("data-gth-col=") == 4
+    menu = rendered.split("data-gth-view-menu hidden>")[1].split("</fieldset>")[0]
+    assert menu.count("data-gth-col-toggle=") == 4 and 'data-gth-col-toggle=""' not in menu
+    # Every action is an icon button by default (inline=None): no "⋯" menu.
+    cell = rendered.split('<td class="gth-table-actions">')[1].split("</td>")[0]
+    assert 'aria-label="Edit Bolt"' in cell and 'hx-get="/parts/Bolt/edit"' in cell
+    assert 'aria-label="Delete Bolt"' in cell and "text-danger" in cell
+    assert "gth-action-menu-toggle" not in cell
+
+
+def test_data_table_row_actions_span_and_options():
+    state = _table_state(mode="pages")
+    empty = _render(_ACTIONS_TABLE, state=state, rows=[])
+    assert 'colspan="5"' in empty  # four headers + the actions column
+    bulk = _ACTIONS_TABLE.replace(
+        "row_actions=True)", 'row_actions=True, bulk_actions=[{"label": "Archive", "url": "/a"}])')
+    assert 'colspan="6"' in _render(bulk, state=state, rows=[])
+    labelled = _ACTIONS_TABLE.replace(
+        "row_actions=True)", 'row_actions=True, row_actions_label="Manage")')
+    labelled_html = _render(labelled, state=state, rows=_ROWS)
+    assert '<span class="visually-hidden">Manage</span>' in labelled_html
+    folded = _ACTIONS_TABLE.replace("label=r.name)", "label=r.name, inline=0)")
+    folded_html = _render(folded, state=state, rows=_ROWS)
+    cell = folded_html.split('<td class="gth-table-actions">')[1].split("</td>")[0]
+    assert 'aria-label="Actions for Bolt"' in cell and "gth-action-menu-button" not in cell
+    # Off by default: no actions header.
+    assert "gth-table-actions" not in _render(_VIEW_TABLE, state=state, rows=_ROWS)
 
 
 def test_data_table_export():
@@ -1260,6 +1356,21 @@ def test_select_with_placeholder_and_errors():
             errors=["Pick a number.", "Really."], input_attrs={"hx-post": "/save"}) }}"""
     )
     assert_snapshot(rendered, "select_with_placeholder_and_errors")
+
+
+def test_select_hide_label():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("type", "Type", ["Buy", "Sell"], value="Sell", placeholder="All types",
+            hide_label=True, field_class="mb-0") }}"""
+    )
+    assert_snapshot(rendered, "select_hide_label")
+    # Hidden from sight, still the select's accessible name.
+    assert '<label class="form-label visually-hidden" for="gth-field-type">Type</label>' in rendered
+    assert '<select id="gth-field-type" name="type"' in rendered
+    assert '<div class="mb-0 gth-form-field gth-select">' in rendered
+    assert '<option value="">All types</option>' in rendered
+    assert '<option value="Sell" selected>Sell</option>' in rendered
 
 
 def test_select_matches_values_as_strings():

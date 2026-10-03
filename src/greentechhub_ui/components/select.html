@@ -1,14 +1,16 @@
 {% macro gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
-                    field_class="mb-3", input_attrs=None) %}
+                    field_class="mb-3", input_attrs=None, hide_label=False) %}
 {#- A labelled native <select> with the same ids, help and error layout as
     gth_form_field. options: {"value", "label"} dicts, (value, label) pairs
     (core Setting.choices' shape), or bare values (the label is the value).
     value is compared as a string, so 25 selects "25". placeholder: an
     empty first option (submits "") shown when nothing is selected.
-    input_attrs: extra attributes on the <select> (e.g. hx-post). -#}
+    input_attrs: extra attributes on the <select> (e.g. hx-post).
+    hide_label: keep the label for assistive tech only — for a
+    gth_table_filter bar, with field_class="mb-0" (v0.14). -#}
 {%- set current = value|string if value is not none else none -%}
 <div class="{{ field_class }} gth-form-field gth-select">
-  <label class="form-label" for="gth-field-{{ name }}">{{ label }}</label>
+  <label class="form-label{% if hide_label %} visually-hidden{% endif %}" for="gth-field-{{ name }}">{{ label }}</label>
   <select id="gth-field-{{ name }}" name="{{ name }}" class="form-select{% if errors %} is-invalid{% endif %}"
     {%- if errors %} aria-invalid="true"{% endif %}
     {%- if help_text or errors %} aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}

@@ -1,12 +1,17 @@
-{% macro gth_busy_button(label, busy_label, hx_attrs, icon=None, btn_class="btn-outline-secondary", start_toast=None) %}
+{% macro gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outline-secondary", start_toast=None, submit=False) %}
 {# A button that fires a long-running htmx request (e.g. a sync). While the
    request is in flight it's disabled (hx-disabled-elt="this") and shows
    busy_label + a spinner; start_toast, if given, pops immediately
    (toast.js) so the user knows it started. hx_attrs: dict of hx-* attributes
    (e.g. {"hx-post": "/sync", "hx-swap": "none"}). Busy styling keys on
-   :disabled — see theme.css for why not .htmx-request. #}
-<button type="button" class="btn {{ btn_class }} gth-busy-button" hx-disabled-elt="this"
-  {% for k, v in hx_attrs.items() %}{{ k|e }}="{{ v|e }}" {% endfor %}
+   :disabled — see theme.css for why not .htmx-request.
+   submit=True: a form's submit button (v0.14) — the request is the form's,
+   so the form disables it: give the form hx-disabled-elt="find
+   button[type=submit]" (without it the button still submits, just never
+   shows busy). hx_attrs is optional then; start_toast still pops (toast.js
+   reads it from the submitter). #}
+<button type="{{ 'submit' if submit else 'button' }}" class="btn {{ btn_class }} gth-busy-button"{% if not submit %} hx-disabled-elt="this"{% endif %}
+  {% for k, v in (hx_attrs or {}).items() %}{{ k|e }}="{{ v|e }}" {% endfor %}
   {% if start_toast %}data-gth-start-toast="{{ start_toast|e }}"{% endif %}>
   <span class="gth-busy-button-idle">{% if icon %}<i class="bi bi-{{ icon }}" aria-hidden="true"></i> {% endif %}{{ label }}</span>
   <span class="gth-busy-button-busy" role="status">

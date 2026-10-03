@@ -1,0 +1,85 @@
+{#- login_page.html — a ready-made local-auth sign-in page (v0.14), on
+    app.html's layout="auth": no app navbar, the brand above a card, a
+    footer. Renders the context greentechhub-fastapi's LoginViews passes:
+    `error` after a failed sign-in, nothing otherwise. Optional:
+    login_url (the form's action, default "/login"), login_title ("Sign
+    in"), login_subtitle, user_id_label ("User ID"), user_id (a prefill),
+    login_help (a line under the button, e.g. "No account? Ask an admin.")
+    and login_links ([{label, url}] in the footer; http(s) or relative
+    only). Posts user_id + password, the names LoginViews reads. -#}
+{% extends "app.html" %}
+{% set layout = "auth" %}
+{% from "form.html" import gth_form_field %}
+{% from "toast.html" import gth_alert %}
+{% from "theme_toggle.html" import gth_theme_toggle %}
+{% set title = login_title|default("Sign in") %}
+{% set service = brand.service_name or brand.name %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{%- if show_theme_toggle|default(false) %}
+<div class="gth-auth-corner">{{ gth_theme_toggle() }}</div>
+{%- endif %}
+<div class="gth-auth-panel">
+  <div class="gth-auth-brand">
+    {%- if brand.logo_url and brand.logo_light_url %}
+    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-dark">
+    <img src="{{ brand.logo_light_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-light">
+    {%- elif brand.logo_url %}
+    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo">
+    {%- else %}
+    <span class="gth-auth-mark" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+    {%- endif %}
+    {%- if brand.service_name and brand.name %}
+    <div class="gth-auth-brand-name">{{ brand.name }}</div>
+    {%- endif %}
+    <div class="gth-auth-service">{{ service }}</div>
+  </div>
+
+  <div class="card gth-auth-card">
+    <div class="card-body p-4">
+      <h1 class="h4 mb-1">{{ title }}{% if service %} <span class="text-secondary fw-normal">to {{ service }}</span>{% endif %}</h1>
+      {%- if login_subtitle|default(none) %}
+      <p class="text-secondary small mb-0">{{ login_subtitle|e }}</p>
+      {%- endif %}
+      <div class="mt-3">
+        {%- if error|default(none) %}
+        {{ gth_alert(error, kind="danger") }}
+        {%- endif %}
+        {#- A plain form, not gth_form: gth_form sets novalidate, and an empty
+            field must stop in the browser (LoginViews' required Form() fields
+            would answer FastAPI's JSON 422). #}
+        <form method="post" action="{{ login_url|default('/login')|e }}" class="gth-form">
+          {#- Focus goes where typing starts: the password once a user ID is prefilled. #}
+          {%- set prefilled = user_id|default("") != "" %}
+          {%- set user_attrs = {"required": "required", "autocomplete": "username"} %}
+          {%- set password_attrs = {"required": "required", "autocomplete": "current-password"} %}
+          {%- set _ = (password_attrs if prefilled else user_attrs).update({"autofocus": "autofocus"}) %}
+          {{ gth_form_field("user_id", user_id_label|default("User ID"), value=user_id|default("")|e,
+              input_attrs=user_attrs) }}
+          {{ gth_form_field("password", "Password", type="password", input_attrs=password_attrs) }}
+          <button type="submit" class="btn btn-primary w-100 mt-1">
+            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> {{ title }}
+          </button>
+        </form>
+        {%- if login_help|default(none) %}
+        <p class="text-secondary small text-center mt-3 mb-0 gth-auth-help">{{ login_help|e }}</p>
+        {%- endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+<footer class="gth-auth-footer">
+  <span>{{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}</span>
+  {%- for link in login_links|default([]) %}
+  {%- set url = (link.url or "")|string|trim %}
+  {%- if link.label and (url.startswith("/") or url.lower().startswith(("http://", "https://")) or (url and ":" not in url.split("/")[0])) %}
+  <a href="{{ url|e }}">{{ link.label|e }}</a>
+  {%- endif %}
+  {%- endfor %}
+</footer>
+{% endblock %}

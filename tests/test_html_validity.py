@@ -40,8 +40,10 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "toast_flashes_empty",
         "toast_flashes_with_items",
         "toast_flashes_rich",
+        "alert",
         "back_to_top",
         "busy_button",
+        "busy_button_submit",
         "combobox_empty",
         "combobox_with_value_and_errors",
         "combobox_options",
@@ -49,6 +51,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "segmented_with_help_and_errors",
         "select",
         "select_with_placeholder_and_errors",
+        "select_hide_label",
         "switch_with_off_value_and_errors",
         "settings_section_with_form",
         "settings_section_without_action",
@@ -106,6 +109,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "data_table_bulk",
         "data_table_view_options",
         "data_table_export",
+        "data_table_row_actions",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):
