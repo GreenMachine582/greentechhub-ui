@@ -106,6 +106,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "data_table_bulk",
         "data_table_view_options",
         "data_table_export",
+        "data_table_row_actions",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):

@@ -881,7 +881,7 @@ def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
         expect(page.locator(BULK_COUNT)).to_contain_text("on other pages")
         _htmx_idle(page)
         _row_box(page, 0).check()
-        page.get_by_role("button", name="Restock +50").click()
+        page.get_by_role("button", name="Restock +50", exact=True).click()
         expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 2 records.")
         expect(page.locator(BULK_BAR)).to_be_hidden()
         assert len(posted) == 1 and posted[0].count("ids=") == 2
@@ -893,7 +893,7 @@ def test_bulk_action_posts_every_selected_id_then_clears(page, playground_url):
 
         page.on("dialog", lambda d: d.accept())  # "Mark sold out" confirms first
         _row_box(page, 0).check()
-        page.get_by_role("button", name="Mark sold out").click()
+        page.get_by_role("button", name="Mark sold out", exact=True).click()
         expect(stock).to_have_text("0")
     finally:
         page.request.post(f"{playground_url}/demo/reset")
@@ -904,7 +904,9 @@ def test_bulk_selection_by_keyboard(page, playground_url):
     _row_box(page, 0).focus()
     page.keyboard.press("Space")
     expect(page.locator(BULK_COUNT)).to_have_text("1 selected")
-    page.keyboard.press("Tab")
+    # Tab passes the row's actions (the Restock button, then "⋯") on its way.
+    for _ in range(3):
+        page.keyboard.press("Tab")
     expect(_row_box(page, 1)).to_be_focused()
     page.keyboard.press("Space")
     expect(page.locator(BULK_COUNT)).to_have_text("2 selected")
@@ -984,8 +986,39 @@ def test_view_keeps_one_column_and_covers_appended_rows(page, playground_url):
         expect(page.locator(RECORD_ROWS)).to_have_count(20)
         expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=3")).to_be_hidden()  # Category
         expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td >> nth=0")).to_be_visible()  # checkbox
+        # The row actions column is never listed in the menu or hidden.
+        expect(page.locator("#records [data-gth-col-toggle]")).to_have_count(6)
+        expect(page.locator(f"{RECORD_ROWS} >> nth=0 >> td.gth-table-actions")).to_be_visible()
+        expect(page.locator(f"{RECORD_ROWS} >> nth=15 >> td.gth-table-actions")).to_be_visible()
     finally:
         _clear_views(page)
+
+
+def test_row_actions_post_their_row(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages")
+    row = page.locator(RECORD_ROWS).nth(0)
+    name = row.locator("td").nth(2).inner_text()
+    stock = row.locator("td.text-end").first
+    first_stock = int(stock.inner_text())
+    try:
+        # inline=1: Restock is an icon button, the rest sit in the "⋯" menu.
+        row.get_by_role("button", name=f"Restock +50 {name}").click()
+        expect(page.locator(DYNAMIC_TOAST)).to_contain_text("Restocked 1 record.")
+        expect(stock).to_have_text(str(first_stock + 50))  # refresh_event re-queried the table
+
+        page.on("dialog", lambda d: d.accept())
+        row.get_by_role("button", name=f"Actions for {name}").click()
+        row.get_by_role("button", name="Mark sold out").click()
+        expect(stock).to_have_text("0")
+        expect(page.locator(BULK_BAR)).to_be_hidden()  # row actions don't touch the selection
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_picker_mode_has_no_row_actions(page, playground_url):
+    page.goto(f"{playground_url}/tables?mode=pages&pick_for=demo")
+    expect(page.locator(RECORD_ROWS).first).to_be_visible()
+    expect(page.locator("#records .gth-table-actions")).to_have_count(0)
 
 
 def test_view_density_compact_persists(page, playground_url):

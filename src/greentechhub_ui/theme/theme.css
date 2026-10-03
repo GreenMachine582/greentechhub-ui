@@ -406,6 +406,12 @@ th[aria-sort] .gth-table-sort .bi {
   width: 1%;
   white-space: nowrap;
 }
+/* Row actions (gth_data_table row_actions): a column that hugs its buttons. */
+.gth-table-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: end;
+}
 .gth-table-select .form-check-input {
   margin-top: 0;
   vertical-align: middle;

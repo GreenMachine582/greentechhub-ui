@@ -431,6 +431,9 @@ gth_action_menu(items, label=None, inline=0, menu_class="", button_class="btn bt
 - The menu uses Popper's fixed strategy, so a `.table-responsive` or scroll-box table never clips it; keyboard
   (Enter/↓/Esc) and click-away come from Bootstrap.
 
+In a `gth_data_table`, use its row actions column instead of a hand-built `<td>` (see
+[Row actions](#row-actions)). The macro also works on its own, e.g. in a card header or a plain `gth_table`:
+
 ```jinja
 <td class="text-end text-nowrap">
   {{ gth_action_menu([
@@ -825,6 +828,36 @@ async def archive(request: Request):
 {% endcall %}
 ```
 
+### Row actions
+
+```jinja
+{# table.html — gth_action_menu in a column of its own #}
+gth_data_table(state, headers, rows, ..., row_actions=False, row_actions_label="Actions")
+gth_table_actions_cell(items, label=None, inline=None, button_class="btn btn-sm btn-link text-body", align="end")
+{# row_actions=True adds a trailing column for per-row actions; end each row with
+   gth_table_actions_cell. Its header is visually hidden (row_actions_label, for
+   screen readers) and the empty-state and load-more rows span it. #}
+```
+
+`items`, `label` and `inline` are [`gth_action_menu`](#action-menu-v013)'s. Here `inline` defaults to `None`, so every
+action is an icon button; pass `0` to fold them into the "⋯" menu or `N` to keep the first `N` as buttons. Don't
+add a `""` header for the column yourself: with [view options](#column-visibility-and-density) a blank header
+would be listed in the View menu as an unlabelled toggle. The row-actions column is never listed and never hidden.
+
+```jinja
+{% call(s) gth_data_table(table, headers, stocks, refresh_event="stocksChanged", view_options=True, row_actions=True) %}
+<tr>
+  <td>{{ s.symbol }}</td>…
+  {{ gth_table_actions_cell([
+      {"label": "Edit", "icon": "pencil", "method": "get", "url": "/stocks/" ~ s.id ~ "/edit",
+       "attrs": {"hx-target": "#gth-modal-host"}},
+      {"label": "Delete", "icon": "trash", "method": "get", "url": "/stocks/" ~ s.id ~ "/delete",
+       "attrs": {"hx-target": "#gth-modal-host"}, "danger": True},
+    ], label=s.symbol) }}
+</tr>
+{% endcall %}
+```
+
 ### Column visibility and density
 
 ```jinja
@@ -843,7 +876,7 @@ per table. With nothing stored, density starts from the viewer's `ui.density` (`
 Comfortable on a compact page keeps comfortable cells. It's re-applied to every swap of the table (sort, pager, filters, `refresh_event`) and to every
 load-more or infinite append, so hidden columns stay hidden. A column is hidden by index: its `<th>` and the same
 cell of every body row. Rows with a `colspan` cell, such as the empty state or the load-more row, are left alone,
-so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column is never listed. At least one
+so **keep one `<td>` per header in your rows**. The bulk-selection checkbox column and the [row actions](#row-actions) column are never listed or hidden. At least one
 column always stays shown. Without JS the menu stays hidden and every column shows.
 
 ### Export
