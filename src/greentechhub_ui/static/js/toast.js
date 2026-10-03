@@ -87,8 +87,16 @@
   // "Started" toast for long-running actions (gth_busy_button's start_toast):
   // any htmx element with data-gth-start-toast shows it the moment its request
   // goes out; the server's own HX-Trigger toast reports the result later.
+  // A form's request carries it on the submit button that sent it
+  // (gth_busy_button submit=True): the submit event's submitter.
   document.body.addEventListener("htmx:beforeRequest", function (e) {
-    var message = e.detail.elt.getAttribute && e.detail.elt.getAttribute("data-gth-start-toast");
+    var elt = e.detail.elt;
+    var message = elt.getAttribute && elt.getAttribute("data-gth-start-toast");
+    if (!message) {
+      var ev = e.detail.requestConfig && e.detail.requestConfig.triggeringEvent;
+      var submitter = ev && ev.submitter;
+      message = submitter && submitter.getAttribute && submitter.getAttribute("data-gth-start-toast");
+    }
     if (message) {
       document.body.dispatchEvent(new CustomEvent("showToast", { detail: { message: message, kind: "info" } }));
     }

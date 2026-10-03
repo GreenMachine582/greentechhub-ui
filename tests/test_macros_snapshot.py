@@ -398,6 +398,20 @@ def test_busy_button():
     assert_snapshot(rendered, "busy_button")
 
 
+def test_busy_button_submit():
+    rendered = _render(
+        """{% from "busy_button.html" import gth_busy_button %}
+        {{ gth_busy_button("Import", "Importing…", icon="upload", btn_class="btn-primary",
+            start_toast="Import started", submit=True) }}"""
+    )
+    assert_snapshot(rendered, "busy_button_submit")
+    assert '<button type="submit" class="btn btn-primary gth-busy-button"' in rendered
+    # The form's hx-disabled-elt disables it, not its own.
+    assert "hx-disabled-elt" not in rendered
+    assert 'data-gth-start-toast="Import started"' in rendered
+    assert "gth-busy-button-idle" in rendered and "Importing…" in rendered
+
+
 def test_combobox_empty():
     rendered = _render(
         """{% from "combobox.html" import gth_combobox %}

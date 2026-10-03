@@ -65,5 +65,18 @@
   <h2 class="h4">gth-busy-button</h2>
   {{ gth_busy_button("Run slow job", "Running…", {"hx-post": "/demo/slow-job", "hx-swap": "none"},
       icon="arrow-repeat", start_toast="Slow job started — takes ~2s") }}
+  <p class="text-secondary small mt-3 mb-2">
+    <code>submit=True</code>: a form's submit button. The form's <code>hx-disabled-elt</code> disables it while
+    the request runs, which shows the busy label.
+  </p>
+  <form class="d-flex flex-wrap align-items-end gap-2" id="busy-submit-demo"
+    hx-post="/demo/slow-job" hx-swap="none" hx-disabled-elt="find button[type=submit]">
+    <div>
+      <label class="form-label" for="busy-report-name">Report</label>
+      <input type="text" class="form-control" id="busy-report-name" name="report" value="Nightly report">
+    </div>
+    {{ gth_busy_button("Run report", "Running…", icon="play-fill", btn_class="btn-primary",
+        start_toast="Report started — takes ~2s", submit=True) }}
+  </form>
 </section>
 {% endblock %}

@@ -42,6 +42,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "toast_flashes_rich",
         "back_to_top",
         "busy_button",
+        "busy_button_submit",
         "combobox_empty",
         "combobox_with_value_and_errors",
         "combobox_options",
