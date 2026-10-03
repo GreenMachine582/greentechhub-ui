@@ -1266,6 +1266,28 @@ def test_date_range_filters_the_data_table(page, playground_url):
     expect(fy_chip).to_have_attribute("aria-pressed", "true")
 
 
+def test_filter_bar_select_with_hidden_label(page, playground_url):
+    # No record starts sold out: mark two, then filter for them.
+    page.request.post(f"{playground_url}/demo/records/sold-out", form={"ids": "1"})
+    page.request.post(f"{playground_url}/demo/records/sold-out", form={"ids": "2"})
+    try:
+        page.goto(f"{playground_url}/tables?mode=pages")
+        select = page.locator(".gth-table-filter").get_by_label("Stock", exact=True)
+        expect(select).to_be_visible()  # the hidden label still names it
+        expect(page.locator(".gth-table-filter label[for='gth-field-stock']")).to_have_class(
+            re.compile("visually-hidden"))
+        summary = page.locator("#records .gth-table-summary")
+        select.select_option("out")
+        expect(summary).to_contain_text("1–2 of 2")
+        assert "stock=out" in page.url
+        stocks = page.locator(f"{RECORD_ROWS} td:nth-child(5)")  # select, ID, Name, Category, Stock
+        expect(stocks).to_have_text(["0", "0"])
+        select.select_option("")  # "Any stock"
+        expect(summary).to_contain_text("of 120")
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+
+
 # ── gth-file-drop ─────────────────────────────────────────────────────────
 
 FD = "#upload-demo [data-gth-file-drop]"

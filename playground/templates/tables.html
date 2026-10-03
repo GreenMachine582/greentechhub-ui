@@ -3,6 +3,7 @@
 {% from "table.html" import gth_table_filter %}
 {% from "segmented.html" import gth_segmented %}
 {% from "date_range.html" import gth_date_range %}
+{% from "select.html" import gth_select %}
 {% from "record_picker.html" import gth_record_pick_banner %}
 
 {% block title %}Tables{% endblock %}
@@ -38,6 +39,8 @@
 {% call gth_table_filter(table, placeholder="Search records…") %}
   {{ gth_segmented("category", category_options, value=table.filters.get("category", ""),
       field_class="mb-0") }}
+  {{ gth_select("stock", "Stock", [("in", "In stock"), ("out", "Sold out")], value=table.filters.get("stock"),
+      placeholder="Any stock", hide_label=True, field_class="mb-0") }}
   {{ gth_date_range(value_from=table.filters.get("date_from"), value_to=table.filters.get("date_to"),
       label="Added between", hide_label=True, field_class="mb-0") }}
 {% endcall %}

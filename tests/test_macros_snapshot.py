@@ -1358,6 +1358,21 @@ def test_select_with_placeholder_and_errors():
     assert_snapshot(rendered, "select_with_placeholder_and_errors")
 
 
+def test_select_hide_label():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("type", "Type", ["Buy", "Sell"], value="Sell", placeholder="All types",
+            hide_label=True, field_class="mb-0") }}"""
+    )
+    assert_snapshot(rendered, "select_hide_label")
+    # Hidden from sight, still the select's accessible name.
+    assert '<label class="form-label visually-hidden" for="gth-field-type">Type</label>' in rendered
+    assert '<select id="gth-field-type" name="type"' in rendered
+    assert '<div class="mb-0 gth-form-field gth-select">' in rendered
+    assert '<option value="">All types</option>' in rendered
+    assert '<option value="Sell" selected>Sell</option>' in rendered
+
+
 def test_select_matches_values_as_strings():
     rendered = _render(
         """{% from "select.html" import gth_select %}
