@@ -242,17 +242,29 @@ def settings_values_context(request: Request) -> dict:
 
 
 def site_banners_context(request: Request) -> dict:
-    """site_banners for app.html's banner slot — only on /feedback, so the
-    other pages (and their layout tests) stay as they are. ?banner_v=2 edits
-    the message, which brings a dismissed banner back."""
-    if request.url.path != "/feedback":
-        return {}
-    edited = request.query_params.get("banner_v") == "2"
-    message = ("Playground notice (edited): this banner's message changed, so it shows again."
-               if edited else
-               "Playground notice: dismiss this banner and reload — it stays hidden.")
-    action = {"label": "How it works", "url": "/feedback#alert-banner"}
-    return {"site_banners": [{"message": message, "id": "playground-intro", "action": action}]}
+    """site_banners for app.html's banner slot.
+
+    - The admin-set site banner (Settings › App: site.banner + site.banner_tone)
+      on every page while it's non-empty — what greentechhub-fastapi's opt-in
+      site banner does with core's site_banner_settings(). Its id is fixed and
+      a dismissal is remembered against the message, so editing the text
+      brings it back.
+    - A demo notice on /feedback only, so the other pages (and their layout
+      tests) stay as they are. ?banner_v=2 edits its message, which brings a
+      dismissed banner back.
+    """
+    banners = []
+    if message := str(SETTINGS_VALUES.get("site.banner") or "").strip():
+        banners.append({"message": message, "tone": SETTINGS_VALUES.get("site.banner_tone", "warn"),
+                        "id": "site"})
+    if request.url.path == "/feedback":
+        edited = request.query_params.get("banner_v") == "2"
+        notice = ("Playground notice (edited): this banner's message changed, so it shows again."
+                  if edited else
+                  "Playground notice: dismiss this banner and reload — it stays hidden.")
+        banners.append({"message": notice, "id": "playground-intro",
+                        "action": {"label": "How it works", "url": "/feedback#alert-banner"}})
+    return {"site_banners": banners} if banners else {}
 
 
 templates = Jinja2Templates(directory=_here / "templates",
@@ -446,9 +458,17 @@ SETTINGS_DEMO = {
          "default": "", "group": "Integrations",
          "help_text": "A fake credential: write-only, like a service's secret setting."},
     ]),
-    "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
-        {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
-         "help_text": "Leave empty for no banner."},
+    "app": ("App", "Everyone sees these. A service gates this section on a permission. Save a site "
+                   "banner and it shows above every page.", [
+        # The shape of greentechhub-core's site_banner_settings() (core > v0.8.0,
+        # which this playground pins): the message, empty for none, and one of
+        # gth_alert_banner's tones.
+        {"key": "site.banner", "type": "str", "label": "Site banner", "default": "",
+         "help_text": "Shown to everyone above the navbar, e.g. planned maintenance. "
+                      "Leave empty for none."},
+        {"key": "site.banner_tone", "type": "choice", "label": "Banner style", "default": "warn",
+         "choices": [("info", "Info"), ("warn", "Warning"), ("bad", "Alert"),
+                     ("good", "Success"), ("neutral", "Neutral")]},
         {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
          "help_text": "An unchecked switch still submits \"false\" (off_value)."},
     ]),
@@ -824,7 +844,9 @@ async def watchlist_badge():
 @app.post("/demo/reset")
 async def demo_reset():
     """Restore the demos that keep server-side state (the watchlist, the
-    health count) and refresh everything showing them."""
+    health count, the site banner) and refresh everything showing them."""
+    SETTINGS_VALUES.pop("site.banner", None)
+    SETTINGS_VALUES.pop("site.banner_tone", None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     PROGRESS_DEMO["value"] = 0

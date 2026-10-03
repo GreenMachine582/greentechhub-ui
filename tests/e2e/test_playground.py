@@ -110,6 +110,29 @@ def test_settings_section_validates_saves_and_submits_unchecked_switch(page, pla
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
+def test_app_site_banner_shows_above_every_page(page, playground_url):
+    _impersonate(page, playground_url, "admin")
+    try:
+        page.goto(f"{playground_url}/settings")
+        app = "#gth-settings-app"
+        page.fill("[id='gth-field-site.banner']", "Maintenance at 9pm: saving is paused.")
+        page.select_option("[id='gth-field-site.banner_tone']", "bad")
+        page.click(f"{app} button[type=submit]")
+        expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
+
+        page.goto(f"{playground_url}/data")
+        banner = page.locator("[data-gth-banner='site']")
+        expect(banner).to_be_visible()
+        expect(banner).to_contain_text("Maintenance at 9pm")
+        expect(banner).to_have_class(re.compile("alert-danger"))
+        # Above the navbar, like any site banner.
+        assert banner.bounding_box()["y"] < page.locator(".gth-navbar").bounding_box()["y"]
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+        page.evaluate("""() => Object.keys(localStorage)
+            .filter(k => k.startsWith("gth-banner:")).forEach(k => localStorage.removeItem(k))""")
+
+
 def test_secret_setting_is_write_only(page, playground_url):
     page.goto(f"{playground_url}/settings")
     prefs = "#gth-settings-preferences"
