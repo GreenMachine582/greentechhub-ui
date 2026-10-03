@@ -2121,6 +2121,28 @@ def test_toast_warning_close_button_is_readable(page, playground_url):
         assert inverted is not dark_close, kind
 
 
+def test_login_page_is_a_branded_auth_screen(page, playground_url):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{playground_url}/login-demo")
+    expect(page.locator(".gth-navbar")).to_have_count(0)  # layout="auth": no app chrome
+    expect(page.locator(".gth-auth-service")).to_have_text("Playground")
+    expect(page.locator("#gth-field-user_id")).to_be_focused()
+    assert not page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+    # The colour mode can change before signing in.
+    html = page.locator("html")
+    expect(html).to_have_attribute("data-bs-theme", "dark")
+    page.click(".gth-auth-corner .gth-theme-toggle")
+    expect(html).to_have_attribute("data-bs-theme", "light")
+    page.click(".gth-auth-corner .gth-theme-toggle")  # back, for the tests after this one
+    # A failed sign-in keeps the user ID and moves focus to the password.
+    page.fill("#gth-field-user_id", "bob")
+    page.fill("#gth-field-password", "nope")
+    page.click("form[action='/login-demo'] button[type=submit]")
+    expect(page.locator(".gth-auth-card .gth-toast-danger")).to_contain_text("Incorrect user ID")
+    expect(page.locator("#gth-field-user_id")).to_have_value("bob")
+    expect(page.locator("#gth-field-password")).to_be_focused()
+
+
 def test_inline_alert_is_page_content_not_a_toast(page, playground_url):
     page.goto(f"{playground_url}/feedback#inline-alert")
     alerts = page.locator("#alerts-demo .gth-toast-inline")

@@ -19,7 +19,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -316,6 +316,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
+    {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
     # Only the demo admin (sign in on /extensibility) sees this.
     {"label": "Roles", "url": "/roles", "icon": "people",
      "required_permission": "settings.manage"},
@@ -732,6 +733,30 @@ def _roles_section(request: Request, message: str | None = None, **extra) -> HTM
 def _picked_roles(form) -> list[str]:
     known = {o["value"] for o in ROLE_OPTIONS}
     return [r for r in form.getlist("roles") if r in known]
+
+
+# gth-ui's login_page.html with the context greentechhub-fastapi's LoginViews
+# passes: nothing on GET, `error` (and a 401) after a failed sign-in.
+LOGIN_DEMO = {
+    "login_url": "/login-demo",
+    "login_help": "Demo account: demo / demo.",
+    "login_links": [{"label": "Playground", "url": "/"},
+                    {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
+}
+
+
+@app.get("/login-demo", response_class=HTMLResponse)
+async def login_demo(request: Request):
+    return templates.TemplateResponse(request, "login_page.html", LOGIN_DEMO)
+
+
+@app.post("/login-demo", response_class=HTMLResponse)
+async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form("")):
+    if user_id == "demo" and password == "demo":
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "login_page.html", {
+        **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
+    }, status_code=401)
 
 
 @app.get("/roles", response_class=HTMLResponse)
