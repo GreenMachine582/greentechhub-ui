@@ -2487,7 +2487,18 @@ def test_action_menu_inline_layouts(page, playground_url):
     expect(section.locator(".gth-action-menu-toggle")).to_have_count(8)
     section.locator("label:has-text('All icons')").click()
     expect(section.locator(".gth-action-menu-toggle")).to_have_count(0)
-    expect(section.get_by_role("button", name="Delete Fix flaky CI job")).to_be_visible()
+    delete = section.get_by_role("button", name="Delete Fix flaky CI job")
+    expect(delete).to_be_visible()
+    # A danger icon button is red, not the body colour its text-body class
+    # would otherwise force (in either colour mode).
+    edit = section.get_by_role("button", name="Edit Fix flaky CI job")
+    for _ in range(2):
+        danger = page.evaluate("""() => { const p = document.createElement('span');
+            p.style.color = 'rgb(var(--bs-danger-rgb))'; document.body.append(p);
+            const c = getComputedStyle(p).color; p.remove(); return c; }""")
+        expect(delete).to_have_css("color", danger)
+        assert edit.evaluate("el => getComputedStyle(el).color") != danger
+        page.click(".gth-theme-toggle")
 
 
 def test_description_list_layouts(page, playground_url):

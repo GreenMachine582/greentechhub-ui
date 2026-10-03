@@ -489,6 +489,15 @@ th[aria-sort] .gth-table-sort .bi {
 .gth-action-menu-toggle[aria-expanded="true"] {
   background-color: rgba(var(--gth-accent-rgb), 0.12);
 }
+/* A danger action as an icon button (e.g. Delete). Two classes, so it beats
+   button_class's single-class .text-body utility (both !important). The same
+   red as .text-danger and the menu's danger items, in both colour modes. */
+.gth-action-menu-button.gth-action-menu-danger {
+  color: rgb(var(--bs-danger-rgb)) !important;
+}
+.gth-action-menu-button.gth-action-menu-danger:hover {
+  background-color: rgba(var(--bs-danger-rgb), 0.12);
+}
 .gth-action-menu .dropdown-item.text-danger:hover,
 .gth-action-menu .dropdown-item.text-danger:focus {
   color: var(--bs-danger-text-emphasis) !important;
