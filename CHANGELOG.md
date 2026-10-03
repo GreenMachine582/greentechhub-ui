@@ -5,6 +5,17 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.14.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.13.0...v0.14.0) (2026-10-03)
+
+
+### Features
+
+* **busy-button:** submit buttons ([#62](https://github.com/GreenMachine582/greentechhub-ui/issues/62)) ([8a8e662](https://github.com/GreenMachine582/greentechhub-ui/commit/8a8e662d5cef96e989f7d54426a57c0dd0c9c513))
+* **select:** hide_label for filter bars ([#64](https://github.com/GreenMachine582/greentechhub-ui/issues/64)) ([0270cf8](https://github.com/GreenMachine582/greentechhub-ui/commit/0270cf8eba3721995173cff0d5f55f13d165137c))
+* **table:** a row actions column ([#61](https://github.com/GreenMachine582/greentechhub-ui/issues/61)) ([02f00cf](https://github.com/GreenMachine582/greentechhub-ui/commit/02f00cf9c3b74c38e4b3b13608af80c52eb1573c))
+* **templates:** a branded sign-in page on a new auth layout ([#65](https://github.com/GreenMachine582/greentechhub-ui/issues/65)) ([ac3db7c](https://github.com/GreenMachine582/greentechhub-ui/commit/ac3db7c00e9751a6ebc84804bb2f3e6359f90346))
+* **toast:** an inline gth_alert ([#63](https://github.com/GreenMachine582/greentechhub-ui/issues/63)) ([4de235e](https://github.com/GreenMachine582/greentechhub-ui/commit/4de235e4cfde6bd3f2c864cbb5a27c6499714e7e))
+
 ## [0.13.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.12.0...v0.13.0) (2026-10-02)
 
 
