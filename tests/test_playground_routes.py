@@ -631,6 +631,47 @@ def test_app_settings_section_needs_settings_manage():
         playground_app.SETTINGS_VALUES.clear()
 
 
+def test_app_section_uses_cores_site_banner_settings():
+    from greentechhub_core.settings.builtins import (
+        SITE_BANNER_KEY,
+        SITE_BANNER_TONE_KEY,
+        SITE_BANNER_TONES,
+    )
+
+    _, _, settings = playground_app.SETTINGS_DEMO["app"]
+    banner, tone = settings[0], settings[1]
+    assert (banner["key"], tone["key"]) == (SITE_BANNER_KEY, SITE_BANNER_TONE_KEY)
+    assert (banner["type"], tone["type"]) == ("str", "choice")
+    assert dict(tone["choices"]) == SITE_BANNER_TONES and tone["default"] == "warn"
+
+
+def test_app_site_banner_shows_on_every_page_until_cleared():
+    playground_app.SETTINGS_VALUES.clear()
+    try:
+        # No banner set: pages other than /feedback have no banner strip. (The
+        # pre-paint script names the class, so look for the element's markup.)
+        assert 'class="alert alert-' not in _run(_get("/data")).text
+        saved = _run(_as("admin", "POST", "/settings-demo/app",
+                         data={"site.banner": "Maintenance at 9pm", "site.banner_tone": "bad"}))
+        assert saved.status_code == 200
+        for path in ("/data", "/forms"):
+            html = _run(_get(path)).text
+            assert 'data-gth-banner="site"' in html, path
+            assert "alert-danger" in html and "Maintenance at 9pm" in html, path
+        # An unknown tone is a field error, not a broken banner.
+        bad = _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner_tone": "shout"}))
+        assert bad.status_code == 422
+        # Emptying it, or the demo reset, removes it.
+        _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner": "  "}))
+        assert 'data-gth-banner="site"' not in _run(_get("/data")).text
+        _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner": "Back soon"}))
+        assert "Back soon" in _run(_get("/data")).text
+        _run(_post("/demo/reset"))
+        assert 'data-gth-banner="site"' not in _run(_get("/data")).text
+    finally:
+        playground_app.SETTINGS_VALUES.clear()
+
+
 def test_personas_only_send_a_persona_back_to_a_page_it_can_open():
     html = _run(_get("/personas", params={"next": "/roles", "need": "settings.manage"})).text
     cards = {key: html.split(f'data-persona="{key}"', 1)[1].split("</form>", 1)[0]

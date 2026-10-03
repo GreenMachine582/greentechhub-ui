@@ -73,12 +73,6 @@
 
 ## 🔄 Migration Tracking
 
-### This repo's own pins
-- [ ] Bump the test-only `greentechhub-core` pin to v0.9.0 **together with** the `playground` extra's
-  `greentechhub-fastapi` pin, once fastapi releases on core v0.9.0. Both are direct git references, so they must
-  agree: core alone would clash with fastapi v0.10.0's `@v0.8.0`. Then the playground's App settings use core's real
-  `site_banner_settings()` instead of the look-alike dicts. A `build(deps)` change, no ui release needed
-
 ### BottleBot
 - [ ] Adopt `shell_globals()` in `web/templating.py` and `toast(..., events=)` where handlers set several HX-Trigger events
 - [ ] Adopt the setup helpers: `greentechhub_ui.install()` (replaces the hand-built `ChoiceLoader` + globals),

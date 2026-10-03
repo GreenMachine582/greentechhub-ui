@@ -21,6 +21,11 @@ from urllib.parse import quote, unquote, urlencode
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.settings.builtins import (
+    SITE_BANNER_KEY,
+    SITE_BANNER_TONE_KEY,
+    site_banner_settings,
+)
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
@@ -242,17 +247,29 @@ def settings_values_context(request: Request) -> dict:
 
 
 def site_banners_context(request: Request) -> dict:
-    """site_banners for app.html's banner slot — only on /feedback, so the
-    other pages (and their layout tests) stay as they are. ?banner_v=2 edits
-    the message, which brings a dismissed banner back."""
-    if request.url.path != "/feedback":
-        return {}
-    edited = request.query_params.get("banner_v") == "2"
-    message = ("Playground notice (edited): this banner's message changed, so it shows again."
-               if edited else
-               "Playground notice: dismiss this banner and reload — it stays hidden.")
-    action = {"label": "How it works", "url": "/feedback#alert-banner"}
-    return {"site_banners": [{"message": message, "id": "playground-intro", "action": action}]}
+    """site_banners for app.html's banner slot.
+
+    - The admin-set site banner (Settings › App: site.banner + site.banner_tone)
+      on every page while it's non-empty — what greentechhub-fastapi's opt-in
+      site banner does with core's site_banner_settings(). Its id is fixed and
+      a dismissal is remembered against the message, so editing the text
+      brings it back.
+    - A demo notice on /feedback only, so the other pages (and their layout
+      tests) stay as they are. ?banner_v=2 edits its message, which brings a
+      dismissed banner back.
+    """
+    banners = []
+    if message := str(SETTINGS_VALUES.get(SITE_BANNER_KEY) or "").strip():
+        tone = SETTINGS_VALUES.get(SITE_BANNER_TONE_KEY, "warn")
+        banners.append({"message": message, "tone": tone, "id": "site"})
+    if request.url.path == "/feedback":
+        edited = request.query_params.get("banner_v") == "2"
+        notice = ("Playground notice (edited): this banner's message changed, so it shows again."
+                  if edited else
+                  "Playground notice: dismiss this banner and reload — it stays hidden.")
+        banners.append({"message": notice, "id": "playground-intro",
+                        "action": {"label": "How it works", "url": "/feedback#alert-banner"}})
+    return {"site_banners": banners} if banners else {}
 
 
 templates = Jinja2Templates(directory=_here / "templates",
@@ -414,6 +431,19 @@ def _page(request: Request, name: str, **context):
 # core's Setting objects and Settings.effective() values the same way. The coercion
 # below stands in for core's registry.coerce(key, raw).
 
+
+def _setting_dict(setting) -> dict:
+    """A greentechhub-core Setting in this demo's dict shape (the save handler
+    reads setting["key"] etc.), so a section can list core's own definitions."""
+    d = {"key": setting.key, "type": str(setting.type), "label": setting.label,
+         "default": setting.default, "help_text": setting.help_text}
+    if setting.choices:
+        d["choices"] = list(setting.choices)
+    if setting.min is not None or setting.max is not None:
+        d["min"], d["max"] = setting.min, setting.max
+    return d
+
+
 SETTINGS_DEMO = {
     "preferences": ("Preferences", "Only you see these.", [
         {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
@@ -446,9 +476,11 @@ SETTINGS_DEMO = {
          "default": "", "group": "Integrations",
          "help_text": "A fake credential: write-only, like a service's secret setting."},
     ]),
-    "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
-        {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
-         "help_text": "Leave empty for no banner."},
+    "app": ("App", "Everyone sees these. A service gates this section on a permission. Save a site "
+                   "banner and it shows above every page.", [
+        # greentechhub-core's own site banner settings: the message (empty for
+        # none) and one of gth_alert_banner's tones.
+        *map(_setting_dict, site_banner_settings(edit_permission=MANAGE_PERMISSION)),
         {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
          "help_text": "An unchecked switch still submits \"false\" (off_value)."},
     ]),
@@ -824,7 +856,9 @@ async def watchlist_badge():
 @app.post("/demo/reset")
 async def demo_reset():
     """Restore the demos that keep server-side state (the watchlist, the
-    health count) and refresh everything showing them."""
+    health count, the site banner) and refresh everything showing them."""
+    SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
+    SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     PROGRESS_DEMO["value"] = 0
