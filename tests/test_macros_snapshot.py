@@ -760,7 +760,7 @@ def test_data_table_row_actions():
     # Every action is an icon button by default (inline=None): no "⋯" menu.
     cell = rendered.split('<td class="gth-table-actions">')[1].split("</td>")[0]
     assert 'aria-label="Edit Bolt"' in cell and 'hx-get="/parts/Bolt/edit"' in cell
-    assert 'aria-label="Delete Bolt"' in cell and "text-danger" in cell
+    assert 'aria-label="Delete Bolt"' in cell and "gth-action-menu-danger" in cell
     assert "gth-action-menu-toggle" not in cell
 
 
@@ -1604,7 +1604,9 @@ def test_action_menu_all_inline():
     assert "dropdown" not in rendered and "gth-action-menu-toggle" not in rendered
     assert rendered.count("gth-action-menu-button") == 5
     assert ">Open</a>" in rendered  # no icon: its text shows inline
-    assert "btn btn-sm btn-link text-body gth-action-menu-button text-danger" in rendered
+    # A danger icon button: its own class (button_class's text-body would beat text-danger).
+    assert "btn btn-sm btn-link text-body gth-action-menu-button gth-action-menu-danger" in rendered
+    assert "gth-action-menu-button text-danger" not in rendered
 
 
 def test_action_menu_inline_counts_actions_not_dividers():
