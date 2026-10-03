@@ -50,21 +50,11 @@
 
 ### From the PyFinBot review (next release, one PR each)
 Hand-rolled markup PyFinBot repeats that belongs here, so it can drop its own copies:
-- [ ] Row actions column — `gth_data_table(row_actions=True, row_actions_label="Actions")` adds a trailing header
-  with a visually-hidden label, no `data-gth-col` (so `view_options` never lists or hides it) and one more colspan;
-  rows end with `gth_table_actions_cell(items, label=None, inline=None)`, a `<td>` around `gth_action_menu`
-  (`inline=None`: all icon buttons, as apps have today). Mirrors `bulk_actions` + `gth_table_select_cell`. Today a
-  blank `""` header shows in the View menu as an unlabelled, hideable toggle
-- [ ] `gth_busy_button(..., submit=True)` — a `type="submit"` busy button with optional `hx_attrs`, driven by the
-  form's `hx-disabled-elt` (PyFinBot hand-copies the idle/busy spans on its import and dividend forms)
-- [ ] `gth_alert(message, tone="info", heading=None, action=None, html=False, dismissible=False)` — an inline
-  alert; shares `gth_alert_banner`'s tone → class/icon/role and safe-action rules via one internal macro
-  (PyFinBot writes raw `<div class="alert">` in five places)
 - [ ] `gth_select(..., hide_label=True)` — a visually-hidden label for filter bars, like `gth_date_range`'s
   (PyFinBot hand-builds every filter-bar select)
-- [ ] `login_page.html` — a local-auth login page (`gth_form` + `gth_form_field`, the error as `gth_alert`) that
-  greentechhub-fastapi's `LoginViews` defaults to, so apps stop owning `login.html`. After `gth_alert`; the
-  fastapi half is in its TODO
+- [ ] `login_page.html` — a local-auth login page (`gth_form` + `gth_form_field`, the error as
+  `gth_alert(error, kind="danger")`) that greentechhub-fastapi's `LoginViews` defaults to, so apps stop owning
+  `login.html`; the fastapi half is in its TODO
 
 ### Resilience & security
 - [ ] Top loading bar for htmx requests slower than ~300ms

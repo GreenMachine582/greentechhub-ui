@@ -1,5 +1,5 @@
 {% extends "page.html" %}
-{% from "toast.html" import gth_toast_flashes %}
+{% from "toast.html" import gth_toast_flashes, gth_alert %}
 {% from "alert_banner.html" import gth_alert_banner %}
 
 {% macro _preset(name, label, style="btn-outline-secondary") -%}
@@ -73,6 +73,25 @@
   </p>
   <div class="d-flex flex-column gap-2" id="flashes-demo">
     {{ gth_toast_flashes(flashes_demo) }}
+  </div>
+</section>
+
+<section class="mb-5" id="inline-alert">
+  <h2 class="h4">gth-alert (inline)</h2>
+  <p class="text-secondary">
+    The same card as page content: it fills its container, sits in the flow and stays until the page changes,
+    with no close button. Use it for a form or result error, or a "not set up yet" notice; use a toast for
+    something that just happened.
+  </p>
+  <div id="alerts-demo">
+    {{ gth_alert("Your email account isn't set up yet. Add an address and an app password to sync.") }}
+    {{ gth_alert("Imported 12 transactions; 2 duplicates skipped.", kind="success") }}
+    {{ gth_alert("Row 4 has no date and row 9 an unknown stock.", kind="warning", title="Couldn't import trades.csv",
+        action={"label": "Open Settings", "url": "#inline-alert"}) }}
+    {{ gth_alert("Couldn't reach the mailbox.", kind="danger", title="Sync failed") }}
+    {{ gth_alert("Wrong user ID or password.", kind="danger", variant="solid") }}
+    {{ gth_alert("Dividend history is shared. See <a href='#inline-alert'>how syncing works</a>.", kind="neutral",
+        html=True, alert_class="mb-0") }}
   </div>
 </section>
 

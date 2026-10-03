@@ -882,6 +882,12 @@ body.gth-picker-modal-open {
   border-radius: 0.6rem;
   box-shadow: var(--bs-box-shadow);
 }
+/* gth_alert: the same card as inline page content — the container's width,
+   in the flow, no shadow. */
+.gth-toast-inline {
+  width: auto;
+  box-shadow: none;
+}
 .gth-toast-success { --gth-toast-accent: var(--bs-success); --gth-toast-icon: var(--bs-success-text-emphasis); }
 .gth-toast-info { --gth-toast-accent: var(--bs-info); --gth-toast-icon: var(--bs-info-text-emphasis); }
 .gth-toast-warning { --gth-toast-accent: var(--bs-warning); --gth-toast-icon: var(--bs-warning-text-emphasis); }

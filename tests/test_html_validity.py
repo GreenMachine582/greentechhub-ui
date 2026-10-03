@@ -40,6 +40,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "toast_flashes_empty",
         "toast_flashes_with_items",
         "toast_flashes_rich",
+        "alert",
         "back_to_top",
         "busy_button",
         "busy_button_submit",

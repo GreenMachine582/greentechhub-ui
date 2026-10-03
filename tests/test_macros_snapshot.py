@@ -359,6 +359,34 @@ def test_toast_flashes_empty():
     assert_snapshot(rendered, "toast_flashes_empty")
 
 
+_ALERTS = """{% from "toast.html" import gth_alert %}
+{{ gth_alert("Your email account isn't set up yet.") }}
+{{ gth_alert("Imported 3 transactions.", kind="success") }}
+{{ gth_alert("Row 4 has no date.", kind="warn", title="Couldn't import trades.csv",
+    action={"label": "Open Settings", "url": "/settings#email"}) }}
+{{ gth_alert("Wrong user ID or password.", kind="error", variant="solid", alert_class="mb-0") }}
+{{ gth_alert("Plain <b>text</b>", kind="neutral",
+    action={"label": "x", "url": "javascript:alert(1)"}) }}
+{{ gth_alert("Add it under <a href='/settings'>Settings</a>.", kind="info", html=True) }}"""
+
+
+def test_alert():
+    rendered = _render(_ALERTS)
+    assert_snapshot(rendered, "alert")
+    # The toast card as page content: no toast classes, close button or live region.
+    assert rendered.count("gth-toast gth-toast-inline") == 6
+    assert "toast show" not in rendered and "btn-close" not in rendered
+    assert "aria-live" not in rendered
+    assert 'gth-toast-info gth-toast-surface mb-3"\n  role="status"' in rendered  # the defaults
+    assert 'gth-toast-warning gth-toast-surface mb-3"\n  role="alert"' in rendered  # warn alias
+    assert 'gth-toast-danger gth-toast-solid text-bg-danger mb-0"\n  role="alert"' in rendered
+    assert '<div class="gth-toast-title">Couldn&#39;t import trades.csv</div>' in rendered
+    assert 'href="/settings#email">Open Settings</a>' in rendered
+    assert "javascript:" not in rendered  # an unsafe action is dropped
+    assert "Plain &lt;b&gt;text&lt;/b&gt;" in rendered  # escaped unless html=True
+    assert "<a href='/settings'>Settings</a>" in rendered
+
+
 def test_toast_flashes_with_items():
     rendered = _render(
         """{% from "toast.html" import gth_toast_flashes %}

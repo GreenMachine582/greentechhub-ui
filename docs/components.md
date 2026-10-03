@@ -14,6 +14,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-modal` | Generic modal, focus-trapped (see [docs/accessibility.md](accessibility.md)); server-rendered whole into `#gth-modal-host` for HTMX flows (v0.7) |
 | `gth-confirm-delete` / `gth-danger-modal` | Pre-built destructive-action confirmation modal |
 | `gth-toast` | Toasts over `HX-Trigger` (`greentechhub_ui.toast()`) and server-side `flashes` in one markup: kinds, title, icon, action link, duration/sticky, surface or solid (v0.8 look) |
+| `gth-alert` | The toast card as inline page content — form/result errors, setup notices; no close button (v0.14) |
 | `gth-back-to-top` | Floating "back to top" button past a scroll threshold (v0.8) |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
@@ -670,6 +671,33 @@ Warning/danger toasts are `role="alert"` (assertive); the rest `role="status"` (
 toast shows a countdown bar that pauses while hovered or focused, in step with Bootstrap's own timer.
 Before v0.8 the message was injected as HTML (`innerHTML`) — a toast built from user input could inject
 markup; it's text now.
+
+### Inline alerts (v0.14)
+
+```jinja
+{# toast.html — the toast card as page content #}
+gth_alert(message, kind="info", title=None, icon=None, action=None, variant="surface", html=False, alert_class="mb-3")
+{# Same vocabulary as toast() and flashes: kind (aliases warn, error), title, icon,
+   action {label, url} (javascript: etc. dropped), variant, html (trusted markup only). #}
+```
+
+The same card as a toast, used where the message belongs to a place on the page rather than to a moment:
+
+| | Toast / static flash | `gth_alert` | `gth_alert_banner` |
+|---|---|---|---|
+| For | Something that just happened | A form or result error, a "not set up yet" notice | Site-wide notice (maintenance) |
+| Lifetime | Auto-hides or closes | Stays until the page or panel changes; no close button | Dismissal remembered per message |
+| Layout | Floating 24rem card in `#gth-toast-container` | Its container's width, in the flow, no shadow | Full-width strip above the navbar |
+
+Warning/danger alerts are `role="alert"`, so one swapped in (an htmx result panel) is announced; the rest are
+`role="status"`. There's no `aria-live`, since it's page content rather than a notification.
+
+```jinja
+{% if error %}
+  {{ gth_alert(error, kind="danger", title="Couldn't import " ~ filename,
+      action={"label": "Open Settings", "url": "/settings#email"}) }}
+{% endif %}
+```
 
 ### Back to top (v0.8)
 

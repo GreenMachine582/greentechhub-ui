@@ -2099,6 +2099,22 @@ def test_toast_warning_close_button_is_readable(page, playground_url):
         assert inverted is not dark_close, kind
 
 
+def test_inline_alert_is_page_content_not_a_toast(page, playground_url):
+    page.goto(f"{playground_url}/feedback#inline-alert")
+    alerts = page.locator("#alerts-demo .gth-toast-inline")
+    expect(alerts).to_have_count(6)
+    first = alerts.first
+    expect(first).to_be_visible()
+    # Its container's width (a toast is a 24rem card) and no shadow or close button.
+    width = first.evaluate("el => el.getBoundingClientRect().width")
+    container = page.locator("#alerts-demo").evaluate("el => el.getBoundingClientRect().width")
+    assert abs(width - container) < 1 and width > 24 * 16
+    expect(first).to_have_css("box-shadow", "none")
+    expect(page.locator("#alerts-demo .btn-close")).to_have_count(0)
+    # The surface variant keeps the toast's kind accent bar.
+    expect(first).to_have_css("border-left-width", "4px")
+
+
 def _preset(page, name):
     page.click(f"[data-toast-preset='{name}']")
     return page.locator(DYNAMIC_TOAST).last

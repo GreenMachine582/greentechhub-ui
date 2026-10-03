@@ -1,3 +1,33 @@
+{% macro gth_toast_card(f, inline=False, card_class="") %}
+{#- One toast card — shared by gth_toast_flashes (a toast) and gth_alert
+    (inline=True: page content, no toast/close/live-region). Not a public
+    API: call those two instead. -#}
+{% set kinds = {"success": "success", "info": "info", "warning": "warning", "warn": "warning",
+                "danger": "danger", "error": "danger", "neutral": "neutral"} %}
+{% set bs = {"success": "success", "info": "info", "warning": "warning", "danger": "danger", "neutral": "secondary"} %}
+{% set icons = {"success": "check-circle-fill", "info": "info-circle-fill", "warning": "exclamation-triangle-fill",
+                "danger": "x-octagon-fill", "neutral": "bell-fill"} %}
+{% set kind = kinds.get(f.kind|default("success"), "neutral") %}
+{% set variant = "solid" if f.variant|default(none) == "solid" else "surface" %}
+{% set urgent = kind in ("warning", "danger") %}
+<div class="{% if not inline %}toast show {% endif %}gth-toast{% if inline %} gth-toast-inline{% endif %} gth-toast-{{ kind }} gth-toast-{{ variant }}{% if variant == 'solid' %} text-bg-{{ bs[kind] }}{% endif %}{% if card_class %} {{ card_class|e }}{% endif %}"
+  role="{{ 'alert' if urgent else 'status' }}"{% if not inline %} aria-live="{{ 'assertive' if urgent else 'polite' }}" aria-atomic="true"{% endif %}>
+  <div class="gth-toast-inner">
+    <i class="bi bi-{{ f.icon|default(none) or icons[kind] }} gth-toast-icon" aria-hidden="true"></i>
+    <div class="gth-toast-content">
+      {%- if f.title|default(none) %}<div class="gth-toast-title">{{ f.title|e }}</div>{% endif %}
+      <div class="gth-toast-message">{% if f.html|default(false) %}{{ f.message|safe }}{% else %}{{ f.message|e }}{% endif %}</div>
+      {%- set action = f.action|default(none) %}
+      {%- if action and action.url and not (action.url|trim|lower).startswith("javascript:") %}<a class="gth-toast-action" href="{{ action.url|e }}">{{ action.label|default("Open")|e }}</a>{% endif %}
+    </div>
+    {%- if not inline %}
+    <button type="button" class="btn-close gth-toast-close{% if variant == 'solid' and kind not in ('warning', 'info') %} btn-close-white{% endif %}"
+      data-bs-dismiss="toast" aria-label="Close"></button>
+    {%- endif %}
+  </div>
+</div>
+{% endmacro %}
+
 {% macro gth_toast_flashes(flashes) %}
 {#- Server-side flashes in the same markup toast.js builds for HX-Trigger
     toasts (rendered visible, no auto-hide). Each flash: {message, kind,
@@ -7,28 +37,20 @@
     unless html is true (server-produced markup only, never user input).
     kind: success | info | warning | danger | neutral (aliases warn, error;
     anything else renders neutral). -#}
-{% set kinds = {"success": "success", "info": "info", "warning": "warning", "warn": "warning",
-                "danger": "danger", "error": "danger", "neutral": "neutral"} %}
-{% set bs = {"success": "success", "info": "info", "warning": "warning", "danger": "danger", "neutral": "secondary"} %}
-{% set icons = {"success": "check-circle-fill", "info": "info-circle-fill", "warning": "exclamation-triangle-fill",
-                "danger": "x-octagon-fill", "neutral": "bell-fill"} %}
 {% for f in flashes %}
-{% set kind = kinds.get(f.kind|default("success"), "neutral") %}
-{% set variant = "solid" if f.variant|default(none) == "solid" else "surface" %}
-{% set urgent = kind in ("warning", "danger") %}
-<div class="toast show gth-toast gth-toast-{{ kind }} gth-toast-{{ variant }}{% if variant == 'solid' %} text-bg-{{ bs[kind] }}{% endif %}"
-  role="{{ 'alert' if urgent else 'status' }}" aria-live="{{ 'assertive' if urgent else 'polite' }}" aria-atomic="true">
-  <div class="gth-toast-inner">
-    <i class="bi bi-{{ f.icon|default(none) or icons[kind] }} gth-toast-icon" aria-hidden="true"></i>
-    <div class="gth-toast-content">
-      {%- if f.title|default(none) %}<div class="gth-toast-title">{{ f.title|e }}</div>{% endif %}
-      <div class="gth-toast-message">{% if f.html|default(false) %}{{ f.message|safe }}{% else %}{{ f.message|e }}{% endif %}</div>
-      {%- set action = f.action|default(none) %}
-      {%- if action and action.url and not (action.url|trim|lower).startswith("javascript:") %}<a class="gth-toast-action" href="{{ action.url|e }}">{{ action.label|default("Open")|e }}</a>{% endif %}
-    </div>
-    <button type="button" class="btn-close gth-toast-close{% if variant == 'solid' and kind not in ('warning', 'info') %} btn-close-white{% endif %}"
-      data-bs-dismiss="toast" aria-label="Close"></button>
-  </div>
-</div>
+{{ gth_toast_card(f) }}
 {% endfor %}
+{% endmacro %}
+
+{% macro gth_alert(message, kind="info", title=None, icon=None, action=None, variant="surface", html=False, alert_class="mb-3") %}
+{#- An inline alert (v0.14): the toast card as page content — a form or
+    result error, a "not set up yet" notice. Same vocabulary as toasts:
+    kind success | info | warning | danger | neutral (aliases warn, error),
+    title, icon, action {label, url} (a javascript: url is dropped),
+    variant "surface" | "solid", html=True for trusted server-built markup.
+    Unlike a toast it fills its container, sits in the flow and has no close
+    button or live region (role="alert" for warning/danger still announces
+    it when swapped in). A site-wide strip is gth_alert_banner. -#}
+{{ gth_toast_card({"message": message, "kind": kind, "title": title, "icon": icon, "action": action,
+                   "variant": variant, "html": html}, inline=True, card_class=alert_class) }}
 {% endmacro %}
