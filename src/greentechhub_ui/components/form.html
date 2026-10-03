@@ -13,45 +13,47 @@
 
 {% macro gth_form_field(name, label, value=None, type="text", step=None, min=None, max=None,
                          errors=None, help_text=None, field_class="mb-3", input_attrs=None,
-                         prefix=None, suffix=None, maxlength=None, counter=None, rows=3) %}
+                         prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None) %}
 {#- prefix / suffix: input-group add-ons ("$", "%", "AUD"), announced with the
     field (aria-describedby). maxlength: the native limit; counter (default: on
     when maxlength is set) shows "N / max", kept live by static/js/char-counter.js
     (char_counter_js_url). type="textarea": a <textarea rows=rows> instead of an
-    <input> (step/min/max don't apply). -#}
+    <input> (step/min/max don't apply). id: the element-id prefix (default
+    "gth-field-<name>") — set it when two fields on one page share a name (v0.15). -#}
 {%- set is_textarea = type == "textarea" -%}
 {%- set affixed = prefix or suffix -%}
 {%- set show_counter = maxlength and counter is not false -%}
+{%- set field_id = id or "gth-field-" ~ name -%}
 {%- set extra_ids = [] -%}
-{%- if prefix %}{% set _ = extra_ids.append("gth-field-" ~ name ~ "-prefix") %}{% endif -%}
-{%- if suffix %}{% set _ = extra_ids.append("gth-field-" ~ name ~ "-suffix") %}{% endif -%}
-{%- if show_counter %}{% set _ = extra_ids.append("gth-field-" ~ name ~ "-counter") %}{% endif %}
+{%- if prefix %}{% set _ = extra_ids.append(field_id ~ "-prefix") %}{% endif -%}
+{%- if suffix %}{% set _ = extra_ids.append(field_id ~ "-suffix") %}{% endif -%}
+{%- if show_counter %}{% set _ = extra_ids.append(field_id ~ "-counter") %}{% endif %}
 <div class="{{ field_class }} gth-form-field">
-  <label class="form-label" for="gth-field-{{ name }}">{{ label }}</label>
+  <label class="form-label" for="{{ field_id }}">{{ label }}</label>
   {%- if affixed %}
   <div class="input-group{% if errors %} has-validation{% endif %}">
-  {%- if prefix %}<span class="input-group-text" id="gth-field-{{ name }}-prefix">{{ prefix }}</span>{% endif %}
+  {%- if prefix %}<span class="input-group-text" id="{{ field_id }}-prefix">{{ prefix }}</span>{% endif %}
   {%- endif %}
-  {% if is_textarea %}<textarea rows="{{ rows }}"{% else %}<input type="{{ type }}"{% endif %} id="gth-field-{{ name }}" name="{{ name }}"
+  {% if is_textarea %}<textarea rows="{{ rows }}"{% else %}<input type="{{ type }}"{% endif %} id="{{ field_id }}" name="{{ name }}"
     class="form-control{% if errors %} is-invalid{% endif %}"
     {% if not is_textarea %}value="{{ value if value is not none else '' }}"{% endif %}
     {% if step is not none and not is_textarea %}step="{{ step }}"{% endif %}
     {% if min is not none and not is_textarea %}min="{{ min }}"{% endif %}
     {% if max is not none and not is_textarea %}max="{{ max }}"{% endif %}{% if maxlength %} maxlength="{{ maxlength }}"{% endif %}
     {% if errors %}aria-invalid="true"{% endif %}
-    {% if help_text or errors or extra_ids %}aria-describedby="{% if help_text %}gth-field-{{ name }}-help{% endif %}{% for i in extra_ids %} {{ i }}{% endfor %}{% if errors %} gth-field-{{ name }}-error{% endif %}"{% endif %}
+    {% if help_text or errors or extra_ids %}aria-describedby="{% if help_text %}{{ field_id }}-help{% endif %}{% for i in extra_ids %} {{ i }}{% endfor %}{% if errors %} {{ field_id }}-error{% endif %}"{% endif %}
     {% if input_attrs %}{% for k, v in input_attrs.items() %}{{ k|e }}="{{ v|e }}" {% endfor %}{% endif %}>
   {%- if is_textarea %}{{ (value if value is not none else '')|e }}</textarea>{% endif %}
   {%- if affixed %}
-  {%- if suffix %}<span class="input-group-text" id="gth-field-{{ name }}-suffix">{{ suffix }}</span>{% endif %}
+  {%- if suffix %}<span class="input-group-text" id="{{ field_id }}-suffix">{{ suffix }}</span>{% endif %}
   </div>
   {%- endif %}
   {%- if show_counter %}
-  <div class="form-text gth-char-counter" id="gth-field-{{ name }}-counter" data-gth-counter-for="gth-field-{{ name }}">{{ (value if value is not none else '')|string|length }} / {{ maxlength }}</div>
+  <div class="form-text gth-char-counter" id="{{ field_id }}-counter" data-gth-counter-for="{{ field_id }}">{{ (value if value is not none else '')|string|length }} / {{ maxlength }}</div>
   {%- endif %}
-  {% if help_text %}<div class="form-text" id="gth-field-{{ name }}-help">{{ help_text }}</div>{% endif %}
+  {% if help_text %}<div class="form-text" id="{{ field_id }}-help">{{ help_text }}</div>{% endif %}
   {% if errors %}
-  <div class="invalid-feedback d-block" id="gth-field-{{ name }}-error">
+  <div class="invalid-feedback d-block" id="{{ field_id }}-error">
     {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
   </div>
   {% endif %}
