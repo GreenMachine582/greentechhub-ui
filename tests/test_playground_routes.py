@@ -631,6 +631,20 @@ def test_app_settings_section_needs_settings_manage():
         playground_app.SETTINGS_VALUES.clear()
 
 
+def test_app_section_uses_cores_site_banner_settings():
+    from greentechhub_core.settings.builtins import (
+        SITE_BANNER_KEY,
+        SITE_BANNER_TONE_KEY,
+        SITE_BANNER_TONES,
+    )
+
+    _, _, settings = playground_app.SETTINGS_DEMO["app"]
+    banner, tone = settings[0], settings[1]
+    assert (banner["key"], tone["key"]) == (SITE_BANNER_KEY, SITE_BANNER_TONE_KEY)
+    assert (banner["type"], tone["type"]) == ("str", "choice")
+    assert dict(tone["choices"]) == SITE_BANNER_TONES and tone["default"] == "warn"
+
+
 def test_app_site_banner_shows_on_every_page_until_cleared():
     playground_app.SETTINGS_VALUES.clear()
     try:

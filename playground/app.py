@@ -21,6 +21,11 @@ from urllib.parse import quote, unquote, urlencode
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.settings.builtins import (
+    SITE_BANNER_KEY,
+    SITE_BANNER_TONE_KEY,
+    site_banner_settings,
+)
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
@@ -254,9 +259,9 @@ def site_banners_context(request: Request) -> dict:
       dismissed banner back.
     """
     banners = []
-    if message := str(SETTINGS_VALUES.get("site.banner") or "").strip():
-        banners.append({"message": message, "tone": SETTINGS_VALUES.get("site.banner_tone", "warn"),
-                        "id": "site"})
+    if message := str(SETTINGS_VALUES.get(SITE_BANNER_KEY) or "").strip():
+        tone = SETTINGS_VALUES.get(SITE_BANNER_TONE_KEY, "warn")
+        banners.append({"message": message, "tone": tone, "id": "site"})
     if request.url.path == "/feedback":
         edited = request.query_params.get("banner_v") == "2"
         notice = ("Playground notice (edited): this banner's message changed, so it shows again."
@@ -426,6 +431,19 @@ def _page(request: Request, name: str, **context):
 # core's Setting objects and Settings.effective() values the same way. The coercion
 # below stands in for core's registry.coerce(key, raw).
 
+
+def _setting_dict(setting) -> dict:
+    """A greentechhub-core Setting in this demo's dict shape (the save handler
+    reads setting["key"] etc.), so a section can list core's own definitions."""
+    d = {"key": setting.key, "type": str(setting.type), "label": setting.label,
+         "default": setting.default, "help_text": setting.help_text}
+    if setting.choices:
+        d["choices"] = list(setting.choices)
+    if setting.min is not None or setting.max is not None:
+        d["min"], d["max"] = setting.min, setting.max
+    return d
+
+
 SETTINGS_DEMO = {
     "preferences": ("Preferences", "Only you see these.", [
         {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
@@ -460,15 +478,9 @@ SETTINGS_DEMO = {
     ]),
     "app": ("App", "Everyone sees these. A service gates this section on a permission. Save a site "
                    "banner and it shows above every page.", [
-        # The shape of greentechhub-core's site_banner_settings() (core > v0.8.0,
-        # which this playground pins): the message, empty for none, and one of
-        # gth_alert_banner's tones.
-        {"key": "site.banner", "type": "str", "label": "Site banner", "default": "",
-         "help_text": "Shown to everyone above the navbar, e.g. planned maintenance. "
-                      "Leave empty for none."},
-        {"key": "site.banner_tone", "type": "choice", "label": "Banner style", "default": "warn",
-         "choices": [("info", "Info"), ("warn", "Warning"), ("bad", "Alert"),
-                     ("good", "Success"), ("neutral", "Neutral")]},
+        # greentechhub-core's own site banner settings: the message (empty for
+        # none) and one of gth_alert_banner's tones.
+        *map(_setting_dict, site_banner_settings(edit_permission=MANAGE_PERMISSION)),
         {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
          "help_text": "An unchecked switch still submits \"false\" (off_value)."},
     ]),
@@ -845,8 +857,8 @@ async def watchlist_badge():
 async def demo_reset():
     """Restore the demos that keep server-side state (the watchlist, the
     health count, the site banner) and refresh everything showing them."""
-    SETTINGS_VALUES.pop("site.banner", None)
-    SETTINGS_VALUES.pop("site.banner_tone", None)
+    SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
+    SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     PROGRESS_DEMO["value"] = 0
