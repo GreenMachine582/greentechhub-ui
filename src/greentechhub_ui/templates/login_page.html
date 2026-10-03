@@ -1,0 +1,32 @@
+{#- login_page.html — a ready-made local-auth login page (v0.14). Renders
+    the context greentechhub-fastapi's LoginViews passes: `error` after a
+    failed login, nothing otherwise. Optional: login_url (the form's action,
+    default "/login"), login_title ("Log in"), user_id_label ("User ID") and
+    user_id (a prefill). Posts user_id + password, the names LoginViews
+    reads; any framework can render it with the same context. -#}
+{% extends "app.html" %}
+{% from "form.html" import gth_form_field %}
+{% from "toast.html" import gth_alert %}
+
+{% block title %}{{ login_title|default("Log in") }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center gth-login">
+  <div class="col-12 col-md-5 col-lg-4">
+    <h1 class="h3 mb-3">{{ login_title|default("Log in") }}</h1>
+    {%- if error|default(none) %}
+    {{ gth_alert(error, kind="danger") }}
+    {%- endif %}
+    {#- A plain form, not gth_form: gth_form sets novalidate, and an empty
+        field must stop in the browser (LoginViews' required Form() fields
+        would answer FastAPI's JSON 422). #}
+    <form method="post" action="{{ login_url|default('/login')|e }}" class="gth-form">
+      {{ gth_form_field("user_id", user_id_label|default("User ID"), value=user_id|default("")|e,
+          input_attrs={"required": "required", "autofocus": "autofocus", "autocomplete": "username"}) }}
+      {{ gth_form_field("password", "Password", type="password",
+          input_attrs={"required": "required", "autocomplete": "current-password"}) }}
+      <button type="submit" class="btn btn-primary w-100">{{ login_title|default("Log in") }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

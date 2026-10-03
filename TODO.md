@@ -48,12 +48,6 @@
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
 
-### From the PyFinBot review
-Hand-rolled markup PyFinBot repeats that belongs here, so it can drop its own copies:
-- [ ] `login_page.html` — a local-auth login page (`gth_form` + `gth_form_field`, the error as
-  `gth_alert(error, kind="danger")`) that greentechhub-fastapi's `LoginViews` defaults to, so apps stop owning
-  `login.html`; the fastapi half is in its TODO
-
 ### Resilience & security
 - [ ] Top loading bar for htmx requests slower than ~300ms
 - [ ] Error pages — `403.html` / `404.html` / `500.html` extending `page.html`, with FastAPI and Django
@@ -89,17 +83,10 @@ Hand-rolled markup PyFinBot repeats that belongs here, so it can drop its own co
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-- [ ] Swap the hand-built From/To date inputs in `transactions.html`'s filter bar for `gth_date_range` (same
-  `date_from`/`date_to` params, `fy_start_month=7`) once the release carrying it is tagged — `install()` already
-  supplies `date_range_js_url`
-- [ ] Swap `import.html`'s plain file field for `gth_file_drop("file", "File", accept=ACCEPTED_EXTENSIONS,
-  max_size=…)` in the same release, giving drag-and-drop, the type/size check before upload and progress for big
-  spreadsheets. The upload route's `File(None)` already avoids the empty-submit JSON 422
-- [ ] Drop `templating.py`'s `_money` / `_qty` for the shared `money` / `number` filters that `install()` now
-  registers (its own assignments after `install()` win until they're removed). `|string|qty` becomes `|number`, since
-  floats are handled. **`money` now prints `$`** (`$1,234.50`), so check the stat cards and report columns and use
-  `|money("")` where a `$` is already in the heading. `_fy` stays PyFinBot's own
-- [ ] Pass `theme_save_url`/`granted`/`user_menu_items`/`logout_url` (via fastapi's `register_settings` context, #9), replacing any hand-rolled theme or nav gating; `user_settings` from the same context is all #15–#17 need
+- [ ] Adopt v0.14 (from the PyFinBot review; tracked in PyFinBot's `todo.md`): the row actions column on its
+  transactions and stocks tables, `gth_busy_button(submit=True)`, `gth_alert` for its raw alerts,
+  `gth_select(hide_label=True)` in its filter bars, and `login_page.html` once greentechhub-fastapi's `LoginViews`
+  defaults to it (fastapi TODO)
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

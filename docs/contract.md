@@ -128,6 +128,12 @@ optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in
 [docs/components.md](components.md#settings).
 
+**Login page (v0.14)** — the context `login_page.html` takes, matching greentechhub-fastapi's `LoginViews`:
+`error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
+form's action, default `/login`), `login_title` (`Log in`), `user_id_label` (`User ID`) and `user_id` (a prefill).
+It posts `user_id` and `password`. Until `LoginViews` defaults to it, set `login_template = "login_page.html"` on
+the subclass.
+
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:
 

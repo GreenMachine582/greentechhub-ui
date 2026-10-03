@@ -208,6 +208,17 @@ def test_tables_date_range_filter():
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
 
 
+def test_login_demo_mirrors_login_views():
+    page = _run(_get("/login-demo"))
+    assert page.status_code == 200 and 'action="/login-demo"' in page.text
+    assert "gth-toast-danger" not in page.text
+    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
+    assert bad.status_code == 401
+    assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
+    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    assert good.status_code == 303 and good.headers["location"] == "/"
+
+
 def test_tables_stock_filter(monkeypatch):
     records = [dict(r) for r in playground_app.RECORDS]
     records[0]["stock"] = records[1]["stock"] = 0
