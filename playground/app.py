@@ -737,9 +737,17 @@ def _picked_roles(form) -> list[str]:
 
 # gth-ui's login_page.html with the context greentechhub-fastapi's LoginViews
 # passes: nothing on GET, `error` (and a 401) after a failed sign-in.
+LOGIN_DEMO = {
+    "login_url": "/login-demo",
+    "login_help": "Demo account: demo / demo.",
+    "login_links": [{"label": "Playground", "url": "/"},
+                    {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
+}
+
+
 @app.get("/login-demo", response_class=HTMLResponse)
 async def login_demo(request: Request):
-    return templates.TemplateResponse(request, "login_page.html", {"login_url": "/login-demo"})
+    return templates.TemplateResponse(request, "login_page.html", LOGIN_DEMO)
 
 
 @app.post("/login-demo", response_class=HTMLResponse)
@@ -747,8 +755,7 @@ async def login_demo_submit(request: Request, user_id: str = Form(""), password:
     if user_id == "demo" and password == "demo":
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(request, "login_page.html", {
-        "login_url": "/login-demo", "user_id": user_id,
-        "error": "Incorrect user ID or password. (The demo account is demo / demo.)",
+        **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
     }, status_code=401)
 
 

@@ -1102,15 +1102,21 @@ markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 | `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
 | `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
 
-`login_page.html` (v0.14) is the same kind of page for local auth: it extends `app.html` and takes `LoginViews`'
-context — `error` after a failed sign-in, plus optional `login_url`, `login_title`, `user_id_label` and `user_id`
-([contract](contract.md)). It's a plain form rather than `gth_form`, so the browser stops an empty submit before
-`LoginViews`' required fields would answer FastAPI's JSON 422:
+`login_page.html` (v0.14) is the same kind of page for local auth. It uses `app.html`'s `layout="auth"`, so a
+signed-out visitor sees no app navbar: the brand (logo, swapped per colour mode, or a shield mark without one)
+above a sign-in card, the theme toggle in the corner, and a footer with the brand and optional links. It takes
+`LoginViews`' context — `error` after a failed sign-in — plus optional `login_url`, `login_title`,
+`login_subtitle`, `user_id_label`, `user_id`, `login_help` and `login_links` ([contract](contract.md)). It's a plain
+form rather than `gth_form`, so the browser stops an empty submit before `LoginViews`' required fields would answer
+FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own:
 
 ```python
 class MyLoginViews(LoginViews):
     login_template = "login_page.html"   # until greentechhub-fastapi defaults to it
 ```
+
+`layout="auth"` is open to other signed-out pages too: extend `app.html` and `{% set layout = "auth" %}` at the top
+level, then fill `{% block content %}` (`.gth-auth` centres it).
 
 A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
 optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no

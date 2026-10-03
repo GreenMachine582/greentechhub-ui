@@ -103,7 +103,7 @@ mode; `"dark"` pins it dark.
 
 | Global | Meaning |
 |---|---|
-| `layout` | `"navbar"` (default: exactly the v0.7 shell) or `"sidebar"` (nav_items move into `gth_sidebar`; a drawer below 992px) |
+| `layout` | `"navbar"` (default: exactly the v0.7 shell), `"sidebar"` (nav_items move into `gth_sidebar`; a drawer below 992px) or `"auth"` (v0.14: no navbar or sidebar, a centred `<main class="gth-auth">` — for sign-in and other signed-out pages; `login_page.html` sets it) |
 | `current_path` | per-request: the path `gth_sidebar` marks active and `nav_breadcrumbs` resolves |
 | `nav_breadcrumbs(path)` | breadcrumbs for `gth_page_header`, derived from `nav_items` (installed by `shell_globals`) |
 | `nav_mark_active`, `nav_flatten` | helpers `gth_sidebar` / `gth-command-palette` call (installed by `shell_globals`) |
@@ -130,9 +130,11 @@ optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 
 **Login page (v0.14)** — the context `login_page.html` takes, matching greentechhub-fastapi's `LoginViews`:
 `error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
-form's action, default `/login`), `login_title` (`Log in`), `user_id_label` (`User ID`) and `user_id` (a prefill).
-It posts `user_id` and `password`. Until `LoginViews` defaults to it, set `login_template = "login_page.html"` on
-the subclass.
+form's action, default `/login`), `login_title` (`Sign in`), `login_subtitle`, `user_id_label` (`User ID`),
+`user_id` (a prefill; focus then starts on the password), `login_help` (a line under the button) and `login_links`
+(`[{label, url}]` in the footer; http(s) or relative URLs only). The brand header and footer come from the shell's
+`brand`; the theme toggle shows when `show_theme_toggle` is on. It posts `user_id` and `password`. Until
+`LoginViews` defaults to it, set `login_template = "login_page.html"` on the subclass.
 
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:

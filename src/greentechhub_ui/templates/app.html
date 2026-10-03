@@ -110,7 +110,12 @@
   {% endblock %}
 
   {% from "navbar.html" import gth_navbar %}
-  {%- if layout|default("navbar") == "sidebar" %}
+  {%- if layout|default("navbar") == "auth" %}
+  {#- layout="auth" (v0.14): no navbar or sidebar, just a centred page — for
+      sign-in (login_page.html) and pages a signed-out visitor sees. A page
+      picks it with a top-level {% set layout = "auth" %}. #}
+  <main class="gth-auth">
+  {%- elif layout|default("navbar") == "sidebar" %}
   {#- layout="sidebar": nav_items move into gth_sidebar — a static left
       column from 992px up (optionally an icon rail), an off-canvas drawer
       below that (Bootstrap's offcanvas-lg; no gth JS needed for it). #}
@@ -166,7 +171,7 @@
   {{ gth_back_to_top() }}
   <script src="{{ back_to_top_js_url }}"></script>
   {%- endif %}
-  {%- if command_palette_js_url|default(none) and (layout|default("navbar") == "sidebar" or show_command_palette|default(false)) %}
+  {%- if command_palette_js_url|default(none) and layout|default("navbar") != "auth" and (layout|default("navbar") == "sidebar" or show_command_palette|default(false)) %}
   {% from "command_palette.html" import gth_command_palette %}
   {{ gth_command_palette(nav_items, command_search_url|default(none)) }}
   <script src="{{ command_palette_js_url }}"></script>

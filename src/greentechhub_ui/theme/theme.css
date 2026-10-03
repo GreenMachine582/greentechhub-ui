@@ -867,6 +867,84 @@ body.gth-picker-modal-open {
   bottom: 3.75rem !important;
 }
 
+/* ── layout="auth" (login_page.html) ──────────────────────────────────
+   No app chrome: the brand and a card centred on a brand-tinted wash, a
+   footer at the bottom. Colours come from theme tokens, so both modes work. */
+.gth-auth {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 3rem);
+  min-height: calc(100dvh - 3rem);  /* leaves room for the footer */
+  padding: 3rem 1rem 1.5rem;
+  background:
+    radial-gradient(ellipse 60rem 30rem at 50% -10%, var(--gth-brand-subtle-bg), transparent 70%),
+    var(--bs-body-bg);
+}
+.gth-auth-corner {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+.gth-auth-panel {
+  width: 100%;
+  max-width: 24rem;
+}
+.gth-auth-brand {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.gth-auth-logo {
+  margin-bottom: 0.75rem;
+}
+.gth-auth-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--gth-brand-subtle-border);
+  border-radius: 50%;
+  color: var(--gth-brand-fg);
+  background-color: var(--gth-brand-subtle-bg);
+  font-size: 1.6rem;
+}
+.gth-auth-brand-name {
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gth-auth-service {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.gth-auth-card {
+  border-radius: 0.75rem;
+  box-shadow: var(--bs-box-shadow);
+}
+.gth-auth-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1rem;
+  padding: 0.75rem 1rem 1.5rem;
+  color: var(--bs-secondary-color);
+  background-color: var(--bs-body-bg);
+  font-size: 0.875rem;
+}
+.gth-auth-footer a {
+  color: inherit;
+}
+.gth-auth-footer a:hover {
+  color: var(--gth-brand-fg);
+}
+
 /* ── gth-toast ────────────────────────────────────────────────────────
    "surface" (default): the theme's own background with a kind-coloured
    accent bar and icon — readable, close button included, on every kind in

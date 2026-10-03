@@ -68,6 +68,8 @@ def test_every_sidebar_link_returns_200():
     for path in sorted(paths):
         response = _run(get_as_admin(path))
         assert response.status_code == 200, path
+        if path == "/login-demo":  # layout="auth": no sidebar to mark it
+            continue
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
 
 
@@ -215,6 +217,7 @@ def test_login_demo_mirrors_login_views():
     bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
     assert bad.status_code == 401
     assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
+    assert "Demo account: demo / demo." in bad.text
     good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
     assert good.status_code == 303 and good.headers["location"] == "/"
 
