@@ -21,7 +21,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
-| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
+| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
@@ -1033,10 +1033,21 @@ The plain functions never read `user_settings`, so a CSV export keeps `1,234.56`
 ```jinja
 {# select.html #}
 gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
-           field_class="mb-3", input_attrs=None)
+           field_class="mb-3", input_attrs=None, hide_label=False)
 {# options: {"value", "label"} dicts, (value, label) pairs (core Setting.choices' shape), or bare
    values. value is compared as a string, so 25 selects "25". placeholder adds an empty first
-   option. Same ids, aria-describedby and error layout as gth_form_field. #}
+   option. Same ids, aria-describedby and error layout as gth_form_field.
+   hide_label (v0.14): the label stays for assistive tech only. #}
+```
+
+In a `gth_table_filter` bar, hide the label and drop the margin, as with `gth_date_range`. The name goes in the
+`TableState`'s `filter_params`, and the placeholder option ("All types", submitting `""`) clears the filter:
+
+```jinja
+{% call gth_table_filter(table) %}
+  {{ gth_select("type", "Type", types, value=table.filters.get("type"), placeholder="All types",
+      hide_label=True, field_class="mb-0") }}
+{% endcall %}
 ```
 
 `gth_segmented` gains `help_text=None, errors=None` and `gth_switch` gains `errors=None, off_value=None`.

@@ -208,6 +208,21 @@ def test_tables_date_range_filter():
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
 
 
+def test_tables_stock_filter(monkeypatch):
+    records = [dict(r) for r in playground_app.RECORDS]
+    records[0]["stock"] = records[1]["stock"] = 0
+    monkeypatch.setattr(playground_app, "RECORDS", records)
+    def total(stock):
+        return _run(_get("/tables", params={"stock": stock}, headers=HX)).text
+
+    assert "of 2" in total("out")
+    assert f"of {len(records) - 2}" in total("in")
+    assert f"of {len(records)}" in total("x")  # anything else is no filter
+    page = _run(_get("/tables", params={"stock": "out"})).text
+    assert '<label class="form-label visually-hidden" for="gth-field-stock">Stock</label>' in page
+    assert '<option value="out" selected>Sold out</option>' in page
+
+
 def test_demo_upload_rechecks_type_and_size(monkeypatch):
     monkeypatch.setattr(playground_app, "UPLOAD_DELAY", 0)
 

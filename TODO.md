@@ -48,10 +48,8 @@
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
 
-### From the PyFinBot review (next release, one PR each)
+### From the PyFinBot review
 Hand-rolled markup PyFinBot repeats that belongs here, so it can drop its own copies:
-- [ ] `gth_select(..., hide_label=True)` — a visually-hidden label for filter bars, like `gth_date_range`'s
-  (PyFinBot hand-builds every filter-bar select)
 - [ ] `login_page.html` — a local-auth login page (`gth_form` + `gth_form_field`, the error as
   `gth_alert(error, kind="danger")`) that greentechhub-fastapi's `LoginViews` defaults to, so apps stop owning
   `login.html`; the fastapi half is in its TODO

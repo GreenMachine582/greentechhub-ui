@@ -941,7 +941,7 @@ def _records_state(query, *, mode: str, scroll: bool, base_url: str,
         page_sizes=(10, 25, 50),
         sortable=("name", "category", "stock", "price", "added"),
         default_sort="name",
-        filter_params=("q", "category", "date_from", "date_to"),
+        filter_params=("q", "category", "stock", "date_from", "date_to"),
         push_url=mode == "pages" and table_id == "records",
         max_height="22rem" if scroll else None,
         export_base_url="/tables/export.csv" if table_id == "records" else None,
@@ -964,6 +964,8 @@ def _query_records(state: greentechhub_ui.TableState):
         rows = [r for r in rows if q in r["name"].lower()]
     if category := state.filters.get("category"):
         rows = [r for r in rows if r["category"] == category]
+    if (stock := state.filters.get("stock")) in ("in", "out"):
+        rows = [r for r in rows if (r["stock"] > 0) == (stock == "in")]
     if date_from := _parse_date(state.filters.get("date_from")):
         rows = [r for r in rows if r["added"] >= date_from]
     if date_to := _parse_date(state.filters.get("date_to")):
