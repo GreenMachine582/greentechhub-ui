@@ -17,7 +17,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-back-to-top` | Floating "back to top" button past a scroll threshold (v0.8) |
 | `gth-pagination` | Renders page controls from `greentechhub-core`'s pagination envelope |
 | `gth-table-load-more` | Trailing "load more" row for tables — `gth-pagination`'s `<tr>` sibling (v0.7) |
-| `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7) |
+| `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12) |
@@ -158,12 +158,22 @@ gth_table_load_more(next_url, label="Load more", colspan=99, total=None)
    next_url is None. Pair with greentechhub_fastapi.query.next_page_url. #}
 
 {# busy_button.html #}
-gth_busy_button(label, busy_label, hx_attrs, icon=None, btn_class="btn-outline-secondary", start_toast=None)
+gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outline-secondary", start_toast=None,
+                submit=False)
 {# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
    busy_label + spinner while the request runs; start_toast pops at once
    (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
    .htmx-request — see theme.css for the htmx 1.9.10 bug that forces it.
-   Still guard the action server-side: this only stops double-clicks in one tab. #}
+   Still guard the action server-side: this only stops double-clicks in one tab.
+   submit=True (v0.14): a form's submit button. The form sends the request, so
+   the form disables the button — give it hx-disabled-elt="find button[type=submit]";
+   without that it still submits but never shows busy. hx_attrs is optional, and
+   start_toast still pops (toast.js reads it from the submit event's submitter). #}
+{% call gth_form("/import", form_attrs={"hx-post": "/import", "hx-target": "#result",
+    "hx-disabled-elt": "find button[type=submit]"}) %}
+  …
+  {{ gth_busy_button("Import", "Importing…", icon="upload", btn_class="btn-primary", submit=True) }}
+{% endcall %}
 
 {# combobox.html — behaviour in static/js/combobox.js (combobox_js_url) #}
 gth_combobox(name, label, url, value=None, value_label=None, errors=None,

@@ -636,7 +636,7 @@ def test_modal_form_422_then_success_closes_modal(page, playground_url):
 
 def test_busy_button_shows_busy_state_then_resets(page, playground_url):
     page.goto(f"{playground_url}/forms")
-    button = page.locator(".gth-busy-button")
+    button = page.locator("#busy-button .gth-busy-button[type=button]")
     button.click()
     expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Slow job started")
     expect(button).to_be_disabled()
@@ -648,6 +648,26 @@ def test_busy_button_shows_busy_state_then_resets(page, playground_url):
     expect(button).to_be_enabled()
     expect(button.locator(".gth-busy-button-idle")).to_be_visible()
     expect(button.locator(".gth-busy-button-busy")).to_be_hidden()
+
+
+def test_busy_submit_button_busy_while_form_request_runs(page, playground_url):
+    page.goto(f"{playground_url}/forms")
+    button = page.locator("#busy-submit-demo .gth-busy-button")
+    for submit in (button.click, lambda: page.locator("#busy-report-name").press("Enter")):
+        submit()
+        # start_toast comes from the submitter, though the form sends the request.
+        expect(page.locator(DYNAMIC_TOAST).first).to_contain_text("Report started")
+        expect(button).to_be_disabled()  # the form's hx-disabled-elt
+        expect(button.locator(".gth-busy-button-busy")).to_be_visible()
+        expect(button.locator(".gth-busy-button-idle")).to_be_hidden()
+
+        expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("Slow job finished", timeout=10000)
+        expect(button).to_be_enabled()
+        expect(button.locator(".gth-busy-button-idle")).to_be_visible()
+        # Clear the toasts, so the Enter round checks fresh ones.
+        closes = page.locator(f"{DYNAMIC_TOAST} .btn-close")
+        closes.evaluate_all("els => els.forEach(b => b.click())")
+        expect(page.locator(DYNAMIC_TOAST)).to_have_count(0)
 
 
 def test_table_load_more_appends_rows_until_exhausted(page, playground_url):
@@ -710,7 +730,7 @@ def test_navbar_follows_color_mode(page, playground_url):
 
 def test_secondary_buttons_follow_color_mode(page, playground_url):
     page.goto(f"{playground_url}/forms")
-    button = page.locator(".gth-busy-button")  # btn-outline-secondary
+    button = page.locator("#busy-button .gth-busy-button[type=button]")  # btn-outline-secondary
     # to_have_css retries: .btn transitions its color
     expect(button).to_have_css("color", "rgb(206, 212, 218)")  # #ced4da: 10.3:1 on dark
     page.click(".gth-theme-toggle")
