@@ -294,6 +294,7 @@ PLAYGROUND_NAV = [
         {"label": "Toast", "url": "/feedback#toast"},
         {"label": "Error toasts", "url": "/feedback#error-toasts"},
         {"label": "Flashes", "url": "/feedback#flashes"},
+        {"label": "Inline alert", "url": "/feedback#inline-alert"},
         {"label": "Alert banner", "url": "/feedback#alert-banner"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
