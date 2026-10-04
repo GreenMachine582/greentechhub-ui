@@ -8,6 +8,16 @@
 
 ## 🗺️ Milestones
 
+Cross-repo order (with greentechhub-core and greentechhub-fastapi): Accounts (M1) → Notifications & email (M2) →
+consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.0.
+
+### Accounts (M1)
+- [ ] `register_page.html` on the auth layout, like `login_page.html`, for greentechhub-fastapi's `RegisterViews`,
+  plus a "Create account" link on the sign-in page when self-signup is on
+- [ ] A change-password section for the settings page
+- [ ] A profile page, and avatar initials in the navbar user menu
+- [ ] Password reset pages — forgot password and set a new one (lands with M2's email delivery)
+
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
@@ -16,14 +26,17 @@
 - [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
   a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
   toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea);
-  its user preferences (core settings) come with it
+  its user preferences (core settings) come with it. Milestone M2; the store and routes are in core's and
+  greentechhub-fastapi's TODOs
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
-- [ ] `gth_timeline` — activity feed (sync runs, audit entries); pairs with the notification centre
-- [ ] `gth_embed_card` — iframe card with loading and error states — PyFinBot's Grafana slot
+- [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's planned audit log; pairs with the
+  notification centre
+- [ ] `gth_embed_card` — iframe card with loading and error states, passing the current theme to Grafana panels —
+  PyFinBot's Grafana slot
 - [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
   response)
   - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
@@ -64,6 +77,23 @@
   on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
   Update `VENDORED.md` hash/size when it lands
 
+### Ideas — not scheduled
+- App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
+  config; with Authentik SSO, moving between them needs no extra sign-in
+- Templates for greentechhub-fastapi's planned admin views — an Admin nav group, users admin, a system status page
+  (a status badge per health check)
+- First-run setup wizard on a new `gth_stepper` multi-step form — create the admin, name the site, pick a landing page
+- Customisable dashboard — users arrange and resize stat cards and widgets; the layout saved in settings
+- `gth_kanban` — columns by status, htmx drag between them, a keyboard move mode like the tree reorder
+- `gth_calendar` — month and agenda views for scheduled jobs, dividends and due dates
+- Keyboard shortcut overlay — `?` lists shortcuts; apps register their own, like command-palette actions
+- `print.html` — a print/PDF base with clean typography for reports
+- Undo toasts — "Deleted 3 items · Undo", a toast action over a soft delete
+- Inline cell editing in `gth_data_table` — click to edit, htmx save, an undo toast
+- `gth_notes` — a notes/comments panel for any record; and tag chips (coloured `gth_badge`) with filter-by-tag
+- Global search — apps register search providers per model; results appear in the command palette beside nav items
+- A published component gallery — the playground deployed as living docs, each component beside its macro call
+
 ### v1.0 — Validated in production
 - [ ] BottleBot retrofit shipped
 - [ ] PyFinBot greenfield build shipped
@@ -83,10 +113,8 @@
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-- [ ] Adopt v0.14 (from the PyFinBot review; tracked in PyFinBot's `todo.md`): the row actions column on its
-  transactions and stocks tables, `gth_busy_button(submit=True)`, `gth_alert` for its raw alerts,
-  `gth_select(hide_label=True)` in its filter bars, and `login_page.html` once greentechhub-fastapi's `LoginViews`
-  defaults to it (fastapi TODO)
+- [ ] v0.14 is adopted, except the report panes' FY selects: both are `name="fy"` in tab panes that stay in the DOM,
+  so they wait for the next release with `gth_select(id=)` (#71, on dev). Tracked in PyFinBot's `todo.md`
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
