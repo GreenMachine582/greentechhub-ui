@@ -1111,11 +1111,19 @@ above a sign-in card, the theme toggle in the corner, and a footer with the bran
 `LoginViews`' context — `error` after a failed sign-in — plus optional `login_url`, `login_title`,
 `login_subtitle`, `user_id_label`, `user_id`, `login_help` and `login_links` ([contract](contract.md)). It's a plain
 form rather than `gth_form`, so the browser stops an empty submit before `LoginViews`' required fields would answer
-FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own:
+FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own. greentechhub-fastapi's `LoginViews` renders
+it by default (fastapi v0.11+); with `register_url` set (v0.15) it adds a "No account? Create one" link.
+
+`register_page.html` (v0.15) is its sign-up twin for greentechhub-fastapi's `RegisterViews`, on the same layout with
+the same brand header and footer. It posts `user_id`, `password` and `password_confirm`. Each field shows its own
+error from `errors` (`{field: [message]}`), with the user ID kept and focus on the password when that's what was
+refused. Any other key shows as an inline danger alert. `min_password_length` becomes the password's `minlength` and
+an "At least N characters." hint, and `login_url` a "Sign in" link. Options: `register_title`, `register_subtitle`,
+`user_id_label`, `register_help`, `register_links` ([contract](contract.md)). `RegisterViews` renders it by default:
 
 ```python
-class MyLoginViews(LoginViews):
-    login_template = "login_page.html"   # until greentechhub-fastapi defaults to it
+class MyRegisterViews(RegisterViews):
+    async def create_user(self, user_id: str, password: str) -> Identity: ...
 ```
 
 `layout="auth"` is open to other signed-out pages too: extend `app.html` and `{% set layout = "auth" %}` at the top

@@ -1,0 +1,80 @@
+{#- register_page.html — a ready-made sign-up page (v0.15), on app.html's
+    layout="auth" like login_page.html. Renders the context
+    greentechhub-fastapi's RegisterViews passes: register_url (the form's
+    action, default "/register"), login_url (the "Sign in" link) and
+    min_password_length on every render, plus errors ({field: [message]})
+    and user_id after a refused sign-up. Optional: register_title ("Create
+    account"), register_subtitle, user_id_label ("User ID"), register_help
+    (a line under the button) and register_links ([{label, url}] in the
+    footer; http(s) or relative only). Posts user_id, password and
+    password_confirm, the names RegisterViews reads; the password is never
+    filled back in. -#}
+{% extends "app.html" %}
+{% set layout = "auth" %}
+{% from "form.html" import gth_form_field %}
+{% from "toast.html" import gth_alert %}
+{% from "theme_toggle.html" import gth_theme_toggle %}
+{% from "auth.html" import gth_auth_brand, gth_auth_footer %}
+{% set title = register_title|default("Create account") %}
+{% set service = brand.service_name or brand.name %}
+{% set field_errors = errors|default(none) or {} %}
+{% set min_length = min_password_length|default(none) %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{%- if show_theme_toggle|default(false) %}
+<div class="gth-auth-corner">{{ gth_theme_toggle() }}</div>
+{%- endif %}
+<div class="gth-auth-panel">
+  {{ gth_auth_brand(brand) }}
+
+  <div class="card gth-auth-card">
+    <div class="card-body p-4">
+      <h1 class="h4 mb-1">{{ title }}{% if service %} <span class="text-secondary fw-normal">to {{ service }}</span>{% endif %}</h1>
+      {%- if register_subtitle|default(none) %}
+      <p class="text-secondary small mb-0">{{ register_subtitle|e }}</p>
+      {%- endif %}
+      <div class="mt-3">
+        {#- Errors for anything but the three fields (e.g. "__all__") show above the form. #}
+        {%- for field, messages in field_errors.items() if field not in ("user_id", "password", "password_confirm") %}
+        {{ gth_alert(messages|join(" "), kind="danger") }}
+        {%- endfor %}
+        {#- A plain form, not gth_form, for the same reason as login_page.html:
+            an empty field must stop in the browser. #}
+        <form method="post" action="{{ register_url|default('/register')|e }}" class="gth-form">
+          {#- Focus goes where the fixing starts: the password when that's what was refused. #}
+          {%- set password_refused = user_id|default("") != "" and ("password" in field_errors or "password_confirm" in field_errors) %}
+          {%- set user_attrs = {"required": "required", "autocomplete": "username"} %}
+          {%- set password_attrs = {"required": "required", "autocomplete": "new-password"} %}
+          {%- if min_length %}{% set _ = password_attrs.update({"minlength": min_length}) %}{% endif %}
+          {%- set confirm_attrs = {"required": "required", "autocomplete": "new-password"} %}
+          {%- set _ = (password_attrs if password_refused else user_attrs).update({"autofocus": "autofocus"}) %}
+          {{ gth_form_field("user_id", user_id_label|default("User ID"), value=user_id|default("")|e,
+              errors=field_errors.get("user_id"), input_attrs=user_attrs) }}
+          {{ gth_form_field("password", "Password", type="password", errors=field_errors.get("password"),
+              help_text=("At least " ~ min_length ~ " characters.") if min_length else none,
+              input_attrs=password_attrs) }}
+          {{ gth_form_field("password_confirm", "Confirm password", type="password",
+              errors=field_errors.get("password_confirm"), input_attrs=confirm_attrs) }}
+          <button type="submit" class="btn btn-primary w-100 mt-1">
+            <i class="bi bi-person-plus" aria-hidden="true"></i> {{ title }}
+          </button>
+        </form>
+        {%- if register_help|default(none) %}
+        <p class="text-secondary small text-center mt-3 mb-0 gth-auth-help">{{ register_help|e }}</p>
+        {%- endif %}
+        {%- if login_url|default(none) %}
+        <p class="text-secondary small text-center mt-3 mb-0 gth-auth-switch">
+          Already have an account? <a href="{{ login_url|e }}">Sign in</a>
+        </p>
+        {%- endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{{ gth_auth_footer(brand, register_links|default([])) }}
+{% endblock %}
