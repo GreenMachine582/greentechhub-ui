@@ -771,6 +771,7 @@ def _picked_roles(form) -> list[str]:
 # passes: nothing on GET, `error` (and a 401) after a failed sign-in.
 LOGIN_DEMO = {
     "login_url": "/login-demo",
+    "register_url": "/register-demo",
     "login_help": "Demo account: demo / demo.",
     "login_links": [{"label": "Playground", "url": "/"},
                     {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
@@ -789,6 +790,42 @@ async def login_demo_submit(request: Request, user_id: str = Form(""), password:
     return templates.TemplateResponse(request, "login_page.html", {
         **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
     }, status_code=401)
+
+
+# gth-ui's register_page.html with the context greentechhub-fastapi's
+# RegisterViews passes: the same checks, 422 + errors on a refusal.
+REGISTER_DEMO = {
+    "register_url": "/register-demo",
+    "login_url": "/login-demo",
+    "min_password_length": 8,
+    "register_help": "Nothing is stored: any new user ID signs straight in.",
+    "register_links": [{"label": "Playground", "url": "/"}],
+}
+
+
+@app.get("/register-demo", response_class=HTMLResponse)
+async def register_demo(request: Request):
+    return templates.TemplateResponse(request, "register_page.html", REGISTER_DEMO)
+
+
+@app.post("/register-demo", response_class=HTMLResponse)
+async def register_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
+                               password_confirm: str = Form("")):
+    user_id = user_id.strip()
+    errors: dict[str, list[str]] = {}
+    if not user_id:
+        errors["user_id"] = ["Choose a user ID."]
+    elif user_id == "demo":
+        errors["user_id"] = ["That user ID is taken."]
+    if len(password) < REGISTER_DEMO["min_password_length"]:
+        errors["password"] = [f"Use at least {REGISTER_DEMO['min_password_length']} characters."]
+    elif password != password_confirm:
+        errors["password_confirm"] = ["The passwords don't match."]
+    if not errors:
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "register_page.html", {
+        **REGISTER_DEMO, "user_id": user_id, "errors": errors,
+    }, status_code=422)
 
 
 @app.get("/roles", response_class=HTMLResponse)

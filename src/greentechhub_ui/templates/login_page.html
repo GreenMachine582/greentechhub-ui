@@ -4,14 +4,17 @@
     `error` after a failed sign-in, nothing otherwise. Optional:
     login_url (the form's action, default "/login"), login_title ("Sign
     in"), login_subtitle, user_id_label ("User ID"), user_id (a prefill),
-    login_help (a line under the button, e.g. "No account? Ask an admin.")
-    and login_links ([{label, url}] in the footer; http(s) or relative
-    only). Posts user_id + password, the names LoginViews reads. -#}
+    login_help (a line under the button, e.g. "No account? Ask an admin."),
+    login_links ([{label, url}] in the footer; http(s) or relative only)
+    and register_url (v0.15: LoginViews passes it when the service offers
+    sign-up; adds a "Create one" link to register_page.html). Posts user_id
+    + password, the names LoginViews reads. -#}
 {% extends "app.html" %}
 {% set layout = "auth" %}
 {% from "form.html" import gth_form_field %}
 {% from "toast.html" import gth_alert %}
 {% from "theme_toggle.html" import gth_theme_toggle %}
+{% from "auth.html" import gth_auth_brand, gth_auth_footer %}
 {% set title = login_title|default("Sign in") %}
 {% set service = brand.service_name or brand.name %}
 
@@ -22,20 +25,7 @@
 <div class="gth-auth-corner">{{ gth_theme_toggle() }}</div>
 {%- endif %}
 <div class="gth-auth-panel">
-  <div class="gth-auth-brand">
-    {%- if brand.logo_url and brand.logo_light_url %}
-    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-dark">
-    <img src="{{ brand.logo_light_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-light">
-    {%- elif brand.logo_url %}
-    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo">
-    {%- else %}
-    <span class="gth-auth-mark" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
-    {%- endif %}
-    {%- if brand.service_name and brand.name %}
-    <div class="gth-auth-brand-name">{{ brand.name }}</div>
-    {%- endif %}
-    <div class="gth-auth-service">{{ service }}</div>
-  </div>
+  {{ gth_auth_brand(brand) }}
 
   <div class="card gth-auth-card">
     <div class="card-body p-4">
@@ -66,6 +56,11 @@
         {%- if login_help|default(none) %}
         <p class="text-secondary small text-center mt-3 mb-0 gth-auth-help">{{ login_help|e }}</p>
         {%- endif %}
+        {%- if register_url|default(none) %}
+        <p class="text-secondary small text-center mt-3 mb-0 gth-auth-switch">
+          No account? <a href="{{ register_url|e }}">Create one</a>
+        </p>
+        {%- endif %}
       </div>
     </div>
   </div>
@@ -73,13 +68,5 @@
 {% endblock %}
 
 {% block footer %}
-<footer class="gth-auth-footer">
-  <span>{{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}</span>
-  {%- for link in login_links|default([]) %}
-  {%- set url = (link.url or "")|string|trim %}
-  {%- if link.label and (url.startswith("/") or url.lower().startswith(("http://", "https://")) or (url and ":" not in url.split("/")[0])) %}
-  <a href="{{ url|e }}">{{ link.label|e }}</a>
-  {%- endif %}
-  {%- endfor %}
-</footer>
+{{ gth_auth_footer(brand, login_links|default([])) }}
 {% endblock %}

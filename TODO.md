@@ -12,8 +12,6 @@ Cross-repo order (with greentechhub-core and greentechhub-fastapi): Accounts (M1
 consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.0.
 
 ### Accounts (M1)
-- [ ] `register_page.html` on the auth layout, like `login_page.html`, for greentechhub-fastapi's `RegisterViews`,
-  plus a "Create account" link on the sign-in page when self-signup is on
 - [ ] A change-password section for the settings page
 - [ ] A profile page, and avatar initials in the navbar user menu
 - [ ] Password reset pages — forgot password and set a new one (lands with M2's email delivery)

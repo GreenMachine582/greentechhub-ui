@@ -132,9 +132,18 @@ optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 `error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
 form's action, default `/login`), `login_title` (`Sign in`), `login_subtitle`, `user_id_label` (`User ID`),
 `user_id` (a prefill; focus then starts on the password), `login_help` (a line under the button) and `login_links`
-(`[{label, url}]` in the footer; http(s) or relative URLs only). The brand header and footer come from the shell's
-`brand`; the theme toggle shows when `show_theme_toggle` is on. It posts `user_id` and `password`. Until
-`LoginViews` defaults to it, set `login_template = "login_page.html"` on the subclass.
+(`[{label, url}]` in the footer; http(s) or relative URLs only), and `register_url` (v0.15; `LoginViews` passes it
+when the service offers sign-up) for a "Create one" link. The brand header and footer come from the shell's `brand`;
+the theme toggle shows when `show_theme_toggle` is on. It posts `user_id` and `password`. `LoginViews` renders it by
+default (fastapi v0.11+).
+
+**Register page (v0.15)** — the context `register_page.html` takes, matching greentechhub-fastapi's `RegisterViews`:
+`register_url` (the form's action, default `/register`), `login_url` (a "Sign in" link, left out when empty) and
+`min_password_length` (the password's `minlength` and hint) on every render, plus `errors` (`{field: [message]}`,
+shown under `user_id`, `password` or `password_confirm`; any other key as a danger `gth_alert`) and `user_id` (a
+prefill) after a refused sign-up. Optional: `register_title` (`Create account`), `register_subtitle`, `user_id_label`
+(`User ID`), `register_help` and `register_links` (as `login_links`). It posts `user_id`, `password` and
+`password_confirm`; the passwords are never filled back in.
 
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:

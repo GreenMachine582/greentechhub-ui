@@ -96,3 +96,10 @@ def test_page_is_a_well_formed_document():
     html5lib.HTMLParser(strict=True).parse(
         _render(error="Nope", user_id="bob", brand=LOGO, show_theme_toggle=True,
                 login_links=[{"label": "Help", "url": "/help"}]))
+
+
+def test_register_url_adds_a_create_account_link():
+    assert "gth-auth-switch" not in _render()
+    main = _main(_render(register_url="/register"))
+    assert 'No account? <a href="/register">Create one</a>' in main
+    html5lib.HTMLParser(strict=True).parse(_render(register_url="/register", login_help="Hi"))

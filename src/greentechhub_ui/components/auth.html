@@ -1,0 +1,34 @@
+{#- auth.html — the pieces the auth-layout pages (login_page.html,
+    register_page.html) share: the brand header above the card and the
+    footer. `brand` is the shell's brand global. -#}
+
+{% macro gth_auth_brand(brand) %}
+{%- set service = brand.service_name or brand.name -%}
+<div class="gth-auth-brand">
+    {%- if brand.logo_url and brand.logo_light_url %}
+    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-dark">
+    <img src="{{ brand.logo_light_url }}" alt="" height="56" class="gth-auth-logo gth-logo-on-light">
+    {%- elif brand.logo_url %}
+    <img src="{{ brand.logo_url }}" alt="" height="56" class="gth-auth-logo">
+    {%- else %}
+    <span class="gth-auth-mark" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+    {%- endif %}
+    {%- if brand.service_name and brand.name %}
+    <div class="gth-auth-brand-name">{{ brand.name }}</div>
+    {%- endif %}
+    <div class="gth-auth-service">{{ service }}</div>
+  </div>
+{%- endmacro %}
+
+{% macro gth_auth_footer(brand, links=()) %}
+{#- links: [{label, url}]; only http(s) and relative URLs render. -#}
+<footer class="gth-auth-footer">
+  <span>{{ brand.name }}{% if brand.service_name %} &middot; {{ brand.service_name }}{% endif %}</span>
+  {%- for link in links or [] %}
+  {%- set url = (link.url or "")|string|trim %}
+  {%- if link.label and (url.startswith("/") or url.lower().startswith(("http://", "https://")) or (url and ":" not in url.split("/")[0])) %}
+  <a href="{{ url|e }}">{{ link.label|e }}</a>
+  {%- endif %}
+  {%- endfor %}
+</footer>
+{%- endmacro %}

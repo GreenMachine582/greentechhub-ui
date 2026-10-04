@@ -2166,6 +2166,29 @@ def test_login_page_is_a_branded_auth_screen(page, playground_url):
     expect(page.locator("#gth-field-password")).to_be_focused()
 
 
+def test_register_page_is_a_branded_auth_screen(page, playground_url):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{playground_url}/login-demo")
+    page.click(".gth-auth-switch a")  # "No account? Create one"
+    expect(page).to_have_url(f"{playground_url}/register-demo")
+    expect(page.locator(".gth-navbar")).to_have_count(0)
+    expect(page.locator("#gth-field-user_id")).to_be_focused()
+    assert not page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+    # A mismatched confirmation comes back with the error, the user ID kept.
+    page.fill("#gth-field-user_id", "newbie")
+    page.fill("#gth-field-password", "long-enough")
+    page.fill("#gth-field-password_confirm", "long-enougH")
+    page.click("form[action='/register-demo'] button[type=submit]")
+    expect(page.locator("#gth-field-password_confirm-error")).to_contain_text("don't match")
+    expect(page.locator("#gth-field-user_id")).to_have_value("newbie")
+    expect(page.locator("#gth-field-password")).to_be_focused()
+    # Fixed, it signs in and lands on the playground.
+    page.fill("#gth-field-password", "long-enough")
+    page.fill("#gth-field-password_confirm", "long-enough")
+    page.click("form[action='/register-demo'] button[type=submit]")
+    expect(page).to_have_url(f"{playground_url}/")
+
+
 def test_inline_alert_is_page_content_not_a_toast(page, playground_url):
     page.goto(f"{playground_url}/feedback#inline-alert")
     alerts = page.locator("#alerts-demo .gth-toast-inline")
