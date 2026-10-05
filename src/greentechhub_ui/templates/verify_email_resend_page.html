@@ -1,0 +1,51 @@
+{#- verify_email_resend_page.html — "send the confirmation link again" (v0.15),
+    on app.html's layout="auth". Renders the context greentechhub-fastapi's
+    EmailVerificationViews passes: resend_url (the form's action) and
+    login_url on every render, plus sent and identifier after a request (the
+    same answer whether or not an account matched), or errors
+    ({"identifier": [message]}). Optional: resend_title ("Confirm your
+    email"), resend_help and resend_links. Posts identifier. -#}
+{% extends "app.html" %}
+{% set layout = "auth" %}
+{% from "form.html" import gth_form_field %}
+{% from "toast.html" import gth_alert %}
+{% from "theme_toggle.html" import gth_theme_toggle %}
+{% from "auth.html" import gth_auth_card, gth_auth_footer %}
+{% set title = resend_title|default("Confirm your email") %}
+{% set field_errors = errors|default(none) or {} %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{%- if show_theme_toggle|default(false) %}
+<div class="gth-auth-corner">{{ gth_theme_toggle() }}</div>
+{%- endif %}
+{% call gth_auth_card(brand, title) %}
+{%- if sent|default(false) %}
+{{ gth_alert("If an account matches " ~ identifier|default("") ~ " and still needs confirming, we've emailed "
+             ~ "it a new link.", kind="success", title="Check your email") }}
+{%- else %}
+<p class="text-secondary small">Enter your user ID or email and we'll send the confirmation link again.</p>
+<form method="post" action="{{ resend_url|default('/verify-email/resend')|e }}" class="gth-form">
+  {{ gth_form_field("identifier", "User ID or email", value=identifier|default("")|e,
+      errors=field_errors.get("identifier"),
+      input_attrs={"required": "required", "autocomplete": "username", "autofocus": "autofocus"}) }}
+  <button type="submit" class="btn btn-primary w-100 mt-1">
+    <i class="bi bi-envelope" aria-hidden="true"></i> Send the link again
+  </button>
+</form>
+{%- if resend_help|default(none) %}
+<p class="text-secondary small text-center mt-3 mb-0 gth-auth-help">{{ resend_help|e }}</p>
+{%- endif %}
+{%- endif %}
+{%- if login_url|default(none) %}
+<p class="text-secondary small text-center mt-3 mb-0 gth-auth-switch">
+  <a href="{{ login_url|e }}">Back to sign in</a>
+</p>
+{%- endif %}
+{% endcall %}
+{% endblock %}
+
+{% block footer %}
+{{ gth_auth_footer(brand, resend_links|default([])) }}
+{% endblock %}

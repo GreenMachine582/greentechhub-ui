@@ -14,7 +14,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 ### Accounts (M1)
 - [ ] A change-password section for the settings page
 - [ ] A profile page, and avatar initials in the navbar user menu
-- [ ] Password reset pages — forgot password and set a new one (lands with M2's email delivery)
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy

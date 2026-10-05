@@ -7,8 +7,12 @@
     login_help (a line under the button, e.g. "No account? Ask an admin."),
     login_links ([{label, url}] in the footer; http(s) or relative only)
     and register_url (v0.15: LoginViews passes it when the service offers
-    sign-up; adds a "Create one" link to register_page.html). Posts user_id
-    + password, the names LoginViews reads. -#}
+    sign-up; adds a "Create one" link to register_page.html),
+    forgot_password_url (v0.15: a "Forgot password?" link under the password,
+    to forgot_password_page.html) and verify_resend_url (v0.15: LoginViews
+    passes it with a refusal for an unconfirmed email; a "Send the link
+    again" link under the error). Posts user_id + password, the names
+    LoginViews reads. -#}
 {% extends "app.html" %}
 {% set layout = "auth" %}
 {% from "form.html" import gth_form_field %}
@@ -35,7 +39,8 @@
       {%- endif %}
       <div class="mt-3">
         {%- if error|default(none) %}
-        {{ gth_alert(error, kind="danger") }}
+        {{ gth_alert(error, kind="danger",
+            action={"label": "Send the link again", "url": verify_resend_url} if verify_resend_url|default(none) else none) }}
         {%- endif %}
         {#- A plain form, not gth_form: gth_form sets novalidate, and an empty
             field must stop in the browser (LoginViews' required Form() fields
@@ -48,7 +53,11 @@
           {%- set _ = (password_attrs if prefilled else user_attrs).update({"autofocus": "autofocus"}) %}
           {{ gth_form_field("user_id", user_id_label|default("User ID"), value=user_id|default("")|e,
               input_attrs=user_attrs) }}
-          {{ gth_form_field("password", "Password", type="password", input_attrs=password_attrs) }}
+          {{ gth_form_field("password", "Password", type="password", input_attrs=password_attrs,
+              field_class="mb-1" if forgot_password_url|default(none) else "mb-3") }}
+          {%- if forgot_password_url|default(none) %}
+          <p class="small text-end mb-3 gth-auth-forgot"><a href="{{ forgot_password_url|e }}">Forgot password?</a></p>
+          {%- endif %}
           <button type="submit" class="btn btn-primary w-100 mt-1">
             <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> {{ title }}
           </button>

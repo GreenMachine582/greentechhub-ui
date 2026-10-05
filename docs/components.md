@@ -1126,6 +1126,22 @@ class MyRegisterViews(RegisterViews):
     async def create_user(self, user_id: str, password: str) -> Identity: ...
 ```
 
+**Password reset and email verification pages (v0.15).** Four more pages on the same layout, for greentechhub-fastapi
+v0.12's `PasswordResetViews` and `EmailVerificationViews`, which render them by default:
+
+| Template | Shows |
+|---|---|
+| `forgot_password_page.html` | a "User ID or email" form posting `identifier` to `forgot_url`. After a request (`sent`), "Check your email" with the same wording whoever asked, so it never says which accounts exist |
+| `reset_password_page.html` | the new password and its confirmation, posted to `action` (the link's URL), with `minlength` and per-field errors. `done` gives "Your password has been changed" plus Sign in; `invalid` gives "expired or already used" plus a link to `forgot_url` |
+| `verify_email_page.html` | where a confirmation link lands: confirmed plus Sign in, or `invalid` plus a link to `resend_url` |
+| `verify_email_resend_page.html` | the forgot form's twin, posting `identifier` to `resend_url` to send the link again |
+
+They build on `gth_auth_card(brand, title, subtitle=None)` (`auth.html`): the brand header and a card headed
+"<title> to <service>" around a `{% call %}` body, for any other signed-out page. `login_page.html` gains two
+optional links: `forgot_password_url` ("Forgot password?" under the password) and `verify_resend_url` ("Send the link
+again" on the error, which `LoginViews` passes when `refuse_sign_in` turns away an unconfirmed address). The contexts
+are in the [contract](contract.md).
+
 `layout="auth"` is open to other signed-out pages too: extend `app.html` and `{% set layout = "auth" %}` at the top
 level, then fill `{% block content %}` (`.gth-auth` centres it).
 

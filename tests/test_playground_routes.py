@@ -217,7 +217,7 @@ def test_login_demo_mirrors_login_views():
     bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
     assert bad.status_code == 401
     assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
-    assert "Demo account: demo / demo." in bad.text
+    assert "Demo accounts: demo / demo" in bad.text
     good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
     assert good.status_code == 303 and good.headers["location"] == "/"
 
@@ -796,3 +796,33 @@ def test_notification_centre_demo_follows_the_fastapi_contract():
     assert _run(_as("viewer", "GET", "/notifications/badge")).text.strip() == ""
     assert _run(_as("admin", "GET", "/notifications/badge")).text.strip() != ""  # per persona
     playground_app._seed_notifications()
+
+
+def test_password_reset_and_verification_demos_use_fastapis_views():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            sent = await client.post("/forgot-password-demo", data={"identifier": "demo"})
+            assert sent.status_code == 200 and "Check your email" in sent.text
+            (message,) = playground_app.OUTBOX.outbox
+            link = re.search(r"/reset-password-demo/\S+", message.text).group(0)
+            assert (await client.get(link)).status_code == 200
+            done = await client.post(link, data={"password": "brand-new-1",
+                                                 "password_confirm": "brand-new-1"})
+            assert "has been changed" in done.text
+            login = await client.post("/login-demo", follow_redirects=False,
+                                      data={"user_id": "demo", "password": "brand-new-1"})
+            assert login.status_code == 303
+            refused = await client.post("/login-demo",
+                                        data={"user_id": "newbie", "password": "newbie"})
+            assert refused.status_code == 403 and "Send the link again" in refused.text
+            await client.post("/verify-email-demo/resend", data={"identifier": "newbie"})
+            verify = re.search(r"/verify-email-demo/\S+", playground_app.OUTBOX.outbox[-1].text)
+            assert "is confirmed" in (await client.get(verify.group(0))).text
+            login = await client.post("/login-demo", follow_redirects=False,
+                                      data={"user_id": "newbie", "password": "newbie"})
+            assert login.status_code == 303
+            await client.post("/demo/reset")
+
+    _run(flow())
+    assert playground_app.DEMO_PASSWORDS["demo"] == "demo" and playground_app.OUTBOX.outbox == []

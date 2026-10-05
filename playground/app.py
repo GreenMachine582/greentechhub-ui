@@ -13,6 +13,7 @@ import asyncio
 import csv
 import io
 import json
+import re
 from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from pathlib import Path
@@ -21,12 +22,16 @@ from urllib.parse import quote, unquote, urlencode
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.email import InMemoryEmailSender
 from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
+from greentechhub_core.security import InMemoryTokenStore, OneTimeTokens
 from greentechhub_core.settings.builtins import (
     SITE_BANNER_KEY,
     SITE_BANNER_TONE_KEY,
     site_banner_settings,
 )
+from greentechhub_fastapi import register_email
+from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
@@ -358,6 +363,7 @@ PAGES = {
                              "menu, permission-filtered nav and gated pages."),
     "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
                  "own widget."),
+    "outbox": ("Outbox", "The emails the password reset and email verification demos sent."),
 }
 
 greentechhub_ui.install(
@@ -774,7 +780,8 @@ def _picked_roles(form) -> list[str]:
 LOGIN_DEMO = {
     "login_url": "/login-demo",
     "register_url": "/register-demo",
-    "login_help": "Demo account: demo / demo.",
+    "forgot_password_url": "/forgot-password-demo",
+    "login_help": "Demo accounts: demo / demo, and newbie / newbie (email not confirmed yet).",
     "login_links": [{"label": "Playground", "url": "/"},
                     {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
 }
@@ -787,11 +794,101 @@ async def login_demo(request: Request):
 
 @app.post("/login-demo", response_class=HTMLResponse)
 async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form("")):
-    if user_id == "demo" and password == "demo":
+    if DEMO_PASSWORDS.get(user_id) == password:
+        if user_id in DEMO_UNVERIFIED:
+            # What LoginViews.refuse_sign_in does: a 403, no session, and the resend link.
+            return templates.TemplateResponse(request, "login_page.html", {
+                **LOGIN_DEMO, "user_id": user_id, "error": "Confirm your email address first.",
+                "verify_resend_url": DEMO_VERIFICATION.resend_url,
+            }, status_code=403)
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(request, "login_page.html", {
         **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
     }, status_code=401)
+
+
+# ── Password reset and email verification ────────────────────────────────────
+# greentechhub-fastapi's real PasswordResetViews and EmailVerificationViews,
+# rendering gth-ui's pages, over core's in-memory tokens. The emails land in
+# core's InMemoryEmailSender, shown on /demo/outbox, so the links can be
+# followed. No base_url: the links stay relative, which works on any port.
+OUTBOX = InMemoryEmailSender()
+register_email(app, None, sender=OUTBOX)
+DEMO_EMAILS = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_PASSWORDS: dict[str, str] = {}
+DEMO_UNVERIFIED: set[str] = set()
+
+
+def _reset_accounts() -> None:
+    DEMO_PASSWORDS.clear()
+    DEMO_PASSWORDS.update({"demo": "demo", "newbie": "newbie"})
+    DEMO_UNVERIFIED.clear()
+    DEMO_UNVERIFIED.add("newbie")
+    OUTBOX.clear()
+
+
+_reset_accounts()
+
+
+def _find(identifier: str, among) -> tuple[str, str] | None:
+    for subject, address in DEMO_EMAILS.items():
+        if identifier in (subject, address) and subject in among:
+            return subject, address
+    return None
+
+
+OUTBOX_HELP = "Demo: the email lands in the outbox (/demo/outbox) instead of being sent."
+
+
+class DemoPasswordReset(PasswordResetViews):
+    forgot_url = "/forgot-password-demo"
+    reset_url = "/reset-password-demo"
+    login_url = "/login-demo"
+
+    async def find_account(self, identifier: str) -> tuple[str, str] | None:
+        return _find(identifier, DEMO_PASSWORDS)
+
+    async def set_password(self, subject: str, password: str) -> None:
+        DEMO_PASSWORDS[subject] = password
+
+
+class DemoEmailVerification(EmailVerificationViews):
+    verify_url = "/verify-email-demo"
+    login_url = "/login-demo"
+
+    async def mark_verified(self, subject: str) -> None:
+        DEMO_UNVERIFIED.discard(subject)
+
+    async def find_unverified(self, identifier: str) -> tuple[str, str] | None:
+        return _find(identifier, DEMO_UNVERIFIED)
+
+
+class _HelpTemplates:
+    """Adds the outbox hint to the forgot and resend forms (an optional
+    *_help key the pages take), around the playground's templates."""
+
+    def __init__(self, inner: Jinja2Templates) -> None:
+        self._inner = inner
+
+    def TemplateResponse(self, request, name, context=None, **kwargs):  # noqa: N802
+        extra = {"forgot_help": OUTBOX_HELP, "resend_help": OUTBOX_HELP}
+        return self._inner.TemplateResponse(request, name, {**extra, **(context or {})}, **kwargs)
+
+
+_tokens = OneTimeTokens(InMemoryTokenStore())
+DEMO_RESET = DemoPasswordReset(templates=_HelpTemplates(templates), tokens=_tokens)
+DEMO_VERIFICATION = DemoEmailVerification(templates=_HelpTemplates(templates), tokens=_tokens)
+app.include_router(DEMO_RESET.router())
+app.include_router(DEMO_VERIFICATION.router())
+
+
+@app.get("/demo/outbox", response_class=HTMLResponse)
+async def demo_outbox(request: Request):
+    messages = [{"to": m.to, "subject": m.subject, "text": m.text,
+                 "links": re.findall(r"(/(?:reset-password|verify-email)-demo/\S+)", m.text)}
+                for m in reversed(OUTBOX.outbox)]
+    return _page(request, "outbox", messages=messages)
+
 
 
 # gth-ui's register_page.html with the context greentechhub-fastapi's
@@ -988,6 +1085,7 @@ async def demo_reset():
     health count, the site banner, the notifications) and refresh everything
     showing them."""
     _seed_notifications()
+    _reset_accounts()
     SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
     SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]

@@ -2640,3 +2640,26 @@ def test_notification_bell_panel_and_mark_read(page, playground_url):
     expect(page.locator("#gth-notifications-list")).to_contain_text("No unread notifications.")
     expect(badge).to_have_text("")
     page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_forgot_password_through_the_outbox(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    page.goto(f"{playground_url}/login-demo")
+    page.click(".gth-auth-forgot a")
+    expect(page).to_have_url(f"{playground_url}/forgot-password-demo")
+    expect(page.locator("#gth-field-identifier")).to_be_focused()
+    page.fill("#gth-field-identifier", "demo")
+    page.click("form[action='/forgot-password-demo'] button[type=submit]")
+    expect(page.locator(".gth-auth-card")).to_contain_text("Check your email")
+    page.goto(f"{playground_url}/demo/outbox")
+    page.locator("[data-outbox-link]").first.click()
+    page.fill("#gth-field-password", "brand-new-1")
+    page.fill("#gth-field-password_confirm", "brand-new-1")
+    page.click(".gth-auth-card button[type=submit]")
+    expect(page.locator(".gth-auth-card")).to_contain_text("Your password has been changed.")
+    page.click(".gth-auth-card a.btn")  # Sign in
+    page.fill("#gth-field-user_id", "demo")
+    page.fill("#gth-field-password", "brand-new-1")
+    page.click("form[action='/login-demo'] button[type=submit]")
+    expect(page).to_have_url(f"{playground_url}/")
+    page.request.post(f"{playground_url}/demo/reset")
