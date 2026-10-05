@@ -1097,6 +1097,11 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
 
+**Profile and password sections.** greentechhub-fastapi's `SettingsViews` adds a Profile section (display name and
+email, with its profile hooks) and a Password section (with `change_password`). They need no templates of their own:
+the profile's fields are plain `str` settings, the password's are write-only `secret` ones, and both set
+`submit_label`, so `settings_section.html` renders them as it is. The playground's /settings shows both.
+
 **Ready-made page (v0.12).** Two templates render a whole settings page from data, so a service writes no settings
 markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 
@@ -1232,15 +1237,21 @@ A group left with no children (and no url of its own) is dropped. Breadcrumbs ar
 
 ```jinja
 {# navbar.html #}
-gth_navbar(..., user_menu_items=None, logout_url=None, granted=None)
+gth_navbar(..., user_menu_items=None, logout_url=None, granted=None, notifications_url=None,
+           user_display_name=None)
 ```
 
-With `current_user` set, the navbar ends with a user menu, in both layouts: the user's `username` (or `email`), then
+With `current_user` set, the navbar ends with a user menu, in both layouts: the user's name, then
 `user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a
 `<form method="post" action="{logout_url}">`, matching greentechhub-fastapi's `LoginViews` `POST /logout`. Without
 items or `logout_url` it shows just the name. `app.html` passes these from the context keys of the same names (see
 [docs/contract.md](contract.md)). The menu is in the navbar rather than the sidebar footer, so it's in the same place
 in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
+
+The name (v0.15) is `user_display_name` when it's set (greentechhub-fastapi v0.12's profile passes it), else the
+`username`, else the part of the `email` before the `@`. An avatar of its initials stands in front of it: the first
+letters of the first and last words, so "Ada Lovelace" is AL and "admin" is A. It's on the brand accent and hidden
+from screen readers, which read the name itself. A user with no name at all shows "Account" with the person icon.
 
 The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
 A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.

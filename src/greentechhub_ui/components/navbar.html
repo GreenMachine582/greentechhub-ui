@@ -2,18 +2,24 @@
 {% from "badge.html" import gth_nav_badge %}
 {% from "notifications.html" import gth_notification_bell %}
 
-{% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None) %}
+{% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None, display_name=None) %}
 {#- The signed-in viewer's menu: their name, `items` (NavItems — e.g. Settings,
     permission-filtered like nav_items) and a Log out button that POSTs to
-    logout_url. Nothing renders without a current_user. -#}
+    logout_url. Nothing renders without a current_user. The name is
+    display_name (v0.15: greentechhub-fastapi's profile), else the user ID,
+    else the email's local part; its initials make the avatar. -#}
 {%- if current_user %}
-{%- set name = current_user.username or current_user.email or "Account" %}
+{%- set email_name = (current_user.email or "").split("@")[0] %}
+{%- set name = display_name or current_user.username or email_name or "Account" %}
+{%- set words = name.split() %}
+{%- set initials = ((words[0][:1] ~ (words[-1][:1] if words|length > 1 else "")) if words else "")|upper %}
+{%- set avatar %}{% if name == "Account" or not initials %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% else %}<span class="gth-avatar" aria-hidden="true">{{ initials }}</span>{% endif %}{% endset %}
 {%- set visible = (nav_visible(items, current_user, granted) if nav_visible is defined else items) if items else [] %}
 <div class="dropdown gth-user-menu">
   {%- if visible or logout_url %}
   <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1"
     data-bs-toggle="dropdown" aria-expanded="false">
-    <i class="bi bi-person-circle" aria-hidden="true"></i><span class="gth-user-menu-name">{{ name }}</span>
+    {{ avatar }}<span class="gth-user-menu-name">{{ name }}</span>
   </button>
   <ul class="dropdown-menu dropdown-menu-end">
     {%- for item in visible %}
@@ -33,14 +39,14 @@
   </ul>
   {%- else %}
   <span class="d-inline-flex align-items-center gap-1 text-body-secondary small">
-    <i class="bi bi-person-circle" aria-hidden="true"></i><span class="gth-user-menu-name">{{ name }}</span>
+    {{ avatar }}<span class="gth-user-menu-name">{{ name }}</span>
   </span>
   {%- endif %}
 </div>
 {%- endif %}
 {%- endmacro %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None) %}
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None, user_display_name=None) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
@@ -55,7 +61,9 @@
    name, user_menu_items (NavItems, filtered against granted like nav_items)
    and, with logout_url, a Log out button that POSTs there.
    notifications_url (v0.15): with a current_user, a bell before the user
-   menu (gth_notification_bell) with the live unread count and the panel. #}
+   menu (gth_notification_bell) with the live unread count and the panel.
+   user_display_name (v0.15): the user menu's name instead of the user ID,
+   with its initials as the avatar. #}
 {% if sidebar %}
 <nav class="navbar {{ 'bg-dark' if navbar_theme == 'dark' else 'bg-body-tertiary' }} border-bottom sticky-top gth-navbar gth-navbar-sidebar"
   {%- if navbar_theme %} data-bs-theme="{{ navbar_theme }}"{% endif %}>
@@ -84,7 +92,7 @@
       {{ gth_notification_bell(notifications_url) }}
       {%- endif %}
       {%- if current_user %}
-      {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}
+      {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name) }}
       {%- endif %}
     </div>
   </div>
@@ -153,7 +161,7 @@
         {%- endif %}
         {%- if current_user %}
         <li class="nav-item d-flex align-items-center ms-md-2">
-          {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}
+          {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name) }}
         </li>
         {%- endif %}
       </ul>

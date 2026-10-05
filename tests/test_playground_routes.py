@@ -826,3 +826,36 @@ def test_password_reset_and_verification_demos_use_fastapis_views():
 
     _run(flow())
     assert playground_app.DEMO_PASSWORDS["demo"] == "demo" and playground_app.OUTBOX.outbox == []
+
+
+def test_profile_and_password_sections_as_settings_views_sends_them():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as client:
+            page = (await client.get("/settings")).text
+            assert re.findall(r'id="gth-settings-(\w+)"', page) == [
+                "profile", "preferences", "password"]
+            saved = await client.post("/settings-demo/profile",
+                                      data={"display_name": " Vera Viewer ", "email": ""})
+            assert saved.status_code == 200 and "Profile saved" in saved.headers["HX-Trigger"]
+            assert ">VV</span>" in (await client.get("/layout")).text
+            long = await client.post("/settings-demo/profile",
+                                     data={"display_name": "x" * 81, "email": ""})
+            assert long.status_code == 422 and "at most 80" in long.text
+            wrong = await client.post("/settings-demo/password", data={
+                "current_password": "guess-123", "new_password": "brand-new-1",
+                "new_password_confirm": "brand-new-1"})
+            assert wrong.status_code == 422 and "current password" in wrong.text
+            assert "brand-new-1" not in wrong.text and "guess-123" not in wrong.text
+            changed = await client.post("/settings-demo/password", data={
+                "current_password": "password", "new_password": "brand-new-1",
+                "new_password_confirm": "brand-new-1"})
+            assert "Password changed" in changed.headers["HX-Trigger"]
+            await client.post("/demo/reset")
+        anonymous = (await _get("/settings")).text
+        assert "gth-settings-profile" not in anonymous
+        assert 'id="gth-settings-password"' not in anonymous
+
+    _run(flow())
+    assert playground_app.PROFILES["viewer"]["display_name"] == ""

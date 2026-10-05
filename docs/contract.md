@@ -173,6 +173,7 @@ link again" link on the error).
 | `granted` | the viewer's permission strings (core's `RoleResolver.granted()`). Nav items with `required_permission` show only when it holds it; without `granted`, any signed-in viewer sees them, as before |
 | `user_menu_items` | NavItems for the navbar's user menu (e.g. Settings), permission-filtered like `nav_items` |
 | `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
+| `user_display_name` | (v0.15) the user menu's name instead of the user ID, with its initials as the avatar. greentechhub-fastapi's `settings_context` passes the profile's display name (fastapi v0.12+) |
 | `notifications_url` | (v0.15) the notification centre's root, e.g. `/notifications`: the navbar shows a bell with its live unread count (`{url}/badge`) and panel (`{url}/panel`). See [components.md](components.md#notification-centre-v015) |
 
 `nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
