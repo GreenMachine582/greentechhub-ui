@@ -32,6 +32,7 @@ from greentechhub_core.settings.builtins import (
 )
 from greentechhub_fastapi import register_email
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
+from greentechhub_fastapi.email import email_looks_valid
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
@@ -557,14 +558,6 @@ PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
 DEMO_CURRENT_PASSWORD = "password"
 
 
-def _looks_like_email(address: str) -> bool:
-    """greentechhub-fastapi's address-shape check (email_looks_valid, v0.13):
-    one @ with text on both sides and no spaces."""
-    local, at, domain = address.partition("@")
-    return bool(local and at and domain) and "@" not in domain and not any(
-        c.isspace() for c in address)
-
-
 def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
     return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
             "secret": secret}
@@ -602,7 +595,7 @@ async def settings_demo_profile(request: Request):
     errors: dict[str, list[str]] = {}
     if len(values["display_name"]) > 80:
         errors["display_name"] = ["Use at most 80 characters."]
-    if values["email"] and not _looks_like_email(values["email"]):
+    if values["email"] and not email_looks_valid(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
         return _render_section(request, _profile_section(values, errors), status_code=422)
@@ -1036,7 +1029,7 @@ async def register_demo_submit(request: Request, user_id: str = Form(""), passwo
             **REGISTER_DEMO, "user_id": user_id, "email": email,
             "errors": {"__all__": [CSRF_REFUSED]},
         }, status_code=403)
-    if email and not _looks_like_email(email):
+    if email and not email_looks_valid(email):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if not user_id:
         errors["user_id"] = ["Choose a user ID."]
