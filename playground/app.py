@@ -199,6 +199,8 @@ def user_context(request: Request) -> dict:
                              "icon": "person-badge"}],
         "logout_url": "/demo/logout",
         "notifications_url": NOTIFICATIONS_URL,
+        # greentechhub-fastapi's settings_context passes the profile's display name.
+        "user_display_name": PROFILES.get(_persona(request), {}).get("display_name") or None,
     }
 
 
@@ -545,9 +547,99 @@ def _visible_sections(request: Request) -> list[str]:
     return [s for s in SETTINGS_DEMO if s != "app" or _has(request, MANAGE_PERMISSION)]
 
 
+# Profile and Password: the sections greentechhub-fastapi's SettingsViews adds
+# with its profile hooks and change_password, in the same dict shapes. No
+# templates of their own: plain str fields and write-only secret fields
+# through settings_section.html. Per persona, restored by the demo reset.
+PROFILES_INITIAL = {"viewer": {"display_name": "", "email": "viewer@example.com"},
+                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"}}
+PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
+DEMO_CURRENT_PASSWORD = "password"
+
+
+def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
+    return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
+            "secret": secret}
+
+
+def _profile_section(values: dict, errors=None) -> dict:
+    return {"id": "profile", "title": "Profile", "description": "How you appear to others.",
+            "settings": [_field("display_name", "Display name", "Shown instead of your user ID."),
+                         _field("email", "Email")],
+            "values": values, "errors": errors, "action": "/settings-demo/profile",
+            "submit_label": "Save profile"}
+
+
+def _password_section(errors=None) -> dict:
+    return {"id": "password", "title": "Password",
+            "description": f"Change the password you sign in with (the demo's is "
+                           f"“{DEMO_CURRENT_PASSWORD}”; nothing is stored).",
+            "settings": [_field("current_password", "Current password", secret=True),
+                         _field("new_password", "New password", "At least 8 characters.",
+                                secret=True),
+                         _field("new_password_confirm", "Confirm new password", secret=True)],
+            "values": {}, "errors": errors, "action": "/settings-demo/password",
+            "submit_label": "Change password"}
+
+
+@app.post("/settings-demo/profile", response_class=HTMLResponse)
+async def settings_demo_profile(request: Request):
+    """SettingsViews' POST {url}/profile: strip, check, save, toast."""
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=401)
+    form = await request.form()
+    values = {"display_name": str(form.get("display_name") or "").strip(),
+              "email": str(form.get("email") or "").strip()}
+    errors: dict[str, list[str]] = {}
+    if len(values["display_name"]) > 80:
+        errors["display_name"] = ["Use at most 80 characters."]
+    local, at, domain = values["email"].partition("@")
+    if values["email"] and (not (local and at and domain) or "@" in domain
+                            or any(c.isspace() for c in values["email"])):
+        errors["email"] = ["Enter an email address, like name@example.com."]
+    if errors:
+        return _render_section(request, _profile_section(values, errors), status_code=422)
+    PROFILES[persona] = values
+    return _render_section(request, _profile_section(values), headers={
+        "HX-Trigger": greentechhub_ui.toast("Profile saved")})
+
+
+@app.post("/settings-demo/password", response_class=HTMLResponse)
+async def settings_demo_password(request: Request):
+    """SettingsViews' POST {url}/password: the same checks; passwords never echoed."""
+    if PERSONAS[_persona(request)]["user"] is None:
+        return Response(status_code=401)
+    form = await request.form()
+    current = str(form.get("current_password") or "")
+    new = str(form.get("new_password") or "")
+    confirm = str(form.get("new_password_confirm") or "")
+    errors: dict[str, list[str]] = {}
+    if not current:
+        errors["current_password"] = ["Enter your current password."]
+    if len(new) < 8:
+        errors["new_password"] = ["Use at least 8 characters."]
+    elif new == current:
+        errors["new_password"] = ["Choose a password different from your current one."]
+    elif new != confirm:
+        errors["new_password_confirm"] = ["The passwords don't match."]
+    if not errors and current != DEMO_CURRENT_PASSWORD:
+        errors["current_password"] = ["That isn't your current password."]
+    if errors:
+        return _render_section(request, _password_section(errors), status_code=422)
+    return _render_section(request, _password_section(), headers={
+        "HX-Trigger": greentechhub_ui.toast("Password changed")})
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
+    sections = [_settings_section(request, s) for s in _visible_sections(request)]
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is not None:
+        # SettingsViews' order: Profile first, Password after Preferences.
+        sections = [_profile_section(PROFILES[persona]), sections[0], _password_section(),
+                    *sections[1:]]
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,
         "settings_intro": (
@@ -555,7 +647,7 @@ async def settings_page(request: Request):
             "segmented buttons for four or fewer choices, a select for more, number and text "
             "fields for int and str, and a write-only password field for a secret (the API "
             "token). Save a page size of 500 to see the 422 path."),
-        "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
+        "settings_sections": sections,
     })
 
 
@@ -1086,6 +1178,8 @@ async def demo_reset():
     showing them."""
     _seed_notifications()
     _reset_accounts()
+    PROFILES.clear()
+    PROFILES.update({k: dict(v) for k, v in PROFILES_INITIAL.items()})
     SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
     SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]

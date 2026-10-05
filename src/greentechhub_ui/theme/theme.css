@@ -1666,3 +1666,23 @@ body.gth-picker-modal-open {
   max-height: 22rem;
   overflow-y: auto;
 }
+
+/* The user menu's avatar (v0.15): the viewer's initials in an accent circle. */
+.gth-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--gth-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+[data-bs-theme="dark"] .gth-avatar {
+  color: #0b1a0b;
+}

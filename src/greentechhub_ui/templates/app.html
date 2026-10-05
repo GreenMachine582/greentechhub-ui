@@ -124,7 +124,8 @@
       show_theme_toggle|default(false), navbar_theme|default(none), sidebar=true,
       show_search=command_palette_js_url|default(none) is not none,
       user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
-      granted=granted|default(none), notifications_url=notifications_url|default(none)) }}
+      granted=granted|default(none), notifications_url=notifications_url|default(none),
+      user_display_name=user_display_name|default(none)) }}
   <div class="gth-shell">
     <aside class="offcanvas-lg offcanvas-start gth-sidebar" tabindex="-1" id="gth-sidebar" aria-labelledby="gth-sidebar-title">
       <div class="offcanvas-header border-bottom d-lg-none">
@@ -146,7 +147,8 @@
       show_theme_toggle|default(false), navbar_theme|default(none),
       show_search=(command_palette_js_url|default(none) is not none and show_command_palette|default(false)),
       user_menu_items=user_menu_items|default(none), logout_url=logout_url|default(none),
-      granted=granted|default(none), notifications_url=notifications_url|default(none)) }}
+      granted=granted|default(none), notifications_url=notifications_url|default(none),
+      user_display_name=user_display_name|default(none)) }}
 
   <main class="container py-4">
   {%- endif %}

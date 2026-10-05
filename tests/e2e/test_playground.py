@@ -2663,3 +2663,18 @@ def test_forgot_password_through_the_outbox(page, playground_url):
     page.click("form[action='/login-demo'] button[type=submit]")
     expect(page).to_have_url(f"{playground_url}/")
     page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_the_user_menu_follows_the_profiles_display_name(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    _impersonate(page, playground_url, "admin")
+    expect(page.locator(".gth-user-menu .gth-avatar")).to_have_text("AA")
+    expect(page.locator(".gth-user-menu-name")).to_have_text("Ada Admin")
+    page.goto(f"{playground_url}/settings")
+    page.fill("#gth-settings-profile [name='display_name']", "Grace Hopper")
+    page.click("#gth-settings-profile button[type=submit]")
+    expect(page.locator(".toast")).to_contain_text("Profile saved")
+    page.reload()
+    expect(page.locator(".gth-user-menu .gth-avatar")).to_have_text("GH")
+    expect(page.locator(".gth-user-menu-name")).to_have_text("Grace Hopper")
+    page.request.post(f"{playground_url}/demo/reset")

@@ -12,8 +12,8 @@ Cross-repo order (with greentechhub-core and greentechhub-fastapi): Accounts (M1
 consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.0.
 
 ### Accounts (M1)
-- [ ] A change-password section for the settings page
-- [ ] A profile page, and avatar initials in the navbar user menu
+- [ ] CSRF hidden field on the sign-in, sign-up, forgot-password and resend forms: a `csrf_token` in the context
+  becomes `<input type="hidden" name="csrf_token">`, for greentechhub-fastapi's opt-in CSRF on its auth views
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
