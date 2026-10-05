@@ -869,8 +869,15 @@ def _picked_roles(form) -> list[str]:
 
 # gth-ui's login_page.html with the context greentechhub-fastapi's LoginViews
 # passes: nothing on GET, `error` (and a 401) after a failed sign-in.
+# A fixed stand-in for a framework's CSRF token: the login and register demos
+# render it as the forms' hidden csrf_token field and refuse a POST without it,
+# as greentechhub-fastapi's opt-in CSRF check would.
+DEMO_CSRF_TOKEN = "playground-demo-token"
+CSRF_REFUSED = "Your session expired. Please try again."
+
 LOGIN_DEMO = {
     "login_url": "/login-demo",
+    "csrf_token": DEMO_CSRF_TOKEN,
     "register_url": "/register-demo",
     "forgot_password_url": "/forgot-password-demo",
     "login_help": "Demo accounts: demo / demo, and newbie / newbie (email not confirmed yet).",
@@ -885,7 +892,11 @@ async def login_demo(request: Request):
 
 
 @app.post("/login-demo", response_class=HTMLResponse)
-async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form("")):
+async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
+                            csrf_token: str = Form("")):
+    if csrf_token != DEMO_CSRF_TOKEN:
+        return templates.TemplateResponse(request, "login_page.html", {
+            **LOGIN_DEMO, "user_id": user_id, "error": CSRF_REFUSED}, status_code=403)
     if DEMO_PASSWORDS.get(user_id) == password:
         if user_id in DEMO_UNVERIFIED:
             # What LoginViews.refuse_sign_in does: a 403, no session, and the resend link.
@@ -987,6 +998,7 @@ async def demo_outbox(request: Request):
 # RegisterViews passes: the same checks, 422 + errors on a refusal.
 REGISTER_DEMO = {
     "register_url": "/register-demo",
+    "csrf_token": DEMO_CSRF_TOKEN,
     "login_url": "/login-demo",
     "min_password_length": 8,
     "register_help": "Nothing is stored: any new user ID signs straight in.",
@@ -1001,9 +1013,13 @@ async def register_demo(request: Request):
 
 @app.post("/register-demo", response_class=HTMLResponse)
 async def register_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
-                               password_confirm: str = Form("")):
+                               password_confirm: str = Form(""), csrf_token: str = Form("")):
     user_id = user_id.strip()
     errors: dict[str, list[str]] = {}
+    if csrf_token != DEMO_CSRF_TOKEN:
+        return templates.TemplateResponse(request, "register_page.html", {
+            **REGISTER_DEMO, "user_id": user_id, "errors": {"__all__": [CSRF_REFUSED]},
+        }, status_code=403)
     if not user_id:
         errors["user_id"] = ["Choose a user ID."]
     elif user_id == "demo":

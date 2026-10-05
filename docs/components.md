@@ -89,6 +89,12 @@ gth_form_field(name, label, value=None, type="text", step=None, min=None, max=No
 {# id/for/aria-describedby get a gth-field- prefix; name stays unprefixed so
    FastAPI's Form(...) (or equivalent) still binds by name. input_attrs is a
    plain-dict escape hatch for anything not modeled as a named param. #}
+gth_csrf_field(token=None, name="csrf_token")
+{# v0.15: a hidden CSRF field for a plain form, nothing without a token. Pass
+   the token in: gth_csrf_field(csrf_token|default(none)). Every auth page
+   (sign-in, sign-up, forgot and reset password, resend confirmation) does, so
+   a csrf_token in their context is posted with the form; csrf_field_name
+   renames the field. htmx requests carry a token in the page's hx-headers. #}
 
 {# toast.py (Python, not a template) #}
 greentechhub_ui.toast(message: str, kind: str = "success") -> str

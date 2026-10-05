@@ -12,10 +12,12 @@
     to forgot_password_page.html) and verify_resend_url (v0.15: LoginViews
     passes it with a refusal for an unconfirmed email; a "Send the link
     again" link under the error). Posts user_id + password, the names
-    LoginViews reads. -#}
+    LoginViews reads.
+    csrf_token (v0.15): posted as a hidden field (csrf_field_name, default
+    "csrf_token") when the framework's CSRF check is on. -#}
 {% extends "app.html" %}
 {% set layout = "auth" %}
-{% from "form.html" import gth_form_field %}
+{% from "form.html" import gth_form_field, gth_csrf_field %}
 {% from "toast.html" import gth_alert %}
 {% from "theme_toggle.html" import gth_theme_toggle %}
 {% from "auth.html" import gth_auth_brand, gth_auth_footer %}
@@ -46,6 +48,7 @@
             field must stop in the browser (LoginViews' required Form() fields
             would answer FastAPI's JSON 422). #}
         <form method="post" action="{{ login_url|default('/login')|e }}" class="gth-form">
+          {{ gth_csrf_field(csrf_token|default(none), csrf_field_name|default("csrf_token")) }}
           {#- Focus goes where typing starts: the password once a user ID is prefilled. #}
           {%- set prefilled = user_id|default("") != "" %}
           {%- set user_attrs = {"required": "required", "autocomplete": "username"} %}

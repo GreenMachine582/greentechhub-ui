@@ -159,6 +159,11 @@ prefill) after a refused sign-up. Optional: `register_title` (`Create account`),
 The sign-in page also takes `forgot_password_url` (a "Forgot password?" link) and `verify_resend_url` (a "Send the
 link again" link on the error).
 
+**CSRF on the auth forms (v0.15)**: every auth page (sign-in, sign-up, forgot and reset password, resend
+confirmation) takes an optional `csrf_token`, posted with its form as a hidden field named `csrf_field_name`
+(`"csrf_token"` by default), for the framework to check. Without it the forms are unchanged. htmx requests carry a
+token in the page's `hx-headers` instead.
+
 **Notification centre (v0.15)**: the context `notifications_page.html`, `notifications_panel.html` and
 `notification_badge.html` take, matching greentechhub-fastapi's `NotificationViews`. Page and panel get `page_title`,
 `notifications` (dicts of `message`, `kind`, `title`, `icon`, `action_label`, `action_url`, `created_at`, `read`,

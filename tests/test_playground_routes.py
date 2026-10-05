@@ -210,15 +210,32 @@ def test_tables_date_range_filter():
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
 
 
+CSRF = {"csrf_token": "playground-demo-token"}
+
+
+def test_login_and_register_demos_refuse_a_missing_csrf_token():
+    page = _run(_get("/login-demo")).text
+    assert '<input type="hidden" name="csrf_token" value="playground-demo-token">' in page
+    refused = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    assert refused.status_code == 403 and "Your session expired" in refused.text
+    forged = _run(_post("/register-demo", data={"user_id": "newbie2", "password": "long-enough",
+                                                "password_confirm": "long-enough",
+                                                "csrf_token": "forged"}))
+    assert forged.status_code == 403 and "Your session expired" in forged.text
+    ok = _run(_post("/register-demo", data={"user_id": "newbie2", "password": "long-enough",
+                                            "password_confirm": "long-enough", **CSRF}))
+    assert ok.status_code == 303
+
+
 def test_login_demo_mirrors_login_views():
     page = _run(_get("/login-demo"))
     assert page.status_code == 200 and 'action="/login-demo"' in page.text
     assert "gth-toast-danger" not in page.text
-    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
+    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope", **CSRF}))
     assert bad.status_code == 401
     assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
     assert "Demo accounts: demo / demo" in bad.text
-    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo", **CSRF}))
     assert good.status_code == 303 and good.headers["location"] == "/"
 
 
@@ -811,16 +828,16 @@ def test_password_reset_and_verification_demos_use_fastapis_views():
                                                  "password_confirm": "brand-new-1"})
             assert "has been changed" in done.text
             login = await client.post("/login-demo", follow_redirects=False,
-                                      data={"user_id": "demo", "password": "brand-new-1"})
+                                      data={"user_id": "demo", "password": "brand-new-1", **CSRF})
             assert login.status_code == 303
             refused = await client.post("/login-demo",
-                                        data={"user_id": "newbie", "password": "newbie"})
+                                        data={"user_id": "newbie", "password": "newbie", **CSRF})
             assert refused.status_code == 403 and "Send the link again" in refused.text
             await client.post("/verify-email-demo/resend", data={"identifier": "newbie"})
             verify = re.search(r"/verify-email-demo/\S+", playground_app.OUTBOX.outbox[-1].text)
             assert "is confirmed" in (await client.get(verify.group(0))).text
             login = await client.post("/login-demo", follow_redirects=False,
-                                      data={"user_id": "newbie", "password": "newbie"})
+                                      data={"user_id": "newbie", "password": "newbie", **CSRF})
             assert login.status_code == 303
             await client.post("/demo/reset")
 

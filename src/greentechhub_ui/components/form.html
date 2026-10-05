@@ -59,3 +59,13 @@
   {% endif %}
 </div>
 {% endmacro %}
+
+{% macro gth_csrf_field(token=None, name="csrf_token") -%}
+{#- A CSRF token as a hidden field (v0.15), for a plain form a framework
+    checks on POST (greentechhub-fastapi's opt-in CSRF on its auth views).
+    Nothing without a token, so a page without CSRF is unchanged. The token
+    is a parameter because a macro doesn't see its caller's context:
+    gth_csrf_field(csrf_token|default(none)). htmx requests carry one in the
+    page's hx-headers instead. -#}
+{%- if token %}<input type="hidden" name="{{ name|e }}" value="{{ token|e }}">{% endif -%}
+{%- endmacro %}
