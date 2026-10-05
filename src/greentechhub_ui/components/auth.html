@@ -32,3 +32,26 @@
   {%- endfor %}
 </footer>
 {%- endmacro %}
+
+{% macro gth_auth_card(brand, title, subtitle=None) %}
+{#- The auth layout's panel (v0.15): the brand header, then a card headed
+    "<title> to <service>" around the caller's body. The password reset and
+    email verification pages use it; login_page.html and register_page.html
+    spell the same markup out. -#}
+{%- set service = brand.service_name or brand.name -%}
+<div class="gth-auth-panel">
+  {{ gth_auth_brand(brand) }}
+
+  <div class="card gth-auth-card">
+    <div class="card-body p-4">
+      <h1 class="h4 mb-1">{{ title }}{% if service %} <span class="text-secondary fw-normal">to {{ service }}</span>{% endif %}</h1>
+      {%- if subtitle %}
+      <p class="text-secondary small mb-0">{{ subtitle|e }}</p>
+      {%- endif %}
+      <div class="mt-3">
+        {{ caller() }}
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}

@@ -1,0 +1,24 @@
+{% extends "page.html" %}
+
+{% block page %}
+<p class="text-secondary">Emails the playground's password reset and email verification demos sent: greentechhub-core's
+  <code>InMemoryEmailSender</code> keeps them here instead of sending them. Newest first.</p>
+{%- if messages %}
+<div class="vstack gap-3" id="outbox">
+  {%- for m in messages %}
+  <div class="card" data-outbox-message>
+    <div class="card-body">
+      <div class="small text-secondary">To {{ m.to|join(", ") }}</div>
+      <h2 class="h6 mt-1">{{ m.subject }}</h2>
+      <pre class="mb-0 small text-wrap">{{ m.text }}</pre>
+      {%- for link in m.links %}
+      <a class="btn btn-sm btn-primary mt-2" href="{{ link }}" data-outbox-link>Open the link</a>
+      {%- endfor %}
+    </div>
+  </div>
+  {%- endfor %}
+</div>
+{%- else %}
+<p class="text-secondary">Nothing sent yet. Try <a href="/forgot-password-demo">forgot password</a>.</p>
+{%- endif %}
+{% endblock %}

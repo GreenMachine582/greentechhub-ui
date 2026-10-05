@@ -1,0 +1,37 @@
+{#- verify_email_page.html — where an emailed confirmation link lands (v0.15),
+    on app.html's layout="auth". Renders the context greentechhub-fastapi's
+    EmailVerificationViews passes: login_url, plus done (confirmed: a
+    "Sign in" button) or invalid with resend_url (an expired or used link:
+    "Send a new link"). Optional: verify_title ("Confirm your email") and
+    verify_links. -#}
+{% extends "app.html" %}
+{% set layout = "auth" %}
+{% from "toast.html" import gth_alert %}
+{% from "theme_toggle.html" import gth_theme_toggle %}
+{% from "auth.html" import gth_auth_card, gth_auth_footer %}
+{% set title = verify_title|default("Confirm your email") %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{%- if show_theme_toggle|default(false) %}
+<div class="gth-auth-corner">{{ gth_theme_toggle() }}</div>
+{%- endif %}
+{% call gth_auth_card(brand, title) %}
+{%- if invalid|default(false) %}
+{{ gth_alert("This link has expired or was already used.", kind="danger") }}
+{%- if resend_url|default(none) %}
+<a class="btn btn-primary w-100" href="{{ resend_url|e }}"><i class="bi bi-envelope" aria-hidden="true"></i> Send a new link</a>
+{%- endif %}
+{%- else %}
+{{ gth_alert("Your email address is confirmed.", kind="success") }}
+{%- if login_url|default(none) %}
+<a class="btn btn-primary w-100" href="{{ login_url|e }}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Sign in</a>
+{%- endif %}
+{%- endif %}
+{% endcall %}
+{% endblock %}
+
+{% block footer %}
+{{ gth_auth_footer(brand, verify_links|default([])) }}
+{% endblock %}

@@ -103,3 +103,19 @@ def test_register_url_adds_a_create_account_link():
     main = _main(_render(register_url="/register"))
     assert 'No account? <a href="/register">Create one</a>' in main
     html5lib.HTMLParser(strict=True).parse(_render(register_url="/register", login_help="Hi"))
+
+
+def test_forgot_password_link_only_when_offered():
+    assert "Forgot password?" not in _render()
+    main = _main(_render(forgot_password_url="/forgot-password"))
+    assert '<a href="/forgot-password">Forgot password?</a>' in main
+
+
+def test_a_refusal_can_offer_the_confirmation_link_again():
+    plain = _main(_render(error="Incorrect user ID or password"))
+    assert "Send the link again" not in plain
+    refused = _main(_render(error="Confirm your email address first.",
+                            verify_resend_url="/verify-email/resend"))
+    assert "Confirm your email address first." in refused
+    action = '<a class="gth-toast-action" href="/verify-email/resend">Send the link again</a>'
+    assert action in refused

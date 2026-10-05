@@ -145,6 +145,20 @@ prefill) after a refused sign-up. Optional: `register_title` (`Create account`),
 (`User ID`), `register_help` and `register_links` (as `login_links`). It posts `user_id`, `password` and
 `password_confirm`; the passwords are never filled back in.
 
+**Password reset and email verification pages (v0.15)** — matching greentechhub-fastapi's `PasswordResetViews` and
+`EmailVerificationViews`. Each takes an optional title (`forgot_title`, `reset_title`, `verify_title`,
+`resend_title`) and footer links (`forgot_links`, `reset_links`, `verify_links`, `resend_links`):
+
+| Template | Context |
+|---|---|
+| `forgot_password_page.html` | `forgot_url` (the action) and `login_url`; then `sent` + `identifier`, or `errors` (`{"identifier": [...]}`). Optional `forgot_subtitle`, `forgot_help`. Posts `identifier` |
+| `reset_password_page.html` | `action`, `login_url`, `min_password_length`; then `errors` (`password` / `password_confirm`; others as an alert), or `done`, or `invalid` + `forgot_url`. Posts `password`, `password_confirm` |
+| `verify_email_page.html` | `login_url`; then `done`, or `invalid` + `resend_url` |
+| `verify_email_resend_page.html` | `resend_url` (the action) and `login_url`; then `sent` + `identifier`, or `errors`. Optional `resend_help`. Posts `identifier` |
+
+The sign-in page also takes `forgot_password_url` (a "Forgot password?" link) and `verify_resend_url` (a "Send the
+link again" link on the error).
+
 **Notification centre (v0.15)**: the context `notifications_page.html`, `notifications_panel.html` and
 `notification_badge.html` take, matching greentechhub-fastapi's `NotificationViews`. Page and panel get `page_title`,
 `notifications` (dicts of `message`, `kind`, `title`, `icon`, `action_label`, `action_url`, `created_at`, `read`,
