@@ -4,10 +4,12 @@
     login_url on every render, plus sent and identifier after a request (the
     same answer whether or not an account matched), or errors
     ({"identifier": [message]}). Optional: resend_title ("Confirm your
-    email"), resend_help and resend_links. Posts identifier. -#}
+    email"), resend_help and resend_links. Posts identifier.
+    csrf_token (v0.15): posted as a hidden field (csrf_field_name, default
+    "csrf_token") when the framework's CSRF check is on. -#}
 {% extends "app.html" %}
 {% set layout = "auth" %}
-{% from "form.html" import gth_form_field %}
+{% from "form.html" import gth_form_field, gth_csrf_field %}
 {% from "toast.html" import gth_alert %}
 {% from "theme_toggle.html" import gth_theme_toggle %}
 {% from "auth.html" import gth_auth_card, gth_auth_footer %}
@@ -27,6 +29,7 @@
 {%- else %}
 <p class="text-secondary small">Enter your user ID or email and we'll send the confirmation link again.</p>
 <form method="post" action="{{ resend_url|default('/verify-email/resend')|e }}" class="gth-form">
+  {{ gth_csrf_field(csrf_token|default(none), csrf_field_name|default("csrf_token")) }}
   {{ gth_form_field("identifier", "User ID or email", value=identifier|default("")|e,
       errors=field_errors.get("identifier"),
       input_attrs={"required": "required", "autocomplete": "username", "autofocus": "autofocus"}) }}
