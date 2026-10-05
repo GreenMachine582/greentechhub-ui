@@ -1,0 +1,81 @@
+{% from "badge.html" import gth_nav_badge %}
+{% from "empty_state.html" import gth_empty_state %}
+
+{#- The notification centre's pieces, for greentechhub-fastapi's
+    NotificationViews (or any framework passing the same data): a
+    notification is a dict of message, kind, title, icon, action_label,
+    action_url, created_at, read and read_url — toast()'s message shape plus
+    its stored state. Marking read POSTs read_url / mark_all_url; the server
+    answers 204 with HX-Trigger "gth:notifications", which refreshes the
+    bell's badge, the panel and the page list. Without htmx the forms post
+    `next` and the server redirects back. -#}
+
+{% macro gth_notification_item(n, next_url=None) %}
+{%- set kinds = {"success": "success", "info": "info", "warning": "warning", "warn": "warning",
+                 "danger": "danger", "error": "danger", "neutral": "neutral"} %}
+{%- set icons = {"success": "check-circle-fill", "info": "info-circle-fill",
+                 "warning": "exclamation-triangle-fill", "danger": "x-octagon-fill", "neutral": "bell-fill"} %}
+{%- set kind = kinds.get(n.kind|default("info"), "neutral") %}
+{%- set unread = not n.read|default(false) %}
+<li class="list-group-item gth-notification gth-notification-{{ kind }}{% if unread %} gth-notification-unread{% endif %}">
+  <i class="bi bi-{{ n.icon|default(none) or icons[kind] }} gth-notification-icon" aria-hidden="true"></i>
+  <div class="gth-notification-body">
+    {%- if unread %}<span class="visually-hidden">Unread: </span>{% endif %}
+    {%- if n.title|default(none) %}<div class="gth-notification-title">{{ n.title|e }}</div>{% endif %}
+    <div class="gth-notification-message">{{ n.message|e }}</div>
+    <div class="gth-notification-meta">
+      {%- if n.created_at|default(none) %}<span class="gth-notification-time">
+        {{- n.created_at|datetime if "datetime" is filter else n.created_at }}</span>{% endif %}
+      {%- set url = n.action_url|default(none) %}
+      {%- if url and not (url|trim|lower).startswith("javascript:") %}
+      <a class="gth-notification-action" href="{{ url|e }}">{{ n.action_label|default("Open", true)|e }}</a>
+      {%- endif %}
+    </div>
+  </div>
+  {%- if unread and n.read_url|default(none) %}
+  <form method="post" action="{{ n.read_url|e }}" hx-post="{{ n.read_url|e }}" hx-vals='{"next": ""}' hx-swap="none" class="gth-notification-read">
+    {%- if next_url %}<input type="hidden" name="next" value="{{ next_url|e }}">{% endif %}
+    <button type="submit" class="btn btn-sm btn-link text-secondary p-1" title="Mark read" aria-label="Mark read">
+      <i class="bi bi-check2" aria-hidden="true"></i>
+    </button>
+  </form>
+  {%- endif %}
+</li>
+{%- endmacro %}
+
+{% macro gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None) %}
+{%- if notifications %}
+<ul class="list-group list-group-flush gth-notifications">
+  {%- for n in notifications %}
+  {{ gth_notification_item(n, next_url) }}
+  {%- endfor %}
+</ul>
+{%- else %}
+{{ gth_empty_state(empty_message, empty_class="gth-notifications-empty") }}
+{%- endif %}
+{%- endmacro %}
+
+{% macro gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary") %}
+<form method="post" action="{{ url|e }}" hx-post="{{ url|e }}" hx-vals='{"next": ""}' hx-swap="none" class="d-inline gth-notifications-read-all">
+  {%- if next_url %}<input type="hidden" name="next" value="{{ next_url|e }}">{% endif %}
+  <button type="submit" class="{{ button_class }}">Mark all read</button>
+</form>
+{%- endmacro %}
+
+{% macro gth_notification_bell(url="/notifications", label="Notifications") %}
+{#- A navbar bell: the live unread badge (fetched from {url}/badge on load and
+    on "gth:notifications") and a dropdown that loads {url}/panel when it
+    opens. gth_navbar renders it with notifications_url. -#}
+<div class="dropdown gth-notification-bell">
+  <button type="button" class="btn btn-sm btn-link text-body position-relative d-inline-flex align-items-center px-2"
+    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="{{ label|e }}">
+    <i class="bi bi-bell fs-5" aria-hidden="true"></i>
+    {{- gth_nav_badge({"badge_url": url ~ "/badge", "badge_event": "gth:notifications"}, "gth-notification-badge") }}
+  </button>
+  <div class="dropdown-menu dropdown-menu-end p-0 gth-notification-panel"
+    hx-get="{{ (url ~ '/panel')|e }}" hx-trigger="show.bs.dropdown from:closest .dropdown, gth:notifications from:body"
+    hx-swap="innerHTML">
+    <div class="p-3 text-secondary small">Loading…</div>
+  </div>
+</div>
+{%- endmacro %}

@@ -1,5 +1,6 @@
 {% from "theme_toggle.html" import gth_theme_toggle %}
 {% from "badge.html" import gth_nav_badge %}
+{% from "notifications.html" import gth_notification_bell %}
 
 {% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None) %}
 {#- The signed-in viewer's menu: their name, `items` (NavItems — e.g. Settings,
@@ -39,7 +40,7 @@
 {%- endif %}
 {%- endmacro %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None) %}
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
@@ -52,7 +53,9 @@
    dropdown (one level; deeper children are listed flat inside it).
    current_user (v0.12): a user menu at the right end, in both modes — their
    name, user_menu_items (NavItems, filtered against granted like nav_items)
-   and, with logout_url, a Log out button that POSTs there. #}
+   and, with logout_url, a Log out button that POSTs there.
+   notifications_url (v0.15): with a current_user, a bell before the user
+   menu (gth_notification_bell) with the live unread count and the panel. #}
 {% if sidebar %}
 <nav class="navbar {{ 'bg-dark' if navbar_theme == 'dark' else 'bg-body-tertiary' }} border-bottom sticky-top gth-navbar gth-navbar-sidebar"
   {%- if navbar_theme %} data-bs-theme="{{ navbar_theme }}"{% endif %}>
@@ -77,6 +80,9 @@
       </button>
       {% endif %}
       {% if show_theme_toggle %}{{ gth_theme_toggle() }}{% endif %}
+      {%- if current_user and notifications_url %}
+      {{ gth_notification_bell(notifications_url) }}
+      {%- endif %}
       {%- if current_user %}
       {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}
       {%- endif %}
@@ -140,6 +146,11 @@
           {{ gth_theme_toggle() }}
         </li>
         {% endif %}
+        {%- if current_user and notifications_url %}
+        <li class="nav-item d-flex align-items-center ms-md-2">
+          {{ gth_notification_bell(notifications_url) }}
+        </li>
+        {%- endif %}
         {%- if current_user %}
         <li class="nav-item d-flex align-items-center ms-md-2">
           {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted) }}

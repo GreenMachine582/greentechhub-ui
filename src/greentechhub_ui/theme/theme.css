@@ -1604,3 +1604,65 @@ body.gth-picker-modal-open {
 :root[data-gth-motion="reduce"] .progress-bar-animated {
   animation: none !important;
 }
+
+/* Notification centre (v0.15): gth_notification_item rows (icon, text, a
+   mark-read button; unread ones get an accent edge and dot), the bell's
+   badge pinned to its corner, and a scrolling dropdown panel. */
+.gth-notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.gth-notification-icon {
+  margin-top: 0.15rem;
+  font-size: 1.1rem;
+}
+.gth-notification-success .gth-notification-icon { color: var(--bs-success); }
+.gth-notification-info .gth-notification-icon { color: var(--bs-info); }
+.gth-notification-warning .gth-notification-icon { color: var(--bs-warning); }
+.gth-notification-danger .gth-notification-icon { color: var(--bs-danger); }
+.gth-notification-neutral .gth-notification-icon { color: var(--bs-secondary-color); }
+.gth-notification-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gth-notification-title {
+  font-weight: 600;
+}
+.gth-notification-message {
+  overflow-wrap: anywhere;
+}
+.gth-notification-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color);
+}
+.gth-notification-unread {
+  box-shadow: inset 3px 0 0 var(--gth-accent);
+  background-color: rgba(var(--gth-accent-rgb), 0.06);
+}
+.gth-notification-unread .gth-notification-body > div:first-of-type::after {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: 0.4rem;
+  border-radius: 50%;
+  background: var(--gth-accent);
+  vertical-align: middle;
+}
+.gth-notification-badge {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.15rem;
+  font-size: 0.65rem;
+}
+.gth-notification-panel {
+  width: min(24rem, 92vw);
+}
+.gth-notification-panel-body {
+  max-height: 22rem;
+  overflow-y: auto;
+}

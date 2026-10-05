@@ -1,0 +1,16 @@
+{#- notifications_panel.html — the bell's dropdown (gth_notification_bell
+    loads it): a header with "Mark all read", the newest notifications and a
+    "See all" link. A partial, with notifications_page.html's context. -#}
+{% from "notifications.html" import gth_notification_list, gth_mark_all_read %}
+<div class="gth-notification-panel-head d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+  <span class="fw-semibold">{{ page_title|default("Notifications") }}</span>
+  {%- if unread_count|default(0) %}
+  {{ gth_mark_all_read(mark_all_url, button_class="btn btn-sm btn-link p-0") }}
+  {%- endif %}
+</div>
+<div class="gth-notification-panel-body">
+  {{ gth_notification_list(notifications|default([])) }}
+</div>
+<div class="gth-notification-panel-foot border-top px-3 py-2 text-center">
+  <a class="small" href="{{ page_url|e }}">See all</a>
+</div>
