@@ -21,11 +21,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
 - [ ] Command-palette actions — not just navigation (e.g. "New task", "Toggle theme"), registered like nav items
 - [ ] Sidebar: pinned/favourite items
-- [ ] Notifications: a persisted notification centre — a navbar bell with a live `gth_nav_badge` unread count,
-  a panel listing read/unread items, the `toast()` payload as the message shape so the same notice can be a
-  toast now and an entry later — plus email delivery via the framework adapter (the "system notis/mail" idea);
-  its user preferences (core settings) come with it. Milestone M2; the store and routes are in core's and
-  greentechhub-fastapi's TODOs
 
 ### Display & charts
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,

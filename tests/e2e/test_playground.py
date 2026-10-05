@@ -2618,3 +2618,25 @@ def test_banner_dismiss_from_the_keyboard(page, playground_url):
     good.get_by_role("button", name="Dismiss").focus()
     page.keyboard.press("Enter")
     expect(good).to_have_count(0)
+
+
+def test_notification_bell_panel_and_mark_read(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    _impersonate(page, playground_url, "viewer")
+    badge = page.locator(".gth-notification-bell .gth-notification-badge")
+    expect(badge).to_contain_text("2")
+    page.click(".gth-notification-bell > button")
+    panel = page.locator(".gth-notification-panel")
+    expect(panel.locator(".gth-notification")).to_have_count(3)
+    expect(panel.locator(".gth-notification-unread")).to_have_count(2)
+    # Marking one read updates the badge and the open panel, with no page load.
+    panel.locator(".gth-notification-unread .gth-notification-read button").first.click()
+    expect(badge).to_contain_text("1")
+    expect(panel.locator(".gth-notification-unread")).to_have_count(1)
+    # The full page: "Mark all read" empties the unread view and hides the badge.
+    page.goto(f"{playground_url}/notifications?unread=1")
+    expect(page.locator("#gth-notifications-list .gth-notification")).to_have_count(1)
+    page.click(".gth-notifications-read-all button")
+    expect(page.locator("#gth-notifications-list")).to_contain_text("No unread notifications.")
+    expect(badge).to_have_text("")
+    page.request.post(f"{playground_url}/demo/reset")

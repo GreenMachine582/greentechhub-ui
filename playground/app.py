@@ -13,7 +13,7 @@ import asyncio
 import csv
 import io
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
@@ -21,6 +21,7 @@ from urllib.parse import quote, unquote, urlencode
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
 from greentechhub_core.settings.builtins import (
     SITE_BANNER_KEY,
     SITE_BANNER_TONE_KEY,
@@ -192,6 +193,7 @@ def user_context(request: Request) -> dict:
                             {"label": "Switch persona", "url": "/personas",
                              "icon": "person-badge"}],
         "logout_url": "/demo/logout",
+        "notifications_url": NOTIFICATIONS_URL,
     }
 
 
@@ -890,10 +892,102 @@ async def watchlist_badge():
     return HTMLResponse(_macro("badge.html", "gth_badge", count, "neutral") if count else "")
 
 
+# ── Notification centre demo ──────────────────────────────────────────────────
+# greentechhub-core's real InMemoryNotificationStore, with routes shaped like
+# greentechhub-fastapi's NotificationViews (same templates, context and
+# gth:notifications event), keyed by the impersonated persona.
+NOTIFICATIONS = InMemoryNotificationStore()
+NOTIFICATIONS_URL = "/notifications"
+
+
+def _seed_notifications() -> None:
+    global NOTIFICATIONS
+    NOTIFICATIONS = InMemoryNotificationStore()  # a fresh store: the demo reset's job
+    start = datetime.now(UTC) - timedelta(hours=6)
+    for persona in ("viewer", "admin"):
+        seeded = [
+            new_notification(persona, "Your watchlist export is ready.", kind="success",
+                             title="Export finished", action={"label": "Open", "url": "/data"},
+                             now=start),
+            new_notification(persona, "ASX sync couldn't reach the price feed; it retries hourly.",
+                             kind="warning", title="Sync delayed", now=start + timedelta(hours=2)),
+            new_notification(persona, "A new sign-in from Firefox on Windows.", kind="info",
+                             now=start + timedelta(hours=5)),
+        ]
+        for n in seeded:
+            NOTIFICATIONS.add_sync(n)
+        NOTIFICATIONS.mark_read_sync(persona, [seeded[0].id], at=start + timedelta(hours=1))
+
+
+_seed_notifications()
+
+
+def _notification_dict(n) -> dict:
+    return {"id": n.id, "message": n.message, "kind": n.kind, "title": n.title, "icon": n.icon,
+            "action_label": n.action_label, "action_url": n.action_url, "category": n.category,
+            "created_at": n.created_at, "read_at": n.read_at, "read": n.read,
+            "read_url": f"{NOTIFICATIONS_URL}/{n.id}/read", "toast": n.to_toast()}
+
+
+def _notifications_context(persona: str, limit: int, unread_only: bool = False) -> dict:
+    items = NOTIFICATIONS.list_for_sync(persona, unread_only=unread_only, limit=limit)
+    return {"page_title": "Notifications",
+            "notifications": [_notification_dict(n) for n in items],
+            "unread_count": NOTIFICATIONS.unread_count_sync(persona), "unread_only": unread_only,
+            "page_url": NOTIFICATIONS_URL, "mark_all_url": f"{NOTIFICATIONS_URL}/read-all"}
+
+
+@app.get(NOTIFICATIONS_URL, response_class=HTMLResponse)
+async def notifications_page(request: Request, unread: str | None = None):
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=303, headers={"Location": "/personas?next=/notifications"})
+    return templates.TemplateResponse(request, "notifications_page.html",
+                                      _notifications_context(persona, 50, unread in ("1", "true")))
+
+
+@app.get(f"{NOTIFICATIONS_URL}/panel", response_class=HTMLResponse)
+async def notifications_panel(request: Request):
+    return templates.TemplateResponse(request, "notifications_panel.html",
+                                      _notifications_context(_persona(request), 10))
+
+
+@app.get(f"{NOTIFICATIONS_URL}/badge", response_class=HTMLResponse)
+async def notifications_badge(request: Request):
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=204)
+    return templates.TemplateResponse(request, "notification_badge.html",
+                                      {"count": NOTIFICATIONS.unread_count_sync(persona)})
+
+
+async def _marked(request: Request) -> Response:
+    form = await request.form()
+    if next_url := _local_path(str(form.get("next") or "") or None):
+        return Response(status_code=303, headers={"Location": next_url})
+    unread = NOTIFICATIONS.unread_count_sync(_persona(request))
+    return Response(status_code=204,
+                    headers={"HX-Trigger": json.dumps({"gth:notifications": {"unread": unread}})})
+
+
+@app.post(f"{NOTIFICATIONS_URL}/read-all")
+async def notifications_read_all(request: Request):
+    NOTIFICATIONS.mark_all_read_sync(_persona(request), at=datetime.now(UTC))
+    return await _marked(request)
+
+
+@app.post(NOTIFICATIONS_URL + "/{notification_id}/read")
+async def notifications_read_one(request: Request, notification_id: str):
+    NOTIFICATIONS.mark_read_sync(_persona(request), [notification_id], at=datetime.now(UTC))
+    return await _marked(request)
+
+
 @app.post("/demo/reset")
 async def demo_reset():
     """Restore the demos that keep server-side state (the watchlist, the
-    health count, the site banner) and refresh everything showing them."""
+    health count, the site banner, the notifications) and refresh everything
+    showing them."""
+    _seed_notifications()
     SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
     SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
@@ -904,7 +998,8 @@ async def demo_reset():
         r["stock"] = stock
     return hx_response(greentechhub_ui.toast(
         "Demo data reset.", "info",
-        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
+        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged",
+                "gth:notifications"]))
 
 
 @app.post("/demo/records")

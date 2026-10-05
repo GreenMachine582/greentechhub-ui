@@ -145,6 +145,12 @@ prefill) after a refused sign-up. Optional: `register_title` (`Create account`),
 (`User ID`), `register_help` and `register_links` (as `login_links`). It posts `user_id`, `password` and
 `password_confirm`; the passwords are never filled back in.
 
+**Notification centre (v0.15)**: the context `notifications_page.html`, `notifications_panel.html` and
+`notification_badge.html` take, matching greentechhub-fastapi's `NotificationViews`. Page and panel get `page_title`,
+`notifications` (dicts of `message`, `kind`, `title`, `icon`, `action_label`, `action_url`, `created_at`, `read`,
+`read_url`), `unread_count`, `unread_only`, `page_url` and `mark_all_url`. The badge gets `count`. Marking read POSTs
+`read_url` / `mark_all_url` and expects 204 with the `gth:notifications` HX-Trigger, or a 303 to a posted `next`.
+
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:
 
@@ -153,6 +159,7 @@ prefill) after a refused sign-up. Optional: `register_title` (`Create account`),
 | `granted` | the viewer's permission strings (core's `RoleResolver.granted()`). Nav items with `required_permission` show only when it holds it; without `granted`, any signed-in viewer sees them, as before |
 | `user_menu_items` | NavItems for the navbar's user menu (e.g. Settings), permission-filtered like `nav_items` |
 | `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
+| `notifications_url` | (v0.15) the notification centre's root, e.g. `/notifications`: the navbar shows a bell with its live unread count (`{url}/badge`) and panel (`{url}/panel`). See [components.md](components.md#notification-centre-v015) |
 
 `nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
 

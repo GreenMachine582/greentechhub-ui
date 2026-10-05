@@ -1159,6 +1159,41 @@ for setting in preference_settings:
 The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
 definitions. Its "API token" preference is a secret: it keeps only "saved", never the text.
 
+### Notification centre (v0.15)
+
+A navbar bell with a live unread count, a dropdown panel and a full page, for greentechhub-fastapi's
+`NotificationViews` (fastapi v0.12+), or any framework passing the same data. No gth JS: htmx and Bootstrap do it.
+
+```jinja
+{# notifications.html #}
+gth_notification_item(n, next_url=None)
+gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None)
+gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary")
+gth_notification_bell(url="/notifications", label="Notifications")
+```
+
+- A notification `n` is a dict in `toast()`'s message shape plus its state: `message`, `kind`, `title`, `icon`,
+  `action_label`, `action_url`, `created_at`, `read` and `read_url`. That's what `NotificationViews` passes, built from
+  core's `Notification`. The kind picks the toast's icon. An unread item gets an accent edge and dot, a visually
+  hidden "Unread:", and a "Mark read" button. `created_at` uses the `datetime` filter when it's installed, so it
+  follows the viewer's date and time preferences. A `javascript:` action URL isn't linked.
+- **Marking read.** "Mark read" and "Mark all read" are forms that POST `read_url` / `mark_all_url` with htmx
+  (`hx-swap="none"`, with `next` blanked). The server answers 204 with `HX-Trigger: {"gth:notifications":
+  {"unread": n}}`, and everything showing notifications listens for that event: the bell's badge, the open panel and
+  the page's list each re-fetch themselves. Without htmx the forms post `next` (the page you're on) and the server
+  redirects back.
+- **The bell.** Pass `notifications_url` to the shell (a context key, or a global). With a signed-in
+  `current_user`, `gth_navbar` puts `gth_notification_bell(notifications_url)` before the user menu, in both
+  layouts. Its badge is `gth_nav_badge`'s live kind (`{url}/badge`, on load and on `gth:notifications`). Its
+  dropdown loads `{url}/panel` each time it opens. greentechhub-fastapi's `notifications_nav_item()` gives a
+  sidebar or navbar link with the same live badge.
+
+| Template | Context |
+|---|---|
+| `notifications_page.html` | extends `page.html`: `page_title`, `notifications`, `unread_count`, `unread_only`, `page_url`, `mark_all_url`. The header has an All / Unread switch (`?unread=1`) and "Mark all read" while anything is unread |
+| `notifications_panel.html` | the bell's dropdown, a partial with the same context: a header with "Mark all read", the list and a "See all" link to `page_url` |
+| `notification_badge.html` | `count`: nothing at 0 (so the badge disappears), `99+` above 99 |
+
 ### Permission-filtered nav and the user menu
 
 `nav_items` is built once, at startup, so permissions are checked per request: `app.html` filters the list through

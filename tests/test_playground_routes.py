@@ -776,3 +776,23 @@ def test_progress_demo_polls_until_done():
     assert "hx-trigger" not in done.text  # no poll_url: polling stops
     assert "Sync complete" in done.headers["HX-Trigger"]
     assert "HX-Trigger" not in polls[2].headers
+
+
+def test_notification_centre_demo_follows_the_fastapi_contract():
+    playground_app._seed_notifications()
+    page = _run(_as("viewer", "GET", "/notifications"))
+    assert page.status_code == 200
+    assert page.text.count('class="list-group-item gth-notification ') == 3
+    assert ">2</span>" in _run(_as("viewer", "GET", "/notifications/badge")).text
+    assert _run(_get("/notifications/badge")).status_code == 204
+    unread = playground_app.NOTIFICATIONS.list_for_sync("viewer", unread_only=True)
+    marked = _run(_as("viewer", "POST", f"/notifications/{unread[0].id}/read"))
+    assert marked.status_code == 204
+    assert json.loads(marked.headers["HX-Trigger"]) == {"gth:notifications": {"unread": 1}}
+    redirected = _run(_as("viewer", "POST", "/notifications/read-all",
+                          data={"next": "/notifications?unread=1"}))
+    assert redirected.status_code == 303
+    assert redirected.headers["location"] == "/notifications?unread=1"
+    assert _run(_as("viewer", "GET", "/notifications/badge")).text.strip() == ""
+    assert _run(_as("admin", "GET", "/notifications/badge")).text.strip() != ""  # per persona
+    playground_app._seed_notifications()
