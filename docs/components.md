@@ -1130,7 +1130,11 @@ the same brand header and footer. It posts `user_id`, `password` and `password_c
 error from `errors` (`{field: [message]}`), with the user ID kept and focus on the password when that's what was
 refused. Any other key shows as an inline danger alert. `min_password_length` becomes the password's `minlength` and
 an "At least N characters." hint, and `login_url` a "Sign in" link. Options: `register_title`, `register_subtitle`,
-`user_id_label`, `register_help`, `register_links` ([contract](contract.md)). `RegisterViews` renders it by default:
+`user_id_label`, `register_help`, `register_links` ([contract](contract.md)). `RegisterViews` renders it by default.
+With `ask_email` (v0.16, fastapi v0.13's `RegisterViews.ask_email`) it adds an Email field after the user ID
+(`type="email"`, required unless `email_optional`), and with `verify_sent` it swaps the form for "Check your email"
+plus a "Send it again" link to `verify_resend_url`, for when the service holds sign-in back until the address is
+confirmed:
 
 ```python
 class MyRegisterViews(RegisterViews):

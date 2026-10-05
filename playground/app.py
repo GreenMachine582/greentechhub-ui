@@ -557,6 +557,14 @@ PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
 DEMO_CURRENT_PASSWORD = "password"
 
 
+def _looks_like_email(address: str) -> bool:
+    """greentechhub-fastapi's address-shape check (email_looks_valid, v0.13):
+    one @ with text on both sides and no spaces."""
+    local, at, domain = address.partition("@")
+    return bool(local and at and domain) and "@" not in domain and not any(
+        c.isspace() for c in address)
+
+
 def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
     return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
             "secret": secret}
@@ -594,9 +602,7 @@ async def settings_demo_profile(request: Request):
     errors: dict[str, list[str]] = {}
     if len(values["display_name"]) > 80:
         errors["display_name"] = ["Use at most 80 characters."]
-    local, at, domain = values["email"].partition("@")
-    if values["email"] and (not (local and at and domain) or "@" in domain
-                            or any(c.isspace() for c in values["email"])):
+    if values["email"] and not _looks_like_email(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
         return _render_section(request, _profile_section(values, errors), status_code=422)
@@ -917,12 +923,15 @@ async def login_demo_submit(request: Request, user_id: str = Form(""), password:
 # followed. No base_url: the links stay relative, which works on any port.
 OUTBOX = InMemoryEmailSender()
 register_email(app, None, sender=OUTBOX)
-DEMO_EMAILS = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_EMAILS_INITIAL = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_EMAILS: dict[str, str] = {}
 DEMO_PASSWORDS: dict[str, str] = {}
 DEMO_UNVERIFIED: set[str] = set()
 
 
 def _reset_accounts() -> None:
+    DEMO_EMAILS.clear()
+    DEMO_EMAILS.update(DEMO_EMAILS_INITIAL)
     DEMO_PASSWORDS.clear()
     DEMO_PASSWORDS.update({"demo": "demo", "newbie": "newbie"})
     DEMO_UNVERIFIED.clear()
@@ -1001,7 +1010,12 @@ REGISTER_DEMO = {
     "csrf_token": DEMO_CSRF_TOKEN,
     "login_url": "/login-demo",
     "min_password_length": 8,
-    "register_help": "Nothing is stored: any new user ID signs straight in.",
+    # RegisterViews' ask_email with require_email off: give an email to see the
+    # confirmation step (sign_in_before_verified=False), or leave it empty.
+    "ask_email": True,
+    "email_optional": True,
+    "register_help": "Without an email you're signed straight in. Give one to see the confirmation "
+                     "step: the link lands in the outbox (/demo/outbox).",
     "register_links": [{"label": "Playground", "url": "/"}],
 }
 
@@ -1013,26 +1027,40 @@ async def register_demo(request: Request):
 
 @app.post("/register-demo", response_class=HTMLResponse)
 async def register_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
-                               password_confirm: str = Form(""), csrf_token: str = Form("")):
-    user_id = user_id.strip()
+                               password_confirm: str = Form(""), email: str = Form(""),
+                               csrf_token: str = Form("")):
+    user_id, email = user_id.strip(), email.strip()
     errors: dict[str, list[str]] = {}
     if csrf_token != DEMO_CSRF_TOKEN:
         return templates.TemplateResponse(request, "register_page.html", {
-            **REGISTER_DEMO, "user_id": user_id, "errors": {"__all__": [CSRF_REFUSED]},
+            **REGISTER_DEMO, "user_id": user_id, "email": email,
+            "errors": {"__all__": [CSRF_REFUSED]},
         }, status_code=403)
+    if email and not _looks_like_email(email):
+        errors["email"] = ["Enter an email address, like name@example.com."]
     if not user_id:
         errors["user_id"] = ["Choose a user ID."]
-    elif user_id == "demo":
+    elif user_id in DEMO_PASSWORDS:
         errors["user_id"] = ["That user ID is taken."]
     if len(password) < REGISTER_DEMO["min_password_length"]:
         errors["password"] = [f"Use at least {REGISTER_DEMO['min_password_length']} characters."]
     elif password != password_confirm:
         errors["password_confirm"] = ["The passwords don't match."]
-    if not errors:
+    if errors:
+        return templates.TemplateResponse(request, "register_page.html", {
+            **REGISTER_DEMO, "user_id": user_id, "email": email, "errors": errors,
+        }, status_code=422)
+    if not email:
         return RedirectResponse("/", status_code=303)
+    # What RegisterViews does with a verification and sign_in_before_verified=False:
+    # the account exists, unconfirmed, and the link goes to the outbox.
+    DEMO_EMAILS[user_id], DEMO_PASSWORDS[user_id] = email, password
+    DEMO_UNVERIFIED.add(user_id)
+    await DEMO_VERIFICATION.send_link(request, user_id, email)
     return templates.TemplateResponse(request, "register_page.html", {
-        **REGISTER_DEMO, "user_id": user_id, "errors": errors,
-    }, status_code=422)
+        **REGISTER_DEMO, "verify_sent": True, "email": email,
+        "verify_resend_url": DEMO_VERIFICATION.resend_url,
+    })
 
 
 @app.get("/roles", response_class=HTMLResponse)

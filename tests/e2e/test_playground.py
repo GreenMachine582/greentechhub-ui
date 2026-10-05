@@ -2175,12 +2175,12 @@ def test_register_page_is_a_branded_auth_screen(page, playground_url):
     expect(page.locator("#gth-field-user_id")).to_be_focused()
     assert not page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
     # A mismatched confirmation comes back with the error, the user ID kept.
-    page.fill("#gth-field-user_id", "newbie")
+    page.fill("#gth-field-user_id", "newcomer")
     page.fill("#gth-field-password", "long-enough")
     page.fill("#gth-field-password_confirm", "long-enougH")
     page.click("form[action='/register-demo'] button[type=submit]")
     expect(page.locator("#gth-field-password_confirm-error")).to_contain_text("don't match")
-    expect(page.locator("#gth-field-user_id")).to_have_value("newbie")
+    expect(page.locator("#gth-field-user_id")).to_have_value("newcomer")
     expect(page.locator("#gth-field-password")).to_be_focused()
     # Fixed, it signs in and lands on the playground.
     page.fill("#gth-field-password", "long-enough")
@@ -2677,4 +2677,19 @@ def test_the_user_menu_follows_the_profiles_display_name(page, playground_url):
     page.reload()
     expect(page.locator(".gth-user-menu .gth-avatar")).to_have_text("GH")
     expect(page.locator(".gth-user-menu-name")).to_have_text("Grace Hopper")
+    page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_sign_up_with_an_email_and_confirm_it(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    page.goto(f"{playground_url}/register-demo")
+    page.fill("#gth-field-user_id", "ada")
+    page.fill("#gth-field-email", "ada@example.com")
+    page.fill("#gth-field-password", "long-enough")
+    page.fill("#gth-field-password_confirm", "long-enough")
+    page.click("form[action='/register-demo'] button[type=submit]")
+    expect(page.locator(".gth-auth-card")).to_contain_text("Check your email")
+    page.goto(f"{playground_url}/demo/outbox")
+    page.locator("[data-outbox-link]").first.click()
+    expect(page.locator(".gth-auth-card")).to_contain_text("Your email address is confirmed.")
     page.request.post(f"{playground_url}/demo/reset")

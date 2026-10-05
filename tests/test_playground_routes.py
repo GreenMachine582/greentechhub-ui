@@ -213,6 +213,31 @@ def test_tables_date_range_filter():
 CSRF = {"csrf_token": "playground-demo-token"}
 
 
+def test_register_demo_with_an_email_confirms_before_sign_in():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            form = {"user_id": "ada", "password": "long-enough",
+                    "password_confirm": "long-enough", **CSRF}
+            bad = await client.post("/register-demo", data={**form, "email": "nope"})
+            assert bad.status_code == 422 and 'value="nope"' in bad.text
+            sent = await client.post("/register-demo", data={**form, "email": "ada@example.com"})
+            assert sent.status_code == 200 and "Check your email" in sent.text
+            link = re.search(r"/verify-email-demo/\S+", playground_app.OUTBOX.outbox[-1].text)
+            login = {"user_id": "ada", "password": "long-enough", **CSRF}
+            assert (await client.post("/login-demo", data=login)).status_code == 403
+            assert "is confirmed" in (await client.get(link.group(0))).text
+            signed_in = await client.post("/login-demo", data=login, follow_redirects=False)
+            assert signed_in.status_code == 303
+            no_email = await client.post("/register-demo", follow_redirects=False,
+                                         data={**form, "user_id": "bea"})
+            assert no_email.status_code == 303
+            await client.post("/demo/reset")
+
+    _run(flow())
+    assert "ada" not in playground_app.DEMO_EMAILS
+
+
 def test_login_and_register_demos_refuse_a_missing_csrf_token():
     page = _run(_get("/login-demo")).text
     assert '<input type="hidden" name="csrf_token" value="playground-demo-token">' in page

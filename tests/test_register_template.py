@@ -90,3 +90,45 @@ def test_page_is_a_well_formed_document():
         _render(user_id="bob", brand=LOGO, show_theme_toggle=True,
                 errors={"user_id": ["Taken."], "__all__": ["Nope."]},
                 register_links=[{"label": "Terms", "url": "/terms"}]))
+
+
+# ── v0.16: RegisterViews' ask_email and verify_sent ────────────────────────
+
+
+def test_no_email_field_unless_asked():
+    assert 'name="email"' not in _main(_render())
+
+
+def test_ask_email_adds_a_required_email_field():
+    main = _main(_render(ask_email=True))
+    assert 'type="email"' in main and 'name="email"' in main
+    email = main.split('id="gth-field-email"')[1].split(">")[0]
+    assert 'autocomplete="email"' in email and 'required="required"' in email
+    assert '<label class="form-label" for="gth-field-email">Email</label>' in main
+
+
+def test_an_optional_email_says_so():
+    main = _main(_render(ask_email=True, email_optional=True))
+    assert "Email (optional)" in main
+    assert 'required' not in main.split('id="gth-field-email"')[1].split(">")[0]
+
+
+def test_a_refused_email_shows_under_its_field_with_the_value_kept():
+    main = _main(_render(ask_email=True, user_id="newbie", email="nope",
+                         errors={"email": ["Enter an email address."]}))
+    assert 'id="gth-field-email-error"' in main and "Enter an email address." in main
+    assert 'value="nope"' in main
+    assert "gth-toast-danger" not in main  # under the field, not an alert
+    assert 'autofocus' in main.split('id="gth-field-email"')[1].split(">")[0]
+
+
+def test_verify_sent_says_check_your_email_instead_of_the_form():
+    html = _render(verify_sent=True, email="<ada>@example.com",
+                   verify_resend_url="/verify-email/resend")
+    main = _main(html)
+    assert "Check your email" in main and "&lt;ada&gt;@example.com" in main
+    assert "<ada>" not in main
+    assert '<a href="/verify-email/resend">Send it again</a>' in main
+    assert "<form" not in main and "Already have an account?" in main
+    html5lib.HTMLParser(strict=True).parse(html)
+    html5lib.HTMLParser(strict=True).parse(_render(ask_email=True, email="a@b.c"))

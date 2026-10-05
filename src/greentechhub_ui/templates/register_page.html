@@ -10,7 +10,12 @@
     password_confirm, the names RegisterViews reads; the password is never
     filled back in.
     csrf_token (v0.15): posted as a hidden field (csrf_field_name, default
-    "csrf_token") when the framework's CSRF check is on. -#}
+    "csrf_token") when the framework's CSRF check is on.
+    ask_email (v0.16, RegisterViews' ask_email): an Email field too, posted
+    as `email` and kept after a refusal; required unless email_optional.
+    verify_sent (v0.16): the sign-up worked and a confirmation link went to
+    `email`, so the page says "check your email" (with verify_resend_url, a
+    "Send it again" link) instead of showing the form. -#}
 {% extends "app.html" %}
 {% set layout = "auth" %}
 {% from "form.html" import gth_form_field, gth_csrf_field %}
@@ -21,6 +26,7 @@
 {% set service = brand.service_name or brand.name %}
 {% set field_errors = errors|default(none) or {} %}
 {% set min_length = min_password_length|default(none) %}
+{% set ask_email = ask_email|default(false) %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -38,8 +44,17 @@
       <p class="text-secondary small mb-0">{{ register_subtitle|e }}</p>
       {%- endif %}
       <div class="mt-3">
-        {#- Errors for anything but the three fields (e.g. "__all__") show above the form. #}
-        {%- for field, messages in field_errors.items() if field not in ("user_id", "password", "password_confirm") %}
+        {%- if verify_sent|default(false) %}
+        {{ gth_alert("We've emailed a link to " ~ email|default("") ~ " to confirm your address. "
+                     ~ "Open it to finish signing up.", kind="success", title="Check your email") }}
+        {%- if verify_resend_url|default(none) %}
+        <p class="text-secondary small text-center mb-0 gth-auth-help">
+          Didn't get it? <a href="{{ verify_resend_url|e }}">Send it again</a>
+        </p>
+        {%- endif %}
+        {%- else %}
+        {#- Errors for anything but the form's fields (e.g. "__all__") show above the form. #}
+        {%- for field, messages in field_errors.items() if field not in ("user_id", "email", "password", "password_confirm") %}
         {{ gth_alert(messages|join(" "), kind="danger") }}
         {%- endfor %}
         {#- A plain form, not gth_form, for the same reason as login_page.html:
@@ -52,9 +67,16 @@
           {%- set password_attrs = {"required": "required", "autocomplete": "new-password"} %}
           {%- if min_length %}{% set _ = password_attrs.update({"minlength": min_length}) %}{% endif %}
           {%- set confirm_attrs = {"required": "required", "autocomplete": "new-password"} %}
-          {%- set _ = (password_attrs if password_refused else user_attrs).update({"autofocus": "autofocus"}) %}
+          {%- set email_refused = ask_email and user_id|default("") != "" and "email" in field_errors and "user_id" not in field_errors %}
+          {%- set email_attrs = {"autocomplete": "email"} %}
+          {%- if not email_optional|default(false) %}{% set _ = email_attrs.update({"required": "required"}) %}{% endif %}
+          {%- set _ = (email_attrs if email_refused else password_attrs if password_refused else user_attrs).update({"autofocus": "autofocus"}) %}
           {{ gth_form_field("user_id", user_id_label|default("User ID"), value=user_id|default("")|e,
               errors=field_errors.get("user_id"), input_attrs=user_attrs) }}
+          {%- if ask_email %}
+          {{ gth_form_field("email", "Email (optional)" if email_optional|default(false) else "Email", type="email",
+              value=email|default("")|e, errors=field_errors.get("email"), input_attrs=email_attrs) }}
+          {%- endif %}
           {{ gth_form_field("password", "Password", type="password", errors=field_errors.get("password"),
               help_text=("At least " ~ min_length ~ " characters.") if min_length else none,
               input_attrs=password_attrs) }}
@@ -66,6 +88,7 @@
         </form>
         {%- if register_help|default(none) %}
         <p class="text-secondary small text-center mt-3 mb-0 gth-auth-help">{{ register_help|e }}</p>
+        {%- endif %}
         {%- endif %}
         {%- if login_url|default(none) %}
         <p class="text-secondary small text-center mt-3 mb-0 gth-auth-switch">
