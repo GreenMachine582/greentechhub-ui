@@ -5,6 +5,29 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.15.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.14.0...v0.15.0) (2026-10-05)
+
+
+### Features
+
+* **forms:** a CSRF hidden field on the auth forms ([#78](https://github.com/GreenMachine582/greentechhub-ui/issues/78)) ([9b6a191](https://github.com/GreenMachine582/greentechhub-ui/commit/9b6a191f32e2cd3852bcca334a46d7f4701570b6))
+* **forms:** id prefix for gth_select and gth_form_field ([#71](https://github.com/GreenMachine582/greentechhub-ui/issues/71)) ([d0ebdb4](https://github.com/GreenMachine582/greentechhub-ui/commit/d0ebdb4814f81f73bf14b21209687749072d38d3))
+* **navbar:** display name and initials in the user menu ([#77](https://github.com/GreenMachine582/greentechhub-ui/issues/77)) ([6957c27](https://github.com/GreenMachine582/greentechhub-ui/commit/6957c27bc55f91c26437ea599e64756113cd5b11))
+* **notifications:** a notification centre ([#75](https://github.com/GreenMachine582/greentechhub-ui/issues/75)) ([3d1bdf1](https://github.com/GreenMachine582/greentechhub-ui/commit/3d1bdf19837d0795f43460f67d95b38121342434))
+* **templates:** a sign-up page and a "Create account" link ([#73](https://github.com/GreenMachine582/greentechhub-ui/issues/73)) ([57ce241](https://github.com/GreenMachine582/greentechhub-ui/commit/57ce24130c06965668f4d60ec0ccf3a14ab12c53))
+* **templates:** password reset and email verification pages ([#76](https://github.com/GreenMachine582/greentechhub-ui/issues/76)) ([ede8406](https://github.com/GreenMachine582/greentechhub-ui/commit/ede8406d3dc889698c201dbe70ce5fbfb2c2a8be))
+
+
+### Bug Fixes
+
+* **action-menu:** danger actions shown as icon buttons are red ([#70](https://github.com/GreenMachine582/greentechhub-ui/issues/70)) ([82f9a07](https://github.com/GreenMachine582/greentechhub-ui/commit/82f9a07dac8575c5c72a6a842d62dec2a7177e82))
+
+
+### Build
+
+* **deps:** core v0.11.0 and fastapi v0.12.0 ([#74](https://github.com/GreenMachine582/greentechhub-ui/issues/74)) ([bdb81b0](https://github.com/GreenMachine582/greentechhub-ui/commit/bdb81b02ab2d0e0eab7dd2524bd7c602d238731e))
+* **deps:** core v0.9.0 and fastapi v0.11.0; playground site banner from core ([#68](https://github.com/GreenMachine582/greentechhub-ui/issues/68)) ([e9b1d85](https://github.com/GreenMachine582/greentechhub-ui/commit/e9b1d8596212dbd414f6ecf88b7aaf563c72b0db))
+
 ## [0.14.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.13.0...v0.14.0) (2026-10-03)
 
 
