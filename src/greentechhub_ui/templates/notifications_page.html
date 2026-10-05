@@ -1,0 +1,32 @@
+{#- notifications_page.html — the signed-in user's notifications: page.html's
+    header with an All / Unread switch and "Mark all read", then the list,
+    which reloads itself when a notification is marked read. Context, as
+    greentechhub-fastapi's NotificationViews passes it: page_title,
+    notifications, unread_count, unread_only, page_url, mark_all_url (see
+    notifications.html for a notification's shape). -#}
+{% extends "page.html" %}
+{% from "notifications.html" import gth_notification_list, gth_mark_all_read %}
+
+{%- set here = page_url ~ ("?unread=1" if unread_only|default(false) else "") %}
+
+{% block header_actions %}
+<div class="btn-group btn-group-sm" role="group" aria-label="Show">
+  <a class="btn btn-outline-secondary{% if not unread_only|default(false) %} active{% endif %}" href="{{ page_url|e }}"
+    {%- if not unread_only|default(false) %} aria-current="page"{% endif %}>All</a>
+  <a class="btn btn-outline-secondary{% if unread_only|default(false) %} active{% endif %}" href="{{ (page_url ~ '?unread=1')|e }}"
+    {%- if unread_only|default(false) %} aria-current="page"{% endif %}>Unread
+    {%- if unread_count|default(0) %} <span class="badge text-bg-danger rounded-pill">{{ unread_count }}</span>{% endif %}</a>
+</div>
+{%- if unread_count|default(0) %}
+{{ gth_mark_all_read(mark_all_url, next_url=here) }}
+{%- endif %}
+{% endblock %}
+
+{% block page %}
+<div id="gth-notifications-list" class="card gth-notifications-card"
+  hx-get="{{ here|e }}" hx-trigger="gth:notifications from:body" hx-select="#gth-notifications-list" hx-swap="outerHTML">
+  {{ gth_notification_list(notifications|default([]),
+      empty_message="No unread notifications." if unread_only|default(false) else "You're all caught up.",
+      next_url=here) }}
+</div>
+{% endblock %}

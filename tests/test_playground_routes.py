@@ -210,15 +210,32 @@ def test_tables_date_range_filter():
     assert "of 120" in _run(_get("/tables", params={"date_from": "nope"}, headers=HX)).text
 
 
+CSRF = {"csrf_token": "playground-demo-token"}
+
+
+def test_login_and_register_demos_refuse_a_missing_csrf_token():
+    page = _run(_get("/login-demo")).text
+    assert '<input type="hidden" name="csrf_token" value="playground-demo-token">' in page
+    refused = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    assert refused.status_code == 403 and "Your session expired" in refused.text
+    forged = _run(_post("/register-demo", data={"user_id": "newbie2", "password": "long-enough",
+                                                "password_confirm": "long-enough",
+                                                "csrf_token": "forged"}))
+    assert forged.status_code == 403 and "Your session expired" in forged.text
+    ok = _run(_post("/register-demo", data={"user_id": "newbie2", "password": "long-enough",
+                                            "password_confirm": "long-enough", **CSRF}))
+    assert ok.status_code == 303
+
+
 def test_login_demo_mirrors_login_views():
     page = _run(_get("/login-demo"))
     assert page.status_code == 200 and 'action="/login-demo"' in page.text
     assert "gth-toast-danger" not in page.text
-    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope"}))
+    bad = _run(_post("/login-demo", data={"user_id": "bob", "password": "nope", **CSRF}))
     assert bad.status_code == 401
     assert "Incorrect user ID or password." in bad.text and 'value="bob"' in bad.text
-    assert "Demo account: demo / demo." in bad.text
-    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo"}))
+    assert "Demo accounts: demo / demo" in bad.text
+    good = _run(_post("/login-demo", data={"user_id": "demo", "password": "demo", **CSRF}))
     assert good.status_code == 303 and good.headers["location"] == "/"
 
 
@@ -631,6 +648,47 @@ def test_app_settings_section_needs_settings_manage():
         playground_app.SETTINGS_VALUES.clear()
 
 
+def test_app_section_uses_cores_site_banner_settings():
+    from greentechhub_core.settings.builtins import (
+        SITE_BANNER_KEY,
+        SITE_BANNER_TONE_KEY,
+        SITE_BANNER_TONES,
+    )
+
+    _, _, settings = playground_app.SETTINGS_DEMO["app"]
+    banner, tone = settings[0], settings[1]
+    assert (banner["key"], tone["key"]) == (SITE_BANNER_KEY, SITE_BANNER_TONE_KEY)
+    assert (banner["type"], tone["type"]) == ("str", "choice")
+    assert dict(tone["choices"]) == SITE_BANNER_TONES and tone["default"] == "warn"
+
+
+def test_app_site_banner_shows_on_every_page_until_cleared():
+    playground_app.SETTINGS_VALUES.clear()
+    try:
+        # No banner set: pages other than /feedback have no banner strip. (The
+        # pre-paint script names the class, so look for the element's markup.)
+        assert 'class="alert alert-' not in _run(_get("/data")).text
+        saved = _run(_as("admin", "POST", "/settings-demo/app",
+                         data={"site.banner": "Maintenance at 9pm", "site.banner_tone": "bad"}))
+        assert saved.status_code == 200
+        for path in ("/data", "/forms"):
+            html = _run(_get(path)).text
+            assert 'data-gth-banner="site"' in html, path
+            assert "alert-danger" in html and "Maintenance at 9pm" in html, path
+        # An unknown tone is a field error, not a broken banner.
+        bad = _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner_tone": "shout"}))
+        assert bad.status_code == 422
+        # Emptying it, or the demo reset, removes it.
+        _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner": "  "}))
+        assert 'data-gth-banner="site"' not in _run(_get("/data")).text
+        _run(_as("admin", "POST", "/settings-demo/app", data={"site.banner": "Back soon"}))
+        assert "Back soon" in _run(_get("/data")).text
+        _run(_post("/demo/reset"))
+        assert 'data-gth-banner="site"' not in _run(_get("/data")).text
+    finally:
+        playground_app.SETTINGS_VALUES.clear()
+
+
 def test_personas_only_send_a_persona_back_to_a_page_it_can_open():
     html = _run(_get("/personas", params={"next": "/roles", "need": "settings.manage"})).text
     cards = {key: html.split(f'data-persona="{key}"', 1)[1].split("</form>", 1)[0]
@@ -735,3 +793,86 @@ def test_progress_demo_polls_until_done():
     assert "hx-trigger" not in done.text  # no poll_url: polling stops
     assert "Sync complete" in done.headers["HX-Trigger"]
     assert "HX-Trigger" not in polls[2].headers
+
+
+def test_notification_centre_demo_follows_the_fastapi_contract():
+    playground_app._seed_notifications()
+    page = _run(_as("viewer", "GET", "/notifications"))
+    assert page.status_code == 200
+    assert page.text.count('class="list-group-item gth-notification ') == 3
+    assert ">2</span>" in _run(_as("viewer", "GET", "/notifications/badge")).text
+    assert _run(_get("/notifications/badge")).status_code == 204
+    unread = playground_app.NOTIFICATIONS.list_for_sync("viewer", unread_only=True)
+    marked = _run(_as("viewer", "POST", f"/notifications/{unread[0].id}/read"))
+    assert marked.status_code == 204
+    assert json.loads(marked.headers["HX-Trigger"]) == {"gth:notifications": {"unread": 1}}
+    redirected = _run(_as("viewer", "POST", "/notifications/read-all",
+                          data={"next": "/notifications?unread=1"}))
+    assert redirected.status_code == 303
+    assert redirected.headers["location"] == "/notifications?unread=1"
+    assert _run(_as("viewer", "GET", "/notifications/badge")).text.strip() == ""
+    assert _run(_as("admin", "GET", "/notifications/badge")).text.strip() != ""  # per persona
+    playground_app._seed_notifications()
+
+
+def test_password_reset_and_verification_demos_use_fastapis_views():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            sent = await client.post("/forgot-password-demo", data={"identifier": "demo"})
+            assert sent.status_code == 200 and "Check your email" in sent.text
+            (message,) = playground_app.OUTBOX.outbox
+            link = re.search(r"/reset-password-demo/\S+", message.text).group(0)
+            assert (await client.get(link)).status_code == 200
+            done = await client.post(link, data={"password": "brand-new-1",
+                                                 "password_confirm": "brand-new-1"})
+            assert "has been changed" in done.text
+            login = await client.post("/login-demo", follow_redirects=False,
+                                      data={"user_id": "demo", "password": "brand-new-1", **CSRF})
+            assert login.status_code == 303
+            refused = await client.post("/login-demo",
+                                        data={"user_id": "newbie", "password": "newbie", **CSRF})
+            assert refused.status_code == 403 and "Send the link again" in refused.text
+            await client.post("/verify-email-demo/resend", data={"identifier": "newbie"})
+            verify = re.search(r"/verify-email-demo/\S+", playground_app.OUTBOX.outbox[-1].text)
+            assert "is confirmed" in (await client.get(verify.group(0))).text
+            login = await client.post("/login-demo", follow_redirects=False,
+                                      data={"user_id": "newbie", "password": "newbie", **CSRF})
+            assert login.status_code == 303
+            await client.post("/demo/reset")
+
+    _run(flow())
+    assert playground_app.DEMO_PASSWORDS["demo"] == "demo" and playground_app.OUTBOX.outbox == []
+
+
+def test_profile_and_password_sections_as_settings_views_sends_them():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "viewer"}) as client:
+            page = (await client.get("/settings")).text
+            assert re.findall(r'id="gth-settings-(\w+)"', page) == [
+                "profile", "preferences", "password"]
+            saved = await client.post("/settings-demo/profile",
+                                      data={"display_name": " Vera Viewer ", "email": ""})
+            assert saved.status_code == 200 and "Profile saved" in saved.headers["HX-Trigger"]
+            assert ">VV</span>" in (await client.get("/layout")).text
+            long = await client.post("/settings-demo/profile",
+                                     data={"display_name": "x" * 81, "email": ""})
+            assert long.status_code == 422 and "at most 80" in long.text
+            wrong = await client.post("/settings-demo/password", data={
+                "current_password": "guess-123", "new_password": "brand-new-1",
+                "new_password_confirm": "brand-new-1"})
+            assert wrong.status_code == 422 and "current password" in wrong.text
+            assert "brand-new-1" not in wrong.text and "guess-123" not in wrong.text
+            changed = await client.post("/settings-demo/password", data={
+                "current_password": "password", "new_password": "brand-new-1",
+                "new_password_confirm": "brand-new-1"})
+            assert "Password changed" in changed.headers["HX-Trigger"]
+            await client.post("/demo/reset")
+        anonymous = (await _get("/settings")).text
+        assert "gth-settings-profile" not in anonymous
+        assert 'id="gth-settings-password"' not in anonymous
+
+    _run(flow())
+    assert playground_app.PROFILES["viewer"]["display_name"] == ""

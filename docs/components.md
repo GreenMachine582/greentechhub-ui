@@ -21,7 +21,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
-| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14) |
+| `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14); an `id` prefix for two same-named fields on a page (v0.15) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
@@ -89,6 +89,12 @@ gth_form_field(name, label, value=None, type="text", step=None, min=None, max=No
 {# id/for/aria-describedby get a gth-field- prefix; name stays unprefixed so
    FastAPI's Form(...) (or equivalent) still binds by name. input_attrs is a
    plain-dict escape hatch for anything not modeled as a named param. #}
+gth_csrf_field(token=None, name="csrf_token")
+{# v0.15: a hidden CSRF field for a plain form, nothing without a token. Pass
+   the token in: gth_csrf_field(csrf_token|default(none)). Every auth page
+   (sign-in, sign-up, forgot and reset password, resend confirmation) does, so
+   a csrf_token in their context is posted with the form; csrf_field_name
+   renames the field. htmx requests carry a token in the page's hx-headers. #}
 
 {# toast.py (Python, not a template) #}
 greentechhub_ui.toast(message: str, kind: str = "success") -> str
@@ -960,14 +966,16 @@ For very large tables, stream the rows with `StreamingResponse` instead of build
 ```jinja
 {# form.html — the counter's behaviour in static/js/char-counter.js (char_counter_js_url) #}
 gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors=None, input_attrs=None,
-               prefix=None, suffix=None, maxlength=None, counter=None, rows=3)
+               prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None)
 {# prefix / suffix: Bootstrap input-group add-ons — "$", "%", "AUD", "kg". They're in the
    field's aria-describedby, so they're read with it; errors stay below the group.
    maxlength: the native limit. With it, counter defaults on: an "N / max" line under the
    field (right without JS — the server renders the starting count), amber from 90% and
    red at the limit. counter=False keeps the limit without the line.
    type="textarea": a <textarea rows=rows> with the same label, ids, help, errors and
-   counter; step/min/max don't apply. #}
+   counter; step/min/max don't apply.
+   id (v0.15): the element-id prefix (default "gth-field-<name>") for the input, its label
+   and its help/error/prefix/suffix/counter ids. #}
 ```
 
 ```jinja
@@ -1033,11 +1041,12 @@ The plain functions never read `user_settings`, so a CSV export keeps `1,234.56`
 ```jinja
 {# select.html #}
 gth_select(name, label, options, value=None, errors=None, help_text=None, placeholder=None,
-           field_class="mb-3", input_attrs=None, hide_label=False)
+           field_class="mb-3", input_attrs=None, hide_label=False, id=None)
 {# options: {"value", "label"} dicts, (value, label) pairs (core Setting.choices' shape), or bare
    values. value is compared as a string, so 25 selects "25". placeholder adds an empty first
    option. Same ids, aria-describedby and error layout as gth_form_field.
-   hide_label (v0.14): the label stays for assistive tech only. #}
+   hide_label (v0.14): the label stays for assistive tech only.
+   id (v0.15): the element-id prefix, default "gth-field-<name>" — as gth_chips(id=). #}
 ```
 
 In a `gth_table_filter` bar, hide the label and drop the margin, as with `gth_date_range`. The name goes in the
@@ -1094,6 +1103,11 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
 
+**Profile and password sections.** greentechhub-fastapi's `SettingsViews` adds a Profile section (display name and
+email, with its profile hooks) and a Password section (with `change_password`). They need no templates of their own:
+the profile's fields are plain `str` settings, the password's are write-only `secret` ones, and both set
+`submit_label`, so `settings_section.html` renders them as it is. The playground's /settings shows both.
+
 **Ready-made page (v0.12).** Two templates render a whole settings page from data, so a service writes no settings
 markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 
@@ -1108,12 +1122,36 @@ above a sign-in card, the theme toggle in the corner, and a footer with the bran
 `LoginViews`' context — `error` after a failed sign-in — plus optional `login_url`, `login_title`,
 `login_subtitle`, `user_id_label`, `user_id`, `login_help` and `login_links` ([contract](contract.md)). It's a plain
 form rather than `gth_form`, so the browser stops an empty submit before `LoginViews`' required fields would answer
-FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own:
+FastAPI's JSON 422. Override `{% block footer %}` for a footer of your own. greentechhub-fastapi's `LoginViews` renders
+it by default (fastapi v0.11+); with `register_url` set (v0.15) it adds a "No account? Create one" link.
+
+`register_page.html` (v0.15) is its sign-up twin for greentechhub-fastapi's `RegisterViews`, on the same layout with
+the same brand header and footer. It posts `user_id`, `password` and `password_confirm`. Each field shows its own
+error from `errors` (`{field: [message]}`), with the user ID kept and focus on the password when that's what was
+refused. Any other key shows as an inline danger alert. `min_password_length` becomes the password's `minlength` and
+an "At least N characters." hint, and `login_url` a "Sign in" link. Options: `register_title`, `register_subtitle`,
+`user_id_label`, `register_help`, `register_links` ([contract](contract.md)). `RegisterViews` renders it by default:
 
 ```python
-class MyLoginViews(LoginViews):
-    login_template = "login_page.html"   # until greentechhub-fastapi defaults to it
+class MyRegisterViews(RegisterViews):
+    async def create_user(self, user_id: str, password: str) -> Identity: ...
 ```
+
+**Password reset and email verification pages (v0.15).** Four more pages on the same layout, for greentechhub-fastapi
+v0.12's `PasswordResetViews` and `EmailVerificationViews`, which render them by default:
+
+| Template | Shows |
+|---|---|
+| `forgot_password_page.html` | a "User ID or email" form posting `identifier` to `forgot_url`. After a request (`sent`), "Check your email" with the same wording whoever asked, so it never says which accounts exist |
+| `reset_password_page.html` | the new password and its confirmation, posted to `action` (the link's URL), with `minlength` and per-field errors. `done` gives "Your password has been changed" plus Sign in; `invalid` gives "expired or already used" plus a link to `forgot_url` |
+| `verify_email_page.html` | where a confirmation link lands: confirmed plus Sign in, or `invalid` plus a link to `resend_url` |
+| `verify_email_resend_page.html` | the forgot form's twin, posting `identifier` to `resend_url` to send the link again |
+
+They build on `gth_auth_card(brand, title, subtitle=None)` (`auth.html`): the brand header and a card headed
+"<title> to <service>" around a `{% call %}` body, for any other signed-out page. `login_page.html` gains two
+optional links: `forgot_password_url` ("Forgot password?" under the password) and `verify_resend_url` ("Send the link
+again" on the error, which `LoginViews` passes when `refuse_sign_in` turns away an unconfirmed address). The contexts
+are in the [contract](contract.md).
 
 `layout="auth"` is open to other signed-out pages too: extend `app.html` and `{% set layout = "auth" %}` at the top
 level, then fill `{% block content %}` (`.gth-auth` centres it).
@@ -1148,6 +1186,41 @@ for setting in preference_settings:
 The playground's `/settings` page runs this flow through the two templates, with dicts standing in for core's
 definitions. Its "API token" preference is a secret: it keeps only "saved", never the text.
 
+### Notification centre (v0.15)
+
+A navbar bell with a live unread count, a dropdown panel and a full page, for greentechhub-fastapi's
+`NotificationViews` (fastapi v0.12+), or any framework passing the same data. No gth JS: htmx and Bootstrap do it.
+
+```jinja
+{# notifications.html #}
+gth_notification_item(n, next_url=None)
+gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None)
+gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary")
+gth_notification_bell(url="/notifications", label="Notifications")
+```
+
+- A notification `n` is a dict in `toast()`'s message shape plus its state: `message`, `kind`, `title`, `icon`,
+  `action_label`, `action_url`, `created_at`, `read` and `read_url`. That's what `NotificationViews` passes, built from
+  core's `Notification`. The kind picks the toast's icon. An unread item gets an accent edge and dot, a visually
+  hidden "Unread:", and a "Mark read" button. `created_at` uses the `datetime` filter when it's installed, so it
+  follows the viewer's date and time preferences. A `javascript:` action URL isn't linked.
+- **Marking read.** "Mark read" and "Mark all read" are forms that POST `read_url` / `mark_all_url` with htmx
+  (`hx-swap="none"`, with `next` blanked). The server answers 204 with `HX-Trigger: {"gth:notifications":
+  {"unread": n}}`, and everything showing notifications listens for that event: the bell's badge, the open panel and
+  the page's list each re-fetch themselves. Without htmx the forms post `next` (the page you're on) and the server
+  redirects back.
+- **The bell.** Pass `notifications_url` to the shell (a context key, or a global). With a signed-in
+  `current_user`, `gth_navbar` puts `gth_notification_bell(notifications_url)` before the user menu, in both
+  layouts. Its badge is `gth_nav_badge`'s live kind (`{url}/badge`, on load and on `gth:notifications`). Its
+  dropdown loads `{url}/panel` each time it opens. greentechhub-fastapi's `notifications_nav_item()` gives a
+  sidebar or navbar link with the same live badge.
+
+| Template | Context |
+|---|---|
+| `notifications_page.html` | extends `page.html`: `page_title`, `notifications`, `unread_count`, `unread_only`, `page_url`, `mark_all_url`. The header has an All / Unread switch (`?unread=1`) and "Mark all read" while anything is unread |
+| `notifications_panel.html` | the bell's dropdown, a partial with the same context: a header with "Mark all read", the list and a "See all" link to `page_url` |
+| `notification_badge.html` | `count`: nothing at 0 (so the badge disappears), `99+` above 99 |
+
 ### Permission-filtered nav and the user menu
 
 `nav_items` is built once, at startup, so permissions are checked per request: `app.html` filters the list through
@@ -1170,15 +1243,21 @@ A group left with no children (and no url of its own) is dropped. Breadcrumbs ar
 
 ```jinja
 {# navbar.html #}
-gth_navbar(..., user_menu_items=None, logout_url=None, granted=None)
+gth_navbar(..., user_menu_items=None, logout_url=None, granted=None, notifications_url=None,
+           user_display_name=None)
 ```
 
-With `current_user` set, the navbar ends with a user menu, in both layouts: the user's `username` (or `email`), then
+With `current_user` set, the navbar ends with a user menu, in both layouts: the user's name, then
 `user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a
 `<form method="post" action="{logout_url}">`, matching greentechhub-fastapi's `LoginViews` `POST /logout`. Without
 items or `logout_url` it shows just the name. `app.html` passes these from the context keys of the same names (see
 [docs/contract.md](contract.md)). The menu is in the navbar rather than the sidebar footer, so it's in the same place
 in both layouts and the icon rail can't hide it; `{% block sidebar_extra %}` stays free for the service.
+
+The name (v0.15) is `user_display_name` when it's set (greentechhub-fastapi v0.12's profile passes it), else the
+`username`, else the part of the `email` before the `@`. An avatar of its initials stands in front of it: the first
+letters of the first and last words, so "Ada Lovelace" is AL and "admin" is A. It's on the brand accent and hidden
+from screen readers, which read the name itself. A user with no name at all shows "Account" with the person icon.
 
 The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
 A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.

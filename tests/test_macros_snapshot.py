@@ -760,7 +760,7 @@ def test_data_table_row_actions():
     # Every action is an icon button by default (inline=None): no "⋯" menu.
     cell = rendered.split('<td class="gth-table-actions">')[1].split("</td>")[0]
     assert 'aria-label="Edit Bolt"' in cell and 'hx-get="/parts/Bolt/edit"' in cell
-    assert 'aria-label="Delete Bolt"' in cell and "text-danger" in cell
+    assert 'aria-label="Delete Bolt"' in cell and "gth-action-menu-danger" in cell
     assert "gth-action-menu-toggle" not in cell
 
 
@@ -1373,6 +1373,36 @@ def test_select_hide_label():
     assert '<option value="Sell" selected>Sell</option>' in rendered
 
 
+def test_select_id():
+    rendered = _render(
+        """{% from "select.html" import gth_select %}
+        {{ gth_select("fy", "Financial year", [2024, 2025], value=2025, id="gains-fy",
+            help_text="July to June", errors=["Pick a year"]) }}"""
+    )
+    assert_snapshot(rendered, "select_id")
+    # Every derived id takes the prefix; the name stays the field's.
+    assert '<label class="form-label" for="gains-fy">' in rendered
+    assert '<select id="gains-fy" name="fy"' in rendered
+    assert 'aria-describedby="gains-fy-help gains-fy-error"' in rendered
+    assert 'id="gains-fy-help"' in rendered and 'id="gains-fy-error"' in rendered
+    assert "gth-field-" not in rendered
+
+
+def test_form_field_id():
+    rendered = _render(
+        """{% from "form.html" import gth_form_field %}
+        {{ gth_form_field("price", "Price", value="1.5", id="buy-price", prefix="$", suffix="AUD",
+            maxlength=10, help_text="Per unit", errors=["Too high"]) }}"""
+    )
+    assert_snapshot(rendered, "form_field_id")
+    assert '<label class="form-label" for="buy-price">' in rendered
+    assert 'id="buy-price" name="price"' in rendered
+    described = "buy-price-help buy-price-prefix buy-price-suffix buy-price-counter buy-price-error"
+    assert f'aria-describedby="{described}"' in rendered
+    assert 'data-gth-counter-for="buy-price"' in rendered
+    assert "gth-field-" not in rendered
+
+
 def test_select_matches_values_as_strings():
     rendered = _render(
         """{% from "select.html" import gth_select %}
@@ -1604,7 +1634,9 @@ def test_action_menu_all_inline():
     assert "dropdown" not in rendered and "gth-action-menu-toggle" not in rendered
     assert rendered.count("gth-action-menu-button") == 5
     assert ">Open</a>" in rendered  # no icon: its text shows inline
-    assert "btn btn-sm btn-link text-body gth-action-menu-button text-danger" in rendered
+    # A danger icon button: its own class (button_class's text-body would beat text-danger).
+    assert "btn btn-sm btn-link text-body gth-action-menu-button gth-action-menu-danger" in rendered
+    assert "gth-action-menu-button text-danger" not in rendered
 
 
 def test_action_menu_inline_counts_actions_not_dividers():

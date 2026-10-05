@@ -132,9 +132,43 @@ optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 `error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
 form's action, default `/login`), `login_title` (`Sign in`), `login_subtitle`, `user_id_label` (`User ID`),
 `user_id` (a prefill; focus then starts on the password), `login_help` (a line under the button) and `login_links`
-(`[{label, url}]` in the footer; http(s) or relative URLs only). The brand header and footer come from the shell's
-`brand`; the theme toggle shows when `show_theme_toggle` is on. It posts `user_id` and `password`. Until
-`LoginViews` defaults to it, set `login_template = "login_page.html"` on the subclass.
+(`[{label, url}]` in the footer; http(s) or relative URLs only), and `register_url` (v0.15; `LoginViews` passes it
+when the service offers sign-up) for a "Create one" link. The brand header and footer come from the shell's `brand`;
+the theme toggle shows when `show_theme_toggle` is on. It posts `user_id` and `password`. `LoginViews` renders it by
+default (fastapi v0.11+).
+
+**Register page (v0.15)** — the context `register_page.html` takes, matching greentechhub-fastapi's `RegisterViews`:
+`register_url` (the form's action, default `/register`), `login_url` (a "Sign in" link, left out when empty) and
+`min_password_length` (the password's `minlength` and hint) on every render, plus `errors` (`{field: [message]}`,
+shown under `user_id`, `password` or `password_confirm`; any other key as a danger `gth_alert`) and `user_id` (a
+prefill) after a refused sign-up. Optional: `register_title` (`Create account`), `register_subtitle`, `user_id_label`
+(`User ID`), `register_help` and `register_links` (as `login_links`). It posts `user_id`, `password` and
+`password_confirm`; the passwords are never filled back in.
+
+**Password reset and email verification pages (v0.15)** — matching greentechhub-fastapi's `PasswordResetViews` and
+`EmailVerificationViews`. Each takes an optional title (`forgot_title`, `reset_title`, `verify_title`,
+`resend_title`) and footer links (`forgot_links`, `reset_links`, `verify_links`, `resend_links`):
+
+| Template | Context |
+|---|---|
+| `forgot_password_page.html` | `forgot_url` (the action) and `login_url`; then `sent` + `identifier`, or `errors` (`{"identifier": [...]}`). Optional `forgot_subtitle`, `forgot_help`. Posts `identifier` |
+| `reset_password_page.html` | `action`, `login_url`, `min_password_length`; then `errors` (`password` / `password_confirm`; others as an alert), or `done`, or `invalid` + `forgot_url`. Posts `password`, `password_confirm` |
+| `verify_email_page.html` | `login_url`; then `done`, or `invalid` + `resend_url` |
+| `verify_email_resend_page.html` | `resend_url` (the action) and `login_url`; then `sent` + `identifier`, or `errors`. Optional `resend_help`. Posts `identifier` |
+
+The sign-in page also takes `forgot_password_url` (a "Forgot password?" link) and `verify_resend_url` (a "Send the
+link again" link on the error).
+
+**CSRF on the auth forms (v0.15)**: every auth page (sign-in, sign-up, forgot and reset password, resend
+confirmation) takes an optional `csrf_token`, posted with its form as a hidden field named `csrf_field_name`
+(`"csrf_token"` by default), for the framework to check. Without it the forms are unchanged. htmx requests carry a
+token in the page's `hx-headers` instead.
+
+**Notification centre (v0.15)**: the context `notifications_page.html`, `notifications_panel.html` and
+`notification_badge.html` take, matching greentechhub-fastapi's `NotificationViews`. Page and panel get `page_title`,
+`notifications` (dicts of `message`, `kind`, `title`, `icon`, `action_label`, `action_url`, `created_at`, `read`,
+`read_url`), `unread_count`, `unread_only`, `page_url` and `mark_all_url`. The badge gets `count`. Marking read POSTs
+`read_url` / `mark_all_url` and expects 204 with the `gth:notifications` HX-Trigger, or a 303 to a posted `next`.
 
 **Signed-in viewer (v0.12)** — all optional, per request, usually from the framework adapter's settings wiring
 (greentechhub-fastapi's `register_settings`). Without them nothing changes:
@@ -144,6 +178,8 @@ form's action, default `/login`), `login_title` (`Sign in`), `login_subtitle`, `
 | `granted` | the viewer's permission strings (core's `RoleResolver.granted()`). Nav items with `required_permission` show only when it holds it; without `granted`, any signed-in viewer sees them, as before |
 | `user_menu_items` | NavItems for the navbar's user menu (e.g. Settings), permission-filtered like `nav_items` |
 | `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
+| `user_display_name` | (v0.15) the user menu's name instead of the user ID, with its initials as the avatar. greentechhub-fastapi's `settings_context` passes the profile's display name (fastapi v0.12+) |
+| `notifications_url` | (v0.15) the notification centre's root, e.g. `/notifications`: the navbar shows a bell with its live unread count (`{url}/badge`) and panel (`{url}/panel`). See [components.md](components.md#notification-centre-v015) |
 
 `nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
 

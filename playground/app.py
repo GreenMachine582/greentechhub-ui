@@ -13,7 +13,8 @@ import asyncio
 import csv
 import io
 import json
-from datetime import date, timedelta
+import re
+from datetime import UTC, date, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
@@ -21,6 +22,16 @@ from urllib.parse import quote, unquote, urlencode
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.email import InMemoryEmailSender
+from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
+from greentechhub_core.security import InMemoryTokenStore, OneTimeTokens
+from greentechhub_core.settings.builtins import (
+    SITE_BANNER_KEY,
+    SITE_BANNER_TONE_KEY,
+    site_banner_settings,
+)
+from greentechhub_fastapi import register_email
+from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
@@ -187,6 +198,9 @@ def user_context(request: Request) -> dict:
                             {"label": "Switch persona", "url": "/personas",
                              "icon": "person-badge"}],
         "logout_url": "/demo/logout",
+        "notifications_url": NOTIFICATIONS_URL,
+        # greentechhub-fastapi's settings_context passes the profile's display name.
+        "user_display_name": PROFILES.get(_persona(request), {}).get("display_name") or None,
     }
 
 
@@ -242,17 +256,29 @@ def settings_values_context(request: Request) -> dict:
 
 
 def site_banners_context(request: Request) -> dict:
-    """site_banners for app.html's banner slot — only on /feedback, so the
-    other pages (and their layout tests) stay as they are. ?banner_v=2 edits
-    the message, which brings a dismissed banner back."""
-    if request.url.path != "/feedback":
-        return {}
-    edited = request.query_params.get("banner_v") == "2"
-    message = ("Playground notice (edited): this banner's message changed, so it shows again."
-               if edited else
-               "Playground notice: dismiss this banner and reload — it stays hidden.")
-    action = {"label": "How it works", "url": "/feedback#alert-banner"}
-    return {"site_banners": [{"message": message, "id": "playground-intro", "action": action}]}
+    """site_banners for app.html's banner slot.
+
+    - The admin-set site banner (Settings › App: site.banner + site.banner_tone)
+      on every page while it's non-empty — what greentechhub-fastapi's opt-in
+      site banner does with core's site_banner_settings(). Its id is fixed and
+      a dismissal is remembered against the message, so editing the text
+      brings it back.
+    - A demo notice on /feedback only, so the other pages (and their layout
+      tests) stay as they are. ?banner_v=2 edits its message, which brings a
+      dismissed banner back.
+    """
+    banners = []
+    if message := str(SETTINGS_VALUES.get(SITE_BANNER_KEY) or "").strip():
+        tone = SETTINGS_VALUES.get(SITE_BANNER_TONE_KEY, "warn")
+        banners.append({"message": message, "tone": tone, "id": "site"})
+    if request.url.path == "/feedback":
+        edited = request.query_params.get("banner_v") == "2"
+        notice = ("Playground notice (edited): this banner's message changed, so it shows again."
+                  if edited else
+                  "Playground notice: dismiss this banner and reload — it stays hidden.")
+        banners.append({"message": notice, "id": "playground-intro",
+                        "action": {"label": "How it works", "url": "/feedback#alert-banner"}})
+    return {"site_banners": banners} if banners else {}
 
 
 templates = Jinja2Templates(directory=_here / "templates",
@@ -339,6 +365,7 @@ PAGES = {
                              "menu, permission-filtered nav and gated pages."),
     "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
                  "own widget."),
+    "outbox": ("Outbox", "The emails the password reset and email verification demos sent."),
 }
 
 greentechhub_ui.install(
@@ -414,6 +441,19 @@ def _page(request: Request, name: str, **context):
 # core's Setting objects and Settings.effective() values the same way. The coercion
 # below stands in for core's registry.coerce(key, raw).
 
+
+def _setting_dict(setting) -> dict:
+    """A greentechhub-core Setting in this demo's dict shape (the save handler
+    reads setting["key"] etc.), so a section can list core's own definitions."""
+    d = {"key": setting.key, "type": str(setting.type), "label": setting.label,
+         "default": setting.default, "help_text": setting.help_text}
+    if setting.choices:
+        d["choices"] = list(setting.choices)
+    if setting.min is not None or setting.max is not None:
+        d["min"], d["max"] = setting.min, setting.max
+    return d
+
+
 SETTINGS_DEMO = {
     "preferences": ("Preferences", "Only you see these.", [
         {"key": "ui.theme", "type": "choice", "label": "Theme", "default": "system",
@@ -446,9 +486,11 @@ SETTINGS_DEMO = {
          "default": "", "group": "Integrations",
          "help_text": "A fake credential: write-only, like a service's secret setting."},
     ]),
-    "app": ("App", "Everyone sees these. A service gates this section on a permission.", [
-        {"key": "site.banner", "type": "str", "label": "Maintenance banner", "default": "",
-         "help_text": "Leave empty for no banner."},
+    "app": ("App", "Everyone sees these. A service gates this section on a permission. Save a site "
+                   "banner and it shows above every page.", [
+        # greentechhub-core's own site banner settings: the message (empty for
+        # none) and one of gth_alert_banner's tones.
+        *map(_setting_dict, site_banner_settings(edit_permission=MANAGE_PERMISSION)),
         {"key": "site.maintenance", "type": "bool", "label": "Maintenance mode", "default": False,
          "help_text": "An unchecked switch still submits \"false\" (off_value)."},
     ]),
@@ -505,9 +547,99 @@ def _visible_sections(request: Request) -> list[str]:
     return [s for s in SETTINGS_DEMO if s != "app" or _has(request, MANAGE_PERMISSION)]
 
 
+# Profile and Password: the sections greentechhub-fastapi's SettingsViews adds
+# with its profile hooks and change_password, in the same dict shapes. No
+# templates of their own: plain str fields and write-only secret fields
+# through settings_section.html. Per persona, restored by the demo reset.
+PROFILES_INITIAL = {"viewer": {"display_name": "", "email": "viewer@example.com"},
+                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"}}
+PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
+DEMO_CURRENT_PASSWORD = "password"
+
+
+def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
+    return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
+            "secret": secret}
+
+
+def _profile_section(values: dict, errors=None) -> dict:
+    return {"id": "profile", "title": "Profile", "description": "How you appear to others.",
+            "settings": [_field("display_name", "Display name", "Shown instead of your user ID."),
+                         _field("email", "Email")],
+            "values": values, "errors": errors, "action": "/settings-demo/profile",
+            "submit_label": "Save profile"}
+
+
+def _password_section(errors=None) -> dict:
+    return {"id": "password", "title": "Password",
+            "description": f"Change the password you sign in with (the demo's is "
+                           f"“{DEMO_CURRENT_PASSWORD}”; nothing is stored).",
+            "settings": [_field("current_password", "Current password", secret=True),
+                         _field("new_password", "New password", "At least 8 characters.",
+                                secret=True),
+                         _field("new_password_confirm", "Confirm new password", secret=True)],
+            "values": {}, "errors": errors, "action": "/settings-demo/password",
+            "submit_label": "Change password"}
+
+
+@app.post("/settings-demo/profile", response_class=HTMLResponse)
+async def settings_demo_profile(request: Request):
+    """SettingsViews' POST {url}/profile: strip, check, save, toast."""
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=401)
+    form = await request.form()
+    values = {"display_name": str(form.get("display_name") or "").strip(),
+              "email": str(form.get("email") or "").strip()}
+    errors: dict[str, list[str]] = {}
+    if len(values["display_name"]) > 80:
+        errors["display_name"] = ["Use at most 80 characters."]
+    local, at, domain = values["email"].partition("@")
+    if values["email"] and (not (local and at and domain) or "@" in domain
+                            or any(c.isspace() for c in values["email"])):
+        errors["email"] = ["Enter an email address, like name@example.com."]
+    if errors:
+        return _render_section(request, _profile_section(values, errors), status_code=422)
+    PROFILES[persona] = values
+    return _render_section(request, _profile_section(values), headers={
+        "HX-Trigger": greentechhub_ui.toast("Profile saved")})
+
+
+@app.post("/settings-demo/password", response_class=HTMLResponse)
+async def settings_demo_password(request: Request):
+    """SettingsViews' POST {url}/password: the same checks; passwords never echoed."""
+    if PERSONAS[_persona(request)]["user"] is None:
+        return Response(status_code=401)
+    form = await request.form()
+    current = str(form.get("current_password") or "")
+    new = str(form.get("new_password") or "")
+    confirm = str(form.get("new_password_confirm") or "")
+    errors: dict[str, list[str]] = {}
+    if not current:
+        errors["current_password"] = ["Enter your current password."]
+    if len(new) < 8:
+        errors["new_password"] = ["Use at least 8 characters."]
+    elif new == current:
+        errors["new_password"] = ["Choose a password different from your current one."]
+    elif new != confirm:
+        errors["new_password_confirm"] = ["The passwords don't match."]
+    if not errors and current != DEMO_CURRENT_PASSWORD:
+        errors["current_password"] = ["That isn't your current password."]
+    if errors:
+        return _render_section(request, _password_section(errors), status_code=422)
+    return _render_section(request, _password_section(), headers={
+        "HX-Trigger": greentechhub_ui.toast("Password changed")})
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
+    sections = [_settings_section(request, s) for s in _visible_sections(request)]
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is not None:
+        # SettingsViews' order: Profile first, Password after Preferences.
+        sections = [_profile_section(PROFILES[persona]), sections[0], _password_section(),
+                    *sections[1:]]
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,
         "settings_intro": (
@@ -515,7 +647,7 @@ async def settings_page(request: Request):
             "segmented buttons for four or fewer choices, a select for more, number and text "
             "fields for int and str, and a write-only password field for a secret (the API "
             "token). Save a page size of 500 to see the 422 path."),
-        "settings_sections": [_settings_section(request, s) for s in _visible_sections(request)],
+        "settings_sections": sections,
     })
 
 
@@ -737,9 +869,18 @@ def _picked_roles(form) -> list[str]:
 
 # gth-ui's login_page.html with the context greentechhub-fastapi's LoginViews
 # passes: nothing on GET, `error` (and a 401) after a failed sign-in.
+# A fixed stand-in for a framework's CSRF token: the login and register demos
+# render it as the forms' hidden csrf_token field and refuse a POST without it,
+# as greentechhub-fastapi's opt-in CSRF check would.
+DEMO_CSRF_TOKEN = "playground-demo-token"
+CSRF_REFUSED = "Your session expired. Please try again."
+
 LOGIN_DEMO = {
     "login_url": "/login-demo",
-    "login_help": "Demo account: demo / demo.",
+    "csrf_token": DEMO_CSRF_TOKEN,
+    "register_url": "/register-demo",
+    "forgot_password_url": "/forgot-password-demo",
+    "login_help": "Demo accounts: demo / demo, and newbie / newbie (email not confirmed yet).",
     "login_links": [{"label": "Playground", "url": "/"},
                     {"label": "Docs", "url": "https://github.com/GreenMachine582/greentechhub-ui"}],
 }
@@ -751,12 +892,147 @@ async def login_demo(request: Request):
 
 
 @app.post("/login-demo", response_class=HTMLResponse)
-async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form("")):
-    if user_id == "demo" and password == "demo":
+async def login_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
+                            csrf_token: str = Form("")):
+    if csrf_token != DEMO_CSRF_TOKEN:
+        return templates.TemplateResponse(request, "login_page.html", {
+            **LOGIN_DEMO, "user_id": user_id, "error": CSRF_REFUSED}, status_code=403)
+    if DEMO_PASSWORDS.get(user_id) == password:
+        if user_id in DEMO_UNVERIFIED:
+            # What LoginViews.refuse_sign_in does: a 403, no session, and the resend link.
+            return templates.TemplateResponse(request, "login_page.html", {
+                **LOGIN_DEMO, "user_id": user_id, "error": "Confirm your email address first.",
+                "verify_resend_url": DEMO_VERIFICATION.resend_url,
+            }, status_code=403)
         return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(request, "login_page.html", {
         **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
     }, status_code=401)
+
+
+# ── Password reset and email verification ────────────────────────────────────
+# greentechhub-fastapi's real PasswordResetViews and EmailVerificationViews,
+# rendering gth-ui's pages, over core's in-memory tokens. The emails land in
+# core's InMemoryEmailSender, shown on /demo/outbox, so the links can be
+# followed. No base_url: the links stay relative, which works on any port.
+OUTBOX = InMemoryEmailSender()
+register_email(app, None, sender=OUTBOX)
+DEMO_EMAILS = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_PASSWORDS: dict[str, str] = {}
+DEMO_UNVERIFIED: set[str] = set()
+
+
+def _reset_accounts() -> None:
+    DEMO_PASSWORDS.clear()
+    DEMO_PASSWORDS.update({"demo": "demo", "newbie": "newbie"})
+    DEMO_UNVERIFIED.clear()
+    DEMO_UNVERIFIED.add("newbie")
+    OUTBOX.clear()
+
+
+_reset_accounts()
+
+
+def _find(identifier: str, among) -> tuple[str, str] | None:
+    for subject, address in DEMO_EMAILS.items():
+        if identifier in (subject, address) and subject in among:
+            return subject, address
+    return None
+
+
+OUTBOX_HELP = "Demo: the email lands in the outbox (/demo/outbox) instead of being sent."
+
+
+class DemoPasswordReset(PasswordResetViews):
+    forgot_url = "/forgot-password-demo"
+    reset_url = "/reset-password-demo"
+    login_url = "/login-demo"
+
+    async def find_account(self, identifier: str) -> tuple[str, str] | None:
+        return _find(identifier, DEMO_PASSWORDS)
+
+    async def set_password(self, subject: str, password: str) -> None:
+        DEMO_PASSWORDS[subject] = password
+
+
+class DemoEmailVerification(EmailVerificationViews):
+    verify_url = "/verify-email-demo"
+    login_url = "/login-demo"
+
+    async def mark_verified(self, subject: str) -> None:
+        DEMO_UNVERIFIED.discard(subject)
+
+    async def find_unverified(self, identifier: str) -> tuple[str, str] | None:
+        return _find(identifier, DEMO_UNVERIFIED)
+
+
+class _HelpTemplates:
+    """Adds the outbox hint to the forgot and resend forms (an optional
+    *_help key the pages take), around the playground's templates."""
+
+    def __init__(self, inner: Jinja2Templates) -> None:
+        self._inner = inner
+
+    def TemplateResponse(self, request, name, context=None, **kwargs):  # noqa: N802
+        extra = {"forgot_help": OUTBOX_HELP, "resend_help": OUTBOX_HELP}
+        return self._inner.TemplateResponse(request, name, {**extra, **(context or {})}, **kwargs)
+
+
+_tokens = OneTimeTokens(InMemoryTokenStore())
+DEMO_RESET = DemoPasswordReset(templates=_HelpTemplates(templates), tokens=_tokens)
+DEMO_VERIFICATION = DemoEmailVerification(templates=_HelpTemplates(templates), tokens=_tokens)
+app.include_router(DEMO_RESET.router())
+app.include_router(DEMO_VERIFICATION.router())
+
+
+@app.get("/demo/outbox", response_class=HTMLResponse)
+async def demo_outbox(request: Request):
+    messages = [{"to": m.to, "subject": m.subject, "text": m.text,
+                 "links": re.findall(r"(/(?:reset-password|verify-email)-demo/\S+)", m.text)}
+                for m in reversed(OUTBOX.outbox)]
+    return _page(request, "outbox", messages=messages)
+
+
+
+# gth-ui's register_page.html with the context greentechhub-fastapi's
+# RegisterViews passes: the same checks, 422 + errors on a refusal.
+REGISTER_DEMO = {
+    "register_url": "/register-demo",
+    "csrf_token": DEMO_CSRF_TOKEN,
+    "login_url": "/login-demo",
+    "min_password_length": 8,
+    "register_help": "Nothing is stored: any new user ID signs straight in.",
+    "register_links": [{"label": "Playground", "url": "/"}],
+}
+
+
+@app.get("/register-demo", response_class=HTMLResponse)
+async def register_demo(request: Request):
+    return templates.TemplateResponse(request, "register_page.html", REGISTER_DEMO)
+
+
+@app.post("/register-demo", response_class=HTMLResponse)
+async def register_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
+                               password_confirm: str = Form(""), csrf_token: str = Form("")):
+    user_id = user_id.strip()
+    errors: dict[str, list[str]] = {}
+    if csrf_token != DEMO_CSRF_TOKEN:
+        return templates.TemplateResponse(request, "register_page.html", {
+            **REGISTER_DEMO, "user_id": user_id, "errors": {"__all__": [CSRF_REFUSED]},
+        }, status_code=403)
+    if not user_id:
+        errors["user_id"] = ["Choose a user ID."]
+    elif user_id == "demo":
+        errors["user_id"] = ["That user ID is taken."]
+    if len(password) < REGISTER_DEMO["min_password_length"]:
+        errors["password"] = [f"Use at least {REGISTER_DEMO['min_password_length']} characters."]
+    elif password != password_confirm:
+        errors["password_confirm"] = ["The passwords don't match."]
+    if not errors:
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "register_page.html", {
+        **REGISTER_DEMO, "user_id": user_id, "errors": errors,
+    }, status_code=422)
 
 
 @app.get("/roles", response_class=HTMLResponse)
@@ -821,10 +1097,107 @@ async def watchlist_badge():
     return HTMLResponse(_macro("badge.html", "gth_badge", count, "neutral") if count else "")
 
 
+# ── Notification centre demo ──────────────────────────────────────────────────
+# greentechhub-core's real InMemoryNotificationStore, with routes shaped like
+# greentechhub-fastapi's NotificationViews (same templates, context and
+# gth:notifications event), keyed by the impersonated persona.
+NOTIFICATIONS = InMemoryNotificationStore()
+NOTIFICATIONS_URL = "/notifications"
+
+
+def _seed_notifications() -> None:
+    global NOTIFICATIONS
+    NOTIFICATIONS = InMemoryNotificationStore()  # a fresh store: the demo reset's job
+    start = datetime.now(UTC) - timedelta(hours=6)
+    for persona in ("viewer", "admin"):
+        seeded = [
+            new_notification(persona, "Your watchlist export is ready.", kind="success",
+                             title="Export finished", action={"label": "Open", "url": "/data"},
+                             now=start),
+            new_notification(persona, "ASX sync couldn't reach the price feed; it retries hourly.",
+                             kind="warning", title="Sync delayed", now=start + timedelta(hours=2)),
+            new_notification(persona, "A new sign-in from Firefox on Windows.", kind="info",
+                             now=start + timedelta(hours=5)),
+        ]
+        for n in seeded:
+            NOTIFICATIONS.add_sync(n)
+        NOTIFICATIONS.mark_read_sync(persona, [seeded[0].id], at=start + timedelta(hours=1))
+
+
+_seed_notifications()
+
+
+def _notification_dict(n) -> dict:
+    return {"id": n.id, "message": n.message, "kind": n.kind, "title": n.title, "icon": n.icon,
+            "action_label": n.action_label, "action_url": n.action_url, "category": n.category,
+            "created_at": n.created_at, "read_at": n.read_at, "read": n.read,
+            "read_url": f"{NOTIFICATIONS_URL}/{n.id}/read", "toast": n.to_toast()}
+
+
+def _notifications_context(persona: str, limit: int, unread_only: bool = False) -> dict:
+    items = NOTIFICATIONS.list_for_sync(persona, unread_only=unread_only, limit=limit)
+    return {"page_title": "Notifications",
+            "notifications": [_notification_dict(n) for n in items],
+            "unread_count": NOTIFICATIONS.unread_count_sync(persona), "unread_only": unread_only,
+            "page_url": NOTIFICATIONS_URL, "mark_all_url": f"{NOTIFICATIONS_URL}/read-all"}
+
+
+@app.get(NOTIFICATIONS_URL, response_class=HTMLResponse)
+async def notifications_page(request: Request, unread: str | None = None):
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=303, headers={"Location": "/personas?next=/notifications"})
+    return templates.TemplateResponse(request, "notifications_page.html",
+                                      _notifications_context(persona, 50, unread in ("1", "true")))
+
+
+@app.get(f"{NOTIFICATIONS_URL}/panel", response_class=HTMLResponse)
+async def notifications_panel(request: Request):
+    return templates.TemplateResponse(request, "notifications_panel.html",
+                                      _notifications_context(_persona(request), 10))
+
+
+@app.get(f"{NOTIFICATIONS_URL}/badge", response_class=HTMLResponse)
+async def notifications_badge(request: Request):
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=204)
+    return templates.TemplateResponse(request, "notification_badge.html",
+                                      {"count": NOTIFICATIONS.unread_count_sync(persona)})
+
+
+async def _marked(request: Request) -> Response:
+    form = await request.form()
+    if next_url := _local_path(str(form.get("next") or "") or None):
+        return Response(status_code=303, headers={"Location": next_url})
+    unread = NOTIFICATIONS.unread_count_sync(_persona(request))
+    return Response(status_code=204,
+                    headers={"HX-Trigger": json.dumps({"gth:notifications": {"unread": unread}})})
+
+
+@app.post(f"{NOTIFICATIONS_URL}/read-all")
+async def notifications_read_all(request: Request):
+    NOTIFICATIONS.mark_all_read_sync(_persona(request), at=datetime.now(UTC))
+    return await _marked(request)
+
+
+@app.post(NOTIFICATIONS_URL + "/{notification_id}/read")
+async def notifications_read_one(request: Request, notification_id: str):
+    NOTIFICATIONS.mark_read_sync(_persona(request), [notification_id], at=datetime.now(UTC))
+    return await _marked(request)
+
+
 @app.post("/demo/reset")
 async def demo_reset():
     """Restore the demos that keep server-side state (the watchlist, the
-    health count) and refresh everything showing them."""
+    health count, the site banner, the notifications) and refresh everything
+    showing them."""
+    _seed_notifications()
+    _reset_accounts()
+    PROFILES.clear()
+    PROFILES.update({k: dict(v) for k, v in PROFILES_INITIAL.items()})
+    SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
+    SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]
     HEALTH_ISSUES["open"] = HEALTH_ISSUES_INITIAL
     PROGRESS_DEMO["value"] = 0
@@ -833,7 +1206,8 @@ async def demo_reset():
         r["stock"] = stock
     return hx_response(greentechhub_ui.toast(
         "Demo data reset.", "info",
-        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged"]))
+        events=["watchlistChanged", "healthChanged", "watchlistReset", "recordsChanged",
+                "gth:notifications"]))
 
 
 @app.post("/demo/records")

@@ -110,6 +110,29 @@ def test_settings_section_validates_saves_and_submits_unchecked_switch(page, pla
     expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
 
 
+def test_app_site_banner_shows_above_every_page(page, playground_url):
+    _impersonate(page, playground_url, "admin")
+    try:
+        page.goto(f"{playground_url}/settings")
+        app = "#gth-settings-app"
+        page.fill("[id='gth-field-site.banner']", "Maintenance at 9pm: saving is paused.")
+        page.select_option("[id='gth-field-site.banner_tone']", "bad")
+        page.click(f"{app} button[type=submit]")
+        expect(page.locator(DYNAMIC_TOAST).last).to_contain_text("App saved")
+
+        page.goto(f"{playground_url}/data")
+        banner = page.locator("[data-gth-banner='site']")
+        expect(banner).to_be_visible()
+        expect(banner).to_contain_text("Maintenance at 9pm")
+        expect(banner).to_have_class(re.compile("alert-danger"))
+        # Above the navbar, like any site banner.
+        assert banner.bounding_box()["y"] < page.locator(".gth-navbar").bounding_box()["y"]
+    finally:
+        page.request.post(f"{playground_url}/demo/reset")
+        page.evaluate("""() => Object.keys(localStorage)
+            .filter(k => k.startsWith("gth-banner:")).forEach(k => localStorage.removeItem(k))""")
+
+
 def test_secret_setting_is_write_only(page, playground_url):
     page.goto(f"{playground_url}/settings")
     prefs = "#gth-settings-preferences"
@@ -2143,6 +2166,29 @@ def test_login_page_is_a_branded_auth_screen(page, playground_url):
     expect(page.locator("#gth-field-password")).to_be_focused()
 
 
+def test_register_page_is_a_branded_auth_screen(page, playground_url):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{playground_url}/login-demo")
+    page.click(".gth-auth-switch a")  # "No account? Create one"
+    expect(page).to_have_url(f"{playground_url}/register-demo")
+    expect(page.locator(".gth-navbar")).to_have_count(0)
+    expect(page.locator("#gth-field-user_id")).to_be_focused()
+    assert not page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+    # A mismatched confirmation comes back with the error, the user ID kept.
+    page.fill("#gth-field-user_id", "newbie")
+    page.fill("#gth-field-password", "long-enough")
+    page.fill("#gth-field-password_confirm", "long-enougH")
+    page.click("form[action='/register-demo'] button[type=submit]")
+    expect(page.locator("#gth-field-password_confirm-error")).to_contain_text("don't match")
+    expect(page.locator("#gth-field-user_id")).to_have_value("newbie")
+    expect(page.locator("#gth-field-password")).to_be_focused()
+    # Fixed, it signs in and lands on the playground.
+    page.fill("#gth-field-password", "long-enough")
+    page.fill("#gth-field-password_confirm", "long-enough")
+    page.click("form[action='/register-demo'] button[type=submit]")
+    expect(page).to_have_url(f"{playground_url}/")
+
+
 def test_inline_alert_is_page_content_not_a_toast(page, playground_url):
     page.goto(f"{playground_url}/feedback#inline-alert")
     alerts = page.locator("#alerts-demo .gth-toast-inline")
@@ -2464,7 +2510,18 @@ def test_action_menu_inline_layouts(page, playground_url):
     expect(section.locator(".gth-action-menu-toggle")).to_have_count(8)
     section.locator("label:has-text('All icons')").click()
     expect(section.locator(".gth-action-menu-toggle")).to_have_count(0)
-    expect(section.get_by_role("button", name="Delete Fix flaky CI job")).to_be_visible()
+    delete = section.get_by_role("button", name="Delete Fix flaky CI job")
+    expect(delete).to_be_visible()
+    # A danger icon button is red, not the body colour its text-body class
+    # would otherwise force (in either colour mode).
+    edit = section.get_by_role("button", name="Edit Fix flaky CI job")
+    for _ in range(2):
+        danger = page.evaluate("""() => { const p = document.createElement('span');
+            p.style.color = 'rgb(var(--bs-danger-rgb))'; document.body.append(p);
+            const c = getComputedStyle(p).color; p.remove(); return c; }""")
+        expect(delete).to_have_css("color", danger)
+        assert edit.evaluate("el => getComputedStyle(el).color") != danger
+        page.click(".gth-theme-toggle")
 
 
 def test_description_list_layouts(page, playground_url):
@@ -2561,3 +2618,63 @@ def test_banner_dismiss_from_the_keyboard(page, playground_url):
     good.get_by_role("button", name="Dismiss").focus()
     page.keyboard.press("Enter")
     expect(good).to_have_count(0)
+
+
+def test_notification_bell_panel_and_mark_read(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    _impersonate(page, playground_url, "viewer")
+    badge = page.locator(".gth-notification-bell .gth-notification-badge")
+    expect(badge).to_contain_text("2")
+    page.click(".gth-notification-bell > button")
+    panel = page.locator(".gth-notification-panel")
+    expect(panel.locator(".gth-notification")).to_have_count(3)
+    expect(panel.locator(".gth-notification-unread")).to_have_count(2)
+    # Marking one read updates the badge and the open panel, with no page load.
+    panel.locator(".gth-notification-unread .gth-notification-read button").first.click()
+    expect(badge).to_contain_text("1")
+    expect(panel.locator(".gth-notification-unread")).to_have_count(1)
+    # The full page: "Mark all read" empties the unread view and hides the badge.
+    page.goto(f"{playground_url}/notifications?unread=1")
+    expect(page.locator("#gth-notifications-list .gth-notification")).to_have_count(1)
+    page.click(".gth-notifications-read-all button")
+    expect(page.locator("#gth-notifications-list")).to_contain_text("No unread notifications.")
+    expect(badge).to_have_text("")
+    page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_forgot_password_through_the_outbox(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    page.goto(f"{playground_url}/login-demo")
+    page.click(".gth-auth-forgot a")
+    expect(page).to_have_url(f"{playground_url}/forgot-password-demo")
+    expect(page.locator("#gth-field-identifier")).to_be_focused()
+    page.fill("#gth-field-identifier", "demo")
+    page.click("form[action='/forgot-password-demo'] button[type=submit]")
+    expect(page.locator(".gth-auth-card")).to_contain_text("Check your email")
+    page.goto(f"{playground_url}/demo/outbox")
+    page.locator("[data-outbox-link]").first.click()
+    page.fill("#gth-field-password", "brand-new-1")
+    page.fill("#gth-field-password_confirm", "brand-new-1")
+    page.click(".gth-auth-card button[type=submit]")
+    expect(page.locator(".gth-auth-card")).to_contain_text("Your password has been changed.")
+    page.click(".gth-auth-card a.btn")  # Sign in
+    page.fill("#gth-field-user_id", "demo")
+    page.fill("#gth-field-password", "brand-new-1")
+    page.click("form[action='/login-demo'] button[type=submit]")
+    expect(page).to_have_url(f"{playground_url}/")
+    page.request.post(f"{playground_url}/demo/reset")
+
+
+def test_the_user_menu_follows_the_profiles_display_name(page, playground_url):
+    page.request.post(f"{playground_url}/demo/reset")
+    _impersonate(page, playground_url, "admin")
+    expect(page.locator(".gth-user-menu .gth-avatar")).to_have_text("AA")
+    expect(page.locator(".gth-user-menu-name")).to_have_text("Ada Admin")
+    page.goto(f"{playground_url}/settings")
+    page.fill("#gth-settings-profile [name='display_name']", "Grace Hopper")
+    page.click("#gth-settings-profile button[type=submit]")
+    expect(page.locator(".toast")).to_contain_text("Profile saved")
+    page.reload()
+    expect(page.locator(".gth-user-menu .gth-avatar")).to_have_text("GH")
+    expect(page.locator(".gth-user-menu-name")).to_have_text("Grace Hopper")
+    page.request.post(f"{playground_url}/demo/reset")

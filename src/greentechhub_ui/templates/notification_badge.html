@@ -1,0 +1,7 @@
+{#- notification_badge.html — the unread count for gth_nav_badge's badge_url
+    (the bell, or a nav item from notifications_nav_item): nothing at 0, so
+    the badge disappears; "99+" past 99. Context: count. -#}
+{%- from "badge.html" import gth_badge -%}
+{%- if count|default(0) -%}
+{{ gth_badge("99+" if count > 99 else count|string, "bad") }}<span class="visually-hidden"> unread</span>
+{%- endif -%}

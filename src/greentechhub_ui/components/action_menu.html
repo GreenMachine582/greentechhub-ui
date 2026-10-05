@@ -25,6 +25,9 @@
       hx-swap="none" (answer with HX-Trigger: a toast and a refresh event,
       as for gth_data_table's bulk actions). confirm → hx-confirm (buttons
       only). A url with a javascript:/data:/vbscript: scheme is dropped.
+      danger → red, as an icon button and as a menu item alike (an icon
+      button uses gth-action-menu-danger, since button_class's text-body
+      utility would otherwise win over text-danger).
     label: the row's name, for "Actions for <label>" and "Edit <label>".
     inline: how many leading actions show as icon buttons before the menu
       (dividers don't count): 0 = all in the menu, None = all inline, no ⋯.
@@ -46,7 +49,7 @@
 <div class="d-inline-flex align-items-center gap-1 gth-action-menu {{ menu_class }}">
   {%- for it in shown %}
   {%- set name = it.label ~ (" " ~ label if label else "") %}
-  <{{ _gth_action_tag(it) }} class="{{ button_class }} gth-action-menu-button{% if it.danger %} text-danger{% endif %}{% if it.disabled %} disabled{% endif %}"
+  <{{ _gth_action_tag(it) }} class="{{ button_class }} gth-action-menu-button{% if it.danger %} gth-action-menu-danger{% endif %}{% if it.disabled %} disabled{% endif %}"
     {%- if _gth_action_tag(it) == "button" %} type="button"{% endif %}
     {%- if it.icon %} aria-label="{{ name|e }}" title="{{ name|e }}"{% endif %}{{ _gth_action_attrs(it) }}>
     {%- if it.icon %}<i class="bi bi-{{ it.icon }}" aria-hidden="true"></i>{% else %}{{ it.label }}{% endif -%}
