@@ -65,6 +65,11 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
   on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
   Update `VENDORED.md` hash/size when it lands
 
+### Development
+- [ ] `chore(dev): local GTH mode` — `scripts/use-local-gth.sh` and a CONTRIBUTING pointer, as in
+  greentechhub-fastapi, once greentechhub-core's `scripts/local_gth.py` is on `dev` (greentechhub-core#58); links
+  the sibling core and fastapi checkouts into `.venv`
+
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
