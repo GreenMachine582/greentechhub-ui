@@ -1113,7 +1113,7 @@ def test_export_link_follows_filters_and_sort_and_downloads(page, playground_url
         export.click()
     download = info.value
     assert download.suggested_filename == "records.csv"
-    lines = Path(download.path()).read_text(encoding="utf-8").splitlines()
+    lines = Path(download.path()).read_text(encoding="utf-8-sig").splitlines()
     assert lines[0] == "ID,Name,Category,Stock,Price,Added"
     assert len(lines) == 31 and all(",Board," in line for line in lines[1:])
 

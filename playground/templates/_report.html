@@ -1,0 +1,18 @@
+{#- /demo/report's pane: the filter bar re-requests this partial into
+    #report-pane; the CSV link carries the chosen year. -#}
+{% from "table.html" import gth_filter_bar, gth_table %}
+{% from "select.html" import gth_select %}
+{% from "stat_card.html" import gth_stat_grid %}
+{% from "amount.html" import gth_amount %}
+{% call gth_filter_bar("/demo/report", "#report-pane", export_url="/demo/report.csv?fy=" ~ fy) %}
+  {{ gth_select("fy", "Financial year", fy_options, value=fy, id="report-fy", field_class="mb-0") }}
+{% endcall %}
+{{ gth_stat_grid([
+    {"label": "Net gain/loss, FY " ~ fy|fy, "value": gth_amount(total)},
+    {"label": "Stocks sold", "value": rows|length},
+  ], cols=3) }}
+{% call gth_table(["Stock", "Units", "Gain/loss"], table_class="table-sm mt-3") %}
+  {% for r in rows %}
+  <tr><td>{{ r.symbol }}</td><td>{{ r.units|number }}</td><td class="text-end">{{ gth_amount(r.gain) }}</td></tr>
+  {% endfor %}
+{% endcall %}

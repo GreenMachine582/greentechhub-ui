@@ -5,6 +5,7 @@
 {% from "badge.html" import gth_badge %}
 {% from "description_list.html" import gth_description_list %}
 {% from "progress.html" import gth_progress %}
+{% from "skeleton.html" import gth_skeleton %}
 
 {% block page %}
 <section class="mb-5" id="table">
@@ -122,7 +123,7 @@
 </section>
 
 <section class="mb-5" id="formatting">
-  <h2 class="h4">Formatting filters: money, number, date, datetime</h2>
+  <h2 class="h4">Formatting filters: money, number, date, datetime, tone, fy</h2>
   <p class="text-secondary small">Registered by <code>install()</code>, unless the app already has a filter of that
     name. <code>None</code> and <code>""</code> render nothing, and anything unparseable renders as-is.
     <code>date</code> and <code>datetime</code> follow the viewer's date format, timezone and time format, and
@@ -142,12 +143,24 @@
     ('{{ "2025-02-05T23:30:00+00:00"|date }}', "2025-02-05T23:30:00+00:00"|date),
     ('{{ "2025-02-05T23:30:00+00:00"|datetime }}', "2025-02-05T23:30:00+00:00"|datetime),
     ("{{ none|money }}", none|money),
+    ("{{ -12.5|tone }}", -12.5|tone),
+    ("{{ -0.004|tone(places=2) }}", -0.004|tone(places=2)),
+    ("{{ 2024|fy }}", 2024|fy),
+    ("{{ 2024|fy(start_month=1) }}", 2024|fy(start_month=1)),
   ] %}
   {% call gth_table(["Template", "Output"], table_class="table-sm w-auto") %}
     {% for expr, out in examples %}
     <tr><td><code>{{ expr }}</code></td><td class="font-monospace">{{ out if out else "(empty)" }}</td></tr>
     {% endfor %}
   {% endcall %}
+</section>
+
+<section class="mb-5" id="report">
+  <h2 class="h4">gth-filter-bar + gth-download-button + gth-stat-grid + gth-amount</h2>
+  <p class="text-secondary small">A report pane under a plain <code>gth_table</code>, with no <code>TableState</code>:
+    the year select re-requests the pane, and the CSV link follows the year. The CSV comes from
+    greentechhub-fastapi's <code>csv_download</code>.</p>
+  <div id="report-pane" hx-get="/demo/report" hx-trigger="load">{{ gth_skeleton(4) }}</div>
 </section>
 
 <div class="row g-3 mb-5">

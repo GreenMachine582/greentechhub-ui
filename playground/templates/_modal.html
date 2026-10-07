@@ -1,4 +1,18 @@
-{% from "modal.html" import gth_modal %}
-{% call gth_modal("server-modal", "Server-rendered modal") %}
-  {% include "_modal_form.html" %}
+{#- The server-rendered modal and its 422 re-render in one template:
+    gth_modal_form renders the whole modal, or just the form with
+    form_only=True (the POST's validation error). -#}
+{% from "form.html" import gth_modal_form %}
+{% from "combobox.html" import gth_combobox %}
+{% from "segmented.html" import gth_segmented %}
+{% from "record_picker.html" import gth_record_picker %}
+{% call gth_modal_form("server-modal", "Server-rendered modal", "/demo/modal", form_only=form_only|default(false)) %}
+  {{ gth_combobox("widget", "Widget", "/demo/widgets", value=widget_value, value_label=widget_label,
+      errors=errors.get("widget"), placeholder="Search widgets…") }}
+  {{ gth_record_picker("record", "Part (optional)", "/demo/record-picker?for=modal",
+      value=record_value, value_label=record_label, placeholder="Choose a part…",
+      help_text="Opens a searchable, sortable, paged table.") }}
+  {{ gth_segmented("size", [
+      {"value": "S", "label": "Small", "icon": "dash-circle"},
+      {"value": "L", "label": "Large", "style": "btn-outline-warning", "icon": "plus-circle"},
+    ], value=size, label="Size") }}
 {% endcall %}
