@@ -1069,7 +1069,7 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers four filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers six filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
@@ -1077,6 +1077,16 @@ that the app already registered**, so an app's own `money` wins.
 {{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
 {{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
 {{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
+{{ value|tone(places=None) }}             {# 12.5 → text-success · -3 → text-danger · 0 → "" (v0.16) #}
+{{ fy|fy(start_month=7) }}                {# 2024 → 2024–25 · 1999 → 1999–00 · start_month=1 → 2024 (v0.16) #}
+```
+
+```jinja
+{# amount.html (v0.16) — needs the money / number / tone filters #}
+gth_amount(value, kind="money", places=None, amount_class="")
+{# <span class="gth-amount text-success">$1,234.50</span>: coloured by sign, plain at zero.
+   kind "number" uses the number filter. The tone is judged at the shown precision,
+   so -0.004 as "$0.00" isn't red. #}
 ```
 
 - **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
@@ -1085,6 +1095,9 @@ that the app already registered**, so an app's own `money` wins.
   binary expansion. There's no need for PyFinBot's old `|string|qty` dance.
 - **`money`:** rounds half-up (`2.675` → `$2.68`), puts the sign before the symbol, and never shows `-$0.00`.
   `number(places=n)` gives fixed decimals the same way.
+- **`tone` and `fy` (v0.16):** `tone` is the colour class for a gain or loss (`gth_amount` wraps it). `fy` is
+  greentechhub-core's `dates.fiscal_year_label`, copied because this package doesn't import core at runtime; a test
+  keeps the two in step.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
 - **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
@@ -1110,6 +1123,8 @@ format_date(value, fmt=None, *, date_format=None, tz=None)
 format_datetime(value, fmt=None, *, date_format=None, time_format=None, tz=None)
 money(value, symbol="$", places=2, *, number_format=None)
 number(value, places=None, *, number_format=None)
+tone(value, places=None)
+fiscal_year_label(fy, start_month=7)
 ```
 
 The plain functions never read `user_settings`, so a CSV export keeps `1,234.56` unless you pass `number_format`.

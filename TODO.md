@@ -70,10 +70,6 @@ A review of PyFinBot's templates found markup it repeats that this package could
 assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopts them.
 
 - [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
-  4. A signed-amount tone — a `tone` filter or `gth_amount(value, kind="money")` adding `text-success`/
-     `text-danger`, next to `formatting.py`'s `money` (PyFinBot hand-writes it 3×).
-  5. A `fy` filter giving the same label as core's `fiscal_year_label` (ui doesn't import core at runtime, so a
-     test pins the two together; PyFinBot registers its own today).
   6. `gth_stat_grid(cards, cols=…)` for the `row`/`col` wrappers around `gth_stat_card` (4 PyFinBot pages).
 
 ### Ideas — not scheduled
