@@ -65,6 +65,9 @@ gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutra
 {# label/value/delta are trusted HTML (| safe) — same trust model as gth-card's
    title/footer. delta_tone/value_tone are "good"|"bad"|"neutral" — deliberately
    not sign-inferred, since "lower is better" is a per-consumer judgment call. #}
+gth_stat_grid(cards, cols=4, grid_class="mb-3")   {# v0.16 #}
+{# cards: dicts of gth_stat_card's kwargs, in a row g-3 grid: two per row on phones,
+   `cols` (1, 2, 3, 4 or 6) from md up. #}
 
 {# table.html — two composable macros, not one, so a table can be split across
    a full-page render and an HTMX partial that only swaps the <tbody> #}

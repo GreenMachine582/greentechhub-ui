@@ -10,3 +10,16 @@
   {% endif %}
 </div>
 {% endmacro %}
+
+{% macro gth_stat_grid(cards, cols=4, grid_class="mb-3") %}
+{#- gth_stat_cards in a responsive grid (v0.16): two per row on phones,
+    `cols` per row from md up (1, 2, 3, 4 or 6). cards: dicts of
+    gth_stat_card's keyword arguments, e.g. {"label": "Holdings",
+    "value": total|money, "value_tone": "good"}. -#}
+{%- set md = 12 // (cols if cols in (1, 2, 3, 4, 6) else 4) %}
+<div class="row g-3 gth-stat-grid{% if grid_class %} {{ grid_class }}{% endif %}">
+  {%- for card in cards %}
+  <div class="col-6 col-md-{{ md }}">{{ gth_stat_card(**card) }}</div>
+  {%- endfor %}
+</div>
+{%- endmacro %}
