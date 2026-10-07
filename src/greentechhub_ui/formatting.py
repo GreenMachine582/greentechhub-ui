@@ -1,4 +1,4 @@
-"""money / number / date — the display formatting every service was writing
+"""money / number / date / tone / fy — the display formatting every service was writing
 as its own Jinja filters (upstreamed from PyFinBot's money/qty).
 
 install() registers them as filters — {{ price|money }}, {{ units|number }},
@@ -200,5 +200,35 @@ def number_filter(context, value, places: int | None = None, **options) -> str:
     return number(value, places, **options)
 
 
+def tone(value, places: int | None = None) -> str:
+    """The text colour class for a signed amount: "text-success" above zero,
+    "text-danger" below, "" at zero or for anything unparseable (v0.16).
+    places: judge the value as rounded to that many decimals, so -0.004
+    shown as "$0.00" isn't red."""
+    d = _decimal(value) if value is not None and value != "" else None
+    if d is None:
+        return ""
+    if places is not None:
+        d = _quantize(d, places)
+    return "text-success" if d > 0 else "text-danger" if d < 0 else ""
+
+
+def fiscal_year_label(fy, start_month: int = 7) -> str:
+    """FY 2024 → "2024–25" (an en dash and the two-digit end year; "1999–00"
+    across a century), or "2024" when start_month=1, the calendar year:
+    greentechhub-core's dates.fiscal_year_label, which this package doesn't
+    import at runtime (a test keeps the two in step). "" for None or "", and
+    the value as a string when it isn't a year (v0.16)."""
+    if fy is None or fy == "":
+        return ""
+    try:
+        year = int(fy)
+    except (TypeError, ValueError):
+        return str(fy)
+    if start_month == 1:
+        return str(year)
+    return f"{year}–{(year + 1) % 100:02d}"
+
+
 FILTERS = {"money": money_filter, "number": number_filter, "date": date_filter,
-           "datetime": datetime_filter}
+           "datetime": datetime_filter, "tone": tone, "fy": fiscal_year_label}

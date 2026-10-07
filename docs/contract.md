@@ -143,7 +143,10 @@ default (fastapi v0.11+).
 shown under `user_id`, `password` or `password_confirm`; any other key as a danger `gth_alert`) and `user_id` (a
 prefill) after a refused sign-up. Optional: `register_title` (`Create account`), `register_subtitle`, `user_id_label`
 (`User ID`), `register_help` and `register_links` (as `login_links`). It posts `user_id`, `password` and
-`password_confirm`; the passwords are never filled back in.
+`password_confirm`; the passwords are never filled back in. With `ask_email` (v0.16, fastapi v0.13+) it also posts
+`email` and shows an Email field, required unless `email_optional`, with `email` kept and `errors["email"]` under it.
+With `verify_sent`, the sign-up worked and a confirmation link went to `email`: the page says "Check your email"
+instead of showing the form, with a "Send it again" link to `verify_resend_url`.
 
 **Password reset and email verification pages (v0.15)** — matching greentechhub-fastapi's `PasswordResetViews` and
 `EmailVerificationViews`. Each takes an optional title (`forgot_title`, `reset_title`, `verify_title`,
@@ -180,6 +183,7 @@ token in the page's `hx-headers` instead.
 | `logout_url` | where the user menu's Log out button POSTs (a plain form, like `LoginViews`' `POST /logout`) |
 | `user_display_name` | (v0.15) the user menu's name instead of the user ID, with its initials as the avatar. greentechhub-fastapi's `settings_context` passes the profile's display name (fastapi v0.12+) |
 | `notifications_url` | (v0.15) the notification centre's root, e.g. `/notifications`: the navbar shows a bell with its live unread count (`{url}/badge`) and panel (`{url}/panel`). See [components.md](components.md#notification-centre-v015) |
+| `notifications_badge_url` / `notifications_panel_url` | (v0.16) the bell's badge and panel URLs when they aren't `{notifications_url}/badge` and `/panel`, for an adapter whose routes differ |
 
 `nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
 

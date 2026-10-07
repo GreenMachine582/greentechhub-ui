@@ -33,7 +33,7 @@ def test_every_template_compiles():
                  "_pagination_list.html",
                  "_form_demo.html",
                  "tables.html", "_records_table.html", "_multi_form.html",
-                 "_record_picker_panel.html", "_modal_form.html"]:
+                 "_record_picker_panel.html", "_modal.html", "_report.html"]:
         templates.env.get_template(name)
 
 
@@ -59,11 +59,12 @@ def test_pages_render_every_component():
     assert "gth-empty-state" in html["layout"]
     assert "gth-badge" in html["layout"] and "gth-tabs" in html["layout"]
     assert "gth-skeleton" in html["layout"]
-    assert "gth-table" in html["data"]
+    assert "gth-table" in html["data"] and 'id="report-pane"' in html["data"]
+    assert "gth-stat-grid" in html["layout"]
     assert "gth-pagination" in html["data"]
     assert "gth-form-field" in html["forms"]
     assert "gth-multiselect" in html["forms"] and "gth-record-picker" in html["forms"]
-    assert "gth-toast" in html["feedback"]
+    assert "gth-toast" in html["feedback"] and "gth-result-panel" in html["feedback"]
     assert "gth-confirm-delete" in html["overlays"] and "gth-modal" in html["overlays"]
     # Every page sits in the sidebar layout.
     assert all('class="gth-shell"' in page for page in html.values())

@@ -1,0 +1,14 @@
+{% macro gth_amount(value, kind="money", places=None, amount_class="") %}
+{#- A signed amount coloured by its sign (v0.16): green above zero, red
+    below, plain at zero. kind "money" formats with the money filter (places
+    default 2), "number" with the number filter. Needs install()'s filters
+    (or the app's own money / number / tone). -#}
+{%- if kind == "money" %}
+{%- set places = 2 if places is none else places %}
+{%- set text = value|money(places=places) %}
+{%- else %}
+{%- set text = value|number(places=places) %}
+{%- endif %}
+{%- set colour = value|tone(places=places) %}
+<span class="gth-amount{% if colour %} {{ colour }}{% endif %}{% if amount_class %} {{ amount_class }}{% endif %}">{{ text }}</span>
+{%- endmacro %}

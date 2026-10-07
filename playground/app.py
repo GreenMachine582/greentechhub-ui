@@ -10,11 +10,10 @@ directly:
 """
 
 import asyncio
-import csv
-import io
 import json
 import re
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
@@ -32,12 +31,15 @@ from greentechhub_core.settings.builtins import (
 )
 from greentechhub_fastapi import register_email
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
+from greentechhub_fastapi.downloads import csv_download, csv_value
+from greentechhub_fastapi.email import email_looks_valid
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
 from starlette.datastructures import UploadFile
 
 import greentechhub_ui
+from greentechhub_ui.formatting import fiscal_year_label
 from greentechhub_ui.htmx import trigger, wants_fragment
 
 _here = Path(__file__).parent
@@ -594,9 +596,7 @@ async def settings_demo_profile(request: Request):
     errors: dict[str, list[str]] = {}
     if len(values["display_name"]) > 80:
         errors["display_name"] = ["Use at most 80 characters."]
-    local, at, domain = values["email"].partition("@")
-    if values["email"] and (not (local and at and domain) or "@" in domain
-                            or any(c.isspace() for c in values["email"])):
+    if values["email"] and not email_looks_valid(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
         return _render_section(request, _profile_section(values, errors), status_code=422)
@@ -747,6 +747,39 @@ async def progress_start(request: Request):
     """Restart the fake sync: the returned bar carries poll_url, so it polls."""
     PROGRESS_DEMO["value"] = 0
     return _progress_live(request)
+
+
+# /demo/report: realised gains per financial year, for the data page's report
+# pane (gth_filter_bar + gth_stat_grid + gth_amount) and its CSV.
+REPORT = {
+    2023: [{"symbol": "BHP", "units": Decimal("120"), "gain": Decimal("842.50")},
+           {"symbol": "CBA", "units": Decimal("15"), "gain": Decimal("-131.20")}],
+    2024: [{"symbol": "WES", "units": Decimal("40"), "gain": Decimal("1210.00")},
+           {"symbol": "TLS", "units": Decimal("1000"), "gain": Decimal("-385.75")},
+           {"symbol": "CSL", "units": Decimal("2.5"), "gain": Decimal("0.00")}],
+}
+
+
+def _report_year(fy: str) -> int:
+    return int(fy) if fy.isdigit() and int(fy) in REPORT else max(REPORT)
+
+
+@app.get("/demo/report", response_class=HTMLResponse)
+async def demo_report(request: Request, fy: str = ""):
+    year = _report_year(fy)
+    rows = REPORT[year]
+    return templates.TemplateResponse(request, "_report.html", {
+        "fy": year, "rows": rows, "total": sum(r["gain"] for r in rows),
+        "fy_options": [(y, fiscal_year_label(y)) for y in sorted(REPORT, reverse=True)],
+    })
+
+
+@app.get("/demo/report.csv")
+async def demo_report_csv(fy: str = ""):
+    year = _report_year(fy)
+    return csv_download([["Stock", "Units", "Gain/loss"],
+                         *([r["symbol"], csv_value(r["units"]), csv_value(r["gain"])]
+                           for r in REPORT[year])], f"gains-{year}.csv")
 
 
 @app.get("/demo/progress", response_class=HTMLResponse)
@@ -917,12 +950,15 @@ async def login_demo_submit(request: Request, user_id: str = Form(""), password:
 # followed. No base_url: the links stay relative, which works on any port.
 OUTBOX = InMemoryEmailSender()
 register_email(app, None, sender=OUTBOX)
-DEMO_EMAILS = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_EMAILS_INITIAL = {"demo": "demo@example.com", "newbie": "newbie@example.com"}
+DEMO_EMAILS: dict[str, str] = {}
 DEMO_PASSWORDS: dict[str, str] = {}
 DEMO_UNVERIFIED: set[str] = set()
 
 
 def _reset_accounts() -> None:
+    DEMO_EMAILS.clear()
+    DEMO_EMAILS.update(DEMO_EMAILS_INITIAL)
     DEMO_PASSWORDS.clear()
     DEMO_PASSWORDS.update({"demo": "demo", "newbie": "newbie"})
     DEMO_UNVERIFIED.clear()
@@ -1001,7 +1037,12 @@ REGISTER_DEMO = {
     "csrf_token": DEMO_CSRF_TOKEN,
     "login_url": "/login-demo",
     "min_password_length": 8,
-    "register_help": "Nothing is stored: any new user ID signs straight in.",
+    # RegisterViews' ask_email with require_email off: give an email to see the
+    # confirmation step (sign_in_before_verified=False), or leave it empty.
+    "ask_email": True,
+    "email_optional": True,
+    "register_help": "Without an email you're signed straight in. Give one to see the confirmation "
+                     "step: the link lands in the outbox (/demo/outbox).",
     "register_links": [{"label": "Playground", "url": "/"}],
 }
 
@@ -1013,26 +1054,40 @@ async def register_demo(request: Request):
 
 @app.post("/register-demo", response_class=HTMLResponse)
 async def register_demo_submit(request: Request, user_id: str = Form(""), password: str = Form(""),
-                               password_confirm: str = Form(""), csrf_token: str = Form("")):
-    user_id = user_id.strip()
+                               password_confirm: str = Form(""), email: str = Form(""),
+                               csrf_token: str = Form("")):
+    user_id, email = user_id.strip(), email.strip()
     errors: dict[str, list[str]] = {}
     if csrf_token != DEMO_CSRF_TOKEN:
         return templates.TemplateResponse(request, "register_page.html", {
-            **REGISTER_DEMO, "user_id": user_id, "errors": {"__all__": [CSRF_REFUSED]},
+            **REGISTER_DEMO, "user_id": user_id, "email": email,
+            "errors": {"__all__": [CSRF_REFUSED]},
         }, status_code=403)
+    if email and not email_looks_valid(email):
+        errors["email"] = ["Enter an email address, like name@example.com."]
     if not user_id:
         errors["user_id"] = ["Choose a user ID."]
-    elif user_id == "demo":
+    elif user_id in DEMO_PASSWORDS:
         errors["user_id"] = ["That user ID is taken."]
     if len(password) < REGISTER_DEMO["min_password_length"]:
         errors["password"] = [f"Use at least {REGISTER_DEMO['min_password_length']} characters."]
     elif password != password_confirm:
         errors["password_confirm"] = ["The passwords don't match."]
-    if not errors:
+    if errors:
+        return templates.TemplateResponse(request, "register_page.html", {
+            **REGISTER_DEMO, "user_id": user_id, "email": email, "errors": errors,
+        }, status_code=422)
+    if not email:
         return RedirectResponse("/", status_code=303)
+    # What RegisterViews does with a verification and sign_in_before_verified=False:
+    # the account exists, unconfirmed, and the link goes to the outbox.
+    DEMO_EMAILS[user_id], DEMO_PASSWORDS[user_id] = email, password
+    DEMO_UNVERIFIED.add(user_id)
+    await DEMO_VERIFICATION.send_link(request, user_id, email)
     return templates.TemplateResponse(request, "register_page.html", {
-        **REGISTER_DEMO, "user_id": user_id, "errors": errors,
-    }, status_code=422)
+        **REGISTER_DEMO, "verify_sent": True, "email": email,
+        "verify_resend_url": DEMO_VERIFICATION.resend_url,
+    })
 
 
 @app.get("/roles", response_class=HTMLResponse)
@@ -1385,14 +1440,9 @@ async def tables_export(request: Request):
     state = _records_state(request.query_params, user_settings=_preferences(request),
                            mode="none", scroll=False, base_url="/tables")
     rows, _ = _query_records(state)
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(["ID", "Name", "Category", "Stock", "Price", "Added"])
-    for r in rows:
-        writer.writerow([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
-                         r["added"].isoformat()])
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="records.csv"'})
+    return csv_download([["ID", "Name", "Category", "Stock", "Price", "Added"],
+                         *([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
+                            csv_value(r["added"])] for r in rows)], "records.csv")
 
 
 @app.get("/tables", response_class=HTMLResponse)
@@ -1648,7 +1698,8 @@ async def demo_modal_submit(request: Request, widget: str = Form(""), size: str 
         context = _modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
                                      widget_search, record, record_label)
         # Re-render just the form (hx-target="this"); the modal stays open.
-        return templates.TemplateResponse(request, "_modal_form.html", context, status_code=422)
+        return templates.TemplateResponse(request, "_modal.html", {**context, "form_only": True},
+                                          status_code=422)
     part = _record(record)
     return hx_response(greentechhub_ui.toast(
         f"Saved {WIDGETS[int(widget) - 1]} ({size})" + (f" for {part['name']}" if part else ""),

@@ -21,7 +21,7 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
   `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
   and reports until real Grafana panels exist
-- [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's planned audit log; pairs with the
+- [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's audit log (`AuditStore`, core v0.10); pairs with the
   notification centre
 - [ ] `gth_embed_card` — iframe card with loading and error states, passing the current theme to Grafana panels —
   PyFinBot's Grafana slot
@@ -101,8 +101,9 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-- [ ] v0.14 is adopted, except the report panes' FY selects: both are `name="fy"` in tab panes that stay in the DOM,
-  so they wait for the next release with `gth_select(id=)` (#71, on dev). Tracked in PyFinBot's `todo.md`
+Nothing open here: it pins v0.15 and uses `gth_select(id=)` on the report panes. Adopting v0.16's macros
+(`gth_result_panel`, `gth_filter_bar`, `gth_modal_form`, `gth_amount`, `|fy`, `gth_stat_grid`) and the templates
+still hand-building markup an existing macro covers is tracked in PyFinBot's `todo.md`.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

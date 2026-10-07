@@ -163,6 +163,7 @@ def test_modal_submit_without_pick_rerenders_form_with_422():
     response = _run(_post("/demo/modal", data=data))
     assert response.status_code == 422
     assert response.text.lstrip().startswith("<form")
+    assert "gth-modal" not in response.text  # just the form, swapped into the open modal
     assert "Pick a widget from the list." in response.text
     assert 'value="Wid"' in response.text
 
@@ -211,6 +212,31 @@ def test_tables_date_range_filter():
 
 
 CSRF = {"csrf_token": "playground-demo-token"}
+
+
+def test_register_demo_with_an_email_confirms_before_sign_in():
+    async def flow():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            form = {"user_id": "ada", "password": "long-enough",
+                    "password_confirm": "long-enough", **CSRF}
+            bad = await client.post("/register-demo", data={**form, "email": "nope"})
+            assert bad.status_code == 422 and 'value="nope"' in bad.text
+            sent = await client.post("/register-demo", data={**form, "email": "ada@example.com"})
+            assert sent.status_code == 200 and "Check your email" in sent.text
+            link = re.search(r"/verify-email-demo/\S+", playground_app.OUTBOX.outbox[-1].text)
+            login = {"user_id": "ada", "password": "long-enough", **CSRF}
+            assert (await client.post("/login-demo", data=login)).status_code == 403
+            assert "is confirmed" in (await client.get(link.group(0))).text
+            signed_in = await client.post("/login-demo", data=login, follow_redirects=False)
+            assert signed_in.status_code == 303
+            no_email = await client.post("/register-demo", follow_redirects=False,
+                                         data={**form, "user_id": "bea"})
+            assert no_email.status_code == 303
+            await client.post("/demo/reset")
+
+    _run(flow())
+    assert "ada" not in playground_app.DEMO_EMAILS
 
 
 def test_login_and_register_demos_refuse_a_missing_csrf_token():
@@ -299,12 +325,34 @@ def test_tables_export_csv_honours_filters_and_sort_not_paging():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     assert response.headers["content-disposition"] == 'attachment; filename="records.csv"'
-    lines = list(csv.reader(io.StringIO(response.text)))
+    assert response.content[:3] == bytes([0xEF, 0xBB, 0xBF])  # csv_download's BOM, for Excel
+    lines = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
     assert lines[0] == ["ID", "Name", "Category", "Stock", "Price", "Added"]
     rows = lines[1:]
     assert len(rows) == 30 and {r[2] for r in rows} == {"Cable"}
     prices = [float(r[4]) for r in rows]
     assert prices == sorted(prices, reverse=True)
+
+
+def test_report_pane_shows_the_year_with_amounts_and_its_csv_link():
+    pane = _run(_get("/demo/report", params={"fy": "2023"})).text
+    assert 'class="d-flex flex-wrap align-items-end gap-2 gth-filter-bar mb-3"' in pane
+    assert '<option value="2023" selected>2023–24</option>' in pane
+    assert 'href="/demo/report.csv?fy=2023" download>' in pane
+    assert "gth-stat-grid" in pane and "Net gain/loss, FY 2023–24" in pane
+    assert '<span class="gth-amount text-success">$711.30</span>' in pane  # the year's total
+    assert '<span class="gth-amount text-danger">-$131.20</span>' in pane
+    latest = _run(_get("/demo/report", params={"fy": "1999"})).text  # unknown: the latest year
+    assert '<option value="2024" selected>' in latest
+    assert '<span class="gth-amount">$0.00</span>' in latest
+
+
+def test_report_csv_is_a_download_with_plain_decimals():
+    response = _run(_get("/demo/report.csv", params={"fy": "2024"}))
+    assert response.headers["content-disposition"] == 'attachment; filename="gains-2024.csv"'
+    lines = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+    assert lines == [["Stock", "Units", "Gain/loss"], ["WES", "40", "1210"],
+                     ["TLS", "1000", "-385.75"], ["CSL", "2.5", "0"]]
 
 
 def test_tables_page_links_the_export_with_the_current_filters():
