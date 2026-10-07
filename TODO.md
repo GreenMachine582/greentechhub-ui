@@ -65,30 +65,11 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
   on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
   Update `VENDORED.md` hash/size when it lands
 
-### Development
-- [ ] `chore(dev): local GTH mode` — `scripts/use-local-gth.sh` and a CONTRIBUTING pointer, as in
-  greentechhub-fastapi and PyFinBot (core's `scripts/local_gth.py` is on `dev`); links the sibling core and fastapi
-  checkouts into `.venv`
-
 ### Leaner services — from the PyFinBot review (2026-10-07)
 A review of PyFinBot's templates found markup it repeats that this package could own, and two adapter
 assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopts them.
 
-- [ ] U1. `feat(notifications)`: `badge_url=`/`panel_url=` on `gth_notification_bell`
-  - **Why:** `components/notifications.html` builds `url ~ "/badge"` and `url ~ "/panel"`, exactly
-    greentechhub-fastapi's routes. A Django adapter would have to copy that URL shape.
-  - **Scope:** optional parameters, defaulting to today's behaviour.
-- [ ] U2. `fix(forms)`: `id=` on `gth_segmented` and `gth_switch`
-  - **Why:** v0.15 added the `id=` prefix to `gth_select`/`gth_form_field` only; the others still hard-code
-    `gth-field-{{ name }}` and collide when a page has two with the same name.
 - [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
-  1. `gth_result_panel(heading, badges, problems=None, error=None, link=None)` — an operation's result: an error
-     alert, or a card of count badges, a problems list (a `caller()` slot for a table) and a follow-up link.
-     PyFinBot's `_import_result.html` and `_sync_result.html` are the same card; it pairs with `gth_timeline`
-     later. Its `aria-live` target slot is repeated in 3 pages too.
-  2. `gth_filter_bar(url, target, export_url=None)` with a `caller()` slot for fields, plus a public
-     `gth_download_button(url, label="CSV")` — for panes that use a plain `gth_table`, not `TableState`.
-     PyFinBot's three report panes repeat it; the download markup exists privately in `table.html`.
   4. A signed-amount tone — a `tone` filter or `gth_amount(value, kind="money")` adding `text-success`/
      `text-danger`, next to `formatting.py`'s `money` (PyFinBot hand-writes it 3×).
   5. A `fy` filter giving the same label as core's `fiscal_year_label` (ui doesn't import core at runtime, so a
