@@ -70,10 +70,6 @@ A review of PyFinBot's templates found markup it repeats that this package could
 assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopts them.
 
 - [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
-  3. `gth_form_actions(submit_label="Save", cancel=True, busy_label=None)`, and optionally
-     `gth_modal_form(id, title, action, size=None)` (`gth_modal` + `gth_form` + the standard htmx attributes +
-     actions). The Cancel/Save row is in PyFinBot's stock and transaction forms and in this package's own
-     `confirm_delete.html`; `gth_modal` has no footer slot.
   4. A signed-amount tone — a `tone` filter or `gth_amount(value, kind="money")` adding `text-success`/
      `text-danger`, next to `formatting.py`'s `money` (PyFinBot hand-writes it 3×).
   5. A `fy` filter giving the same label as core's `fiscal_year_label` (ui doesn't import core at runtime, so a
