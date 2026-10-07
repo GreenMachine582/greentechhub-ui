@@ -95,3 +95,14 @@ def test_the_navbar_bell_needs_notifications_url_and_a_user():
         **_context(notifications_url="/notifications"))
     sidebar = shell.render(**_context(current_user=USER, notifications_url="/n", layout="sidebar"))
     assert 'hx-get="/n/badge"' in sidebar
+
+
+def test_the_bell_takes_its_badge_and_panel_urls():
+    shell = _env().get_template("app.html")
+    for layout in ("navbar", "sidebar"):
+        html = shell.render(**_context(
+            current_user=USER, notifications_url="/inbox/", layout=layout,
+            notifications_badge_url="/inbox/count/", notifications_panel_url="/inbox/dropdown/"))
+        assert 'hx-get="/inbox/count/"' in html
+        assert 'hx-get="/inbox/dropdown/"' in html
+        assert "/inbox//badge" not in html and "/inbox//panel" not in html

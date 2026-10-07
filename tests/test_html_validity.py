@@ -55,6 +55,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "select_id",
         "result_panel",
         "result_panel_error",
+        "segmented_id",
+        "switch_id",
         "form_field_id",
         "switch_with_off_value_and_errors",
         "settings_section_with_form",

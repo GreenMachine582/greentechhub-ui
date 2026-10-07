@@ -1388,6 +1388,34 @@ def test_select_id():
     assert "gth-field-" not in rendered
 
 
+def test_segmented_id():
+    rendered = _render(
+        """{% from "segmented.html" import gth_segmented %}
+        {{ gth_segmented("side",
+            [{"value": "buy", "label": "Buy"}, {"value": "sell", "label": "Sell"}], label="Side",
+            id="trade-side", help_text="Which way", errors=["Pick one"]) }}"""
+    )
+    assert_snapshot(rendered, "segmented_id")
+    assert 'id="trade-side-label"' in rendered
+    assert 'aria-describedby="trade-side-help trade-side-error"' in rendered
+    assert 'name="side" value="buy"\n      id="trade-side-1"' in rendered
+    assert '<label class="btn gth-segmented-option" for="trade-side-2">' in rendered
+    assert "gth-field-" not in rendered
+
+
+def test_switch_id():
+    rendered = _render(
+        """{% from "chips.html" import gth_switch %}
+        {{ gth_switch("active", "Active", id="filter-active", help_text="Only open",
+            errors=["Required"]) }}"""
+    )
+    assert_snapshot(rendered, "switch_id")
+    assert 'role="switch" id="filter-active" name="active"' in rendered
+    assert '<label class="form-check-label" for="filter-active">' in rendered
+    assert 'aria-describedby="filter-active-help filter-active-error"' in rendered
+    assert "gth-field-" not in rendered
+
+
 def test_form_field_id():
     rendered = _render(
         """{% from "form.html" import gth_form_field %}
