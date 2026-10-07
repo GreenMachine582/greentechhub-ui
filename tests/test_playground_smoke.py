@@ -63,7 +63,7 @@ def test_pages_render_every_component():
     assert "gth-pagination" in html["data"]
     assert "gth-form-field" in html["forms"]
     assert "gth-multiselect" in html["forms"] and "gth-record-picker" in html["forms"]
-    assert "gth-toast" in html["feedback"]
+    assert "gth-toast" in html["feedback"] and "gth-result-panel" in html["feedback"]
     assert "gth-confirm-delete" in html["overlays"] and "gth-modal" in html["overlays"]
     # Every page sits in the sidebar layout.
     assert all('class="gth-shell"' in page for page in html.values())

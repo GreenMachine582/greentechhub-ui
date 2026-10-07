@@ -1,3 +1,6 @@
+{% from "busy_button.html" import gth_busy_button %}
+{% from "modal.html" import gth_modal %}
+
 {% macro gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="", form_attrs=None) %}
 <form method="{{ method }}" action="{{ action }}" class="gth-form {{ form_class }}" novalidate
   {% if form_attrs %}{% for k, v in form_attrs.items() %}{{ k|e }}="{{ v|e }}" {% endfor %}{% endif %}>
@@ -68,4 +71,55 @@
     gth_csrf_field(csrf_token|default(none)). htmx requests carry one in the
     page's hx-headers instead. -#}
 {%- if token %}<input type="hidden" name="{{ name|e }}" value="{{ token|e }}">{% endif -%}
+{%- endmacro %}
+
+{% macro gth_form_actions(submit_label="Save", cancel=True, busy_label=None, submit_class="btn-primary", cancel_label="Cancel", submit_type="submit", submit_attrs=None, actions_class="") %}
+{#- A form's button row (v0.16), right-aligned: Cancel, then the submit.
+    cancel: True for a button closing the enclosing modal
+    (data-bs-dismiss="modal"), a URL for a link back, or False for none.
+    busy_label: the submit becomes a gth_busy_button(submit=True), showing
+    busy_label and a spinner while the form's request runs (the form needs
+    hx-disabled-elt="find button[type=submit]"; gth_modal_form sets it).
+    submit_type / submit_attrs: e.g. "button" with {"hx-delete": url} for a
+    button that acts by itself, as gth_confirm_delete's does; None values
+    are left out. -#}
+<div class="d-flex justify-content-end gap-2 gth-form-actions{% if actions_class %} {{ actions_class }}{% endif %}">
+  {%- if cancel is string %}
+  <a class="btn btn-secondary" href="{{ cancel|e }}">{{ cancel_label }}</a>
+  {%- elif cancel %}
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_label }}</button>
+  {%- endif %}
+  {%- if busy_label %}
+  {{ gth_busy_button(submit_label, busy_label, hx_attrs=submit_attrs, btn_class=submit_class, submit=True) }}
+  {%- else %}
+  <button type="{{ submit_type }}" class="btn {{ submit_class }}"
+    {%- for k, v in (submit_attrs or {}).items() if v is not none %} {{ k|e }}="{{ v|e }}"{% endfor %}>
+    {{- submit_label -}}
+  </button>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+{% macro gth_modal_form(id, title, action, size=None, submit_label="Save", busy_label=None, error=None, form_only=False, static_backdrop=False) %}
+{#- A form in a gth_modal (v0.16): gth_form posting to `action` with htmx
+    (hx-post, hx-target="this", hx-swap="outerHTML"), the {% call %} body's
+    fields, then gth_form_actions (Cancel closes the modal). On a 422,
+    render the same template with form_only=True: just the form, which
+    replaces itself inside the open modal with the errors shown. -#}
+{%- set form_attrs = {"hx-post": action, "hx-target": "this", "hx-swap": "outerHTML"} %}
+{%- if busy_label %}{% set _ = form_attrs.update({"hx-disabled-elt": "find button[type=submit]"}) %}{% endif %}
+{%- set body = caller() %}
+{%- if form_only %}
+{% call gth_form(action, error=error, form_attrs=form_attrs) %}
+  {{- body }}
+  {{ gth_form_actions(submit_label, busy_label=busy_label) }}
+{% endcall %}
+{%- else %}
+{% call gth_modal(id, title, size=size, static_backdrop=static_backdrop) %}
+{% call gth_form(action, error=error, form_attrs=form_attrs) %}
+  {{- body }}
+  {{ gth_form_actions(submit_label, busy_label=busy_label) }}
+{% endcall %}
+{% endcall %}
+{%- endif %}
 {%- endmacro %}

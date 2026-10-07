@@ -150,6 +150,36 @@ gth_modal(id, title, size=None, static_backdrop=False)
 gth_confirm_delete(id, target_url, item_label, hx_target=None)
 ```
 
+### Form actions and modal forms (v0.16)
+
+```jinja
+{# form.html #}
+gth_form_actions(submit_label="Save", cancel=True, busy_label=None, submit_class="btn-primary",
+                 cancel_label="Cancel", submit_type="submit", submit_attrs=None, actions_class="")
+{# The right-aligned Cancel + submit row. cancel: True closes the enclosing modal, a URL is a
+   link back, False leaves it out. busy_label: a gth_busy_button(submit=True) instead (the form
+   needs hx-disabled-elt="find button[type=submit]"). submit_type/submit_attrs: e.g. "button"
+   with {"hx-delete": url}, as gth_confirm_delete uses it; None values are left out. #}
+gth_modal_form(id, title, action, size=None, submit_label="Save", busy_label=None, error=None,
+               form_only=False, static_backdrop=False)
+{# gth_modal + gth_form (hx-post=action, hx-target="this", hx-swap="outerHTML") + the call
+   body's fields + gth_form_actions. form_only=True renders just the form, for the 422
+   response that re-renders it inside the open modal. #}
+```
+
+One template serves both the modal and its error re-render:
+
+```jinja
+{# _stock_form.html #}
+{% call gth_modal_form("stock-modal", "Edit stock" if stock else "New stock", action,
+                       form_only=form_only, error=error) %}
+  {{ gth_form_field("name", "Name", value=values.get("name"), errors=errors.get("name")) }}
+{% endcall %}
+```
+
+The route renders it with `form_only=False` to open the modal and `form_only=True` with `status_code=422` when
+validation fails.
+
 ## Shipped signatures (v0.7)
 
 Extracted from PyFinBot's Stocks/Transactions pages. Each JS-backed piece is a vanilla script under `static/js/`, loaded through its own `*_js_url` global ([docs/contract.md](contract.md#static-asset-globals)); `shell_globals()` sets all of them.
@@ -199,7 +229,7 @@ gth_combobox_empty(message="No matches")
 
 {# segmented.html #}
 gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_text=None, errors=None,
-              variant=None)
+              variant=None, id=None)
 {# options: [{"value", "label", "style"?, "icon"?}]. Checked = value, or the
    first option. Submits name=<value> like any radio group (arrow keys move
    the selection).
@@ -208,7 +238,9 @@ gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_te
    focus ring — or "buttons", the joined full-width Bootstrap group where each
    option's style (a btn-outline-* class, default btn-outline-primary) applies.
    None picks "buttons" when any option sets a style, so per-option colours
-   (e.g. Buy/Sell) keep their meaning, and "track" otherwise. #}
+   (e.g. Buy/Sell) keep their meaning, and "track" otherwise.
+   id (v0.16): the element-id prefix (default "gth-field-<name>"), as on
+   gth_select — for two with the same name on one page. #}
 ```
 
 ```python
@@ -323,9 +355,10 @@ gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None)
    icon on checked ones. Submits name=<value> per checked chip (FastAPI
    list[str]; Django getlist). #}
 gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3",
-           input_attrs=None)
+           input_attrs=None, errors=None, off_value=None, id=None)
 {# form-switch with role="switch" in the brand color. Unchecked submits nothing.
-   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change. #}
+   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change.
+   id (v0.16): the element-id prefix, as on gth_segmented. #}
 ```
 
 ### Multi-select and tags (v0.7)
@@ -708,6 +741,35 @@ Warning/danger alerts are `role="alert"`, so one swapped in (an htmx result pane
 {% endif %}
 ```
 
+### Result panel (v0.16)
+
+```jinja
+{# result_panel.html #}
+gth_result_panel(heading, badges=(), problems=None, error=None, link=None, error_title=None,
+                 error_action=None, problems_heading="Problems")
+{# badges: (label, tone) pairs or {label, tone} dicts (gth_badge's tones). problems: messages.
+   A {% call %} body renders after the problems. link: (url, label) or {url, label}.
+   error: a danger gth_alert (title error_title or heading, action error_action) instead. #}
+gth_live_region(id, politeness="polite", region_class="")
+{# the empty aria-live target an htmx form swaps the result into #}
+```
+
+An operation's result, such as an import or a sync: either an error alert, or a card of count badges, a problems
+list and a follow-up link. Each part is left out when it's empty.
+
+```jinja
+<form hx-post="/import" hx-target="#import-result" hx-encoding="multipart/form-data">…</form>
+{{ gth_live_region("import-result") }}
+
+{# _import_result.html, the response #}
+{% call gth_result_panel("Results — " ~ filename,
+    badges=[(s.total ~ " rows", "neutral"), (s.created ~ " imported", "good" if s.created else "neutral")],
+    error=error, error_title="Couldn't import " ~ filename,
+    link=("/transactions", "View transactions") if s.created else None) %}
+  {% if s.row_errors %}{# a gth_table of row errors and a note #}{% endif %}
+{% endcall %}
+```
+
 ### Back to top (v0.8)
 
 ```jinja
@@ -954,15 +1016,33 @@ def _stocks_state(query, **kw):
 async def export_stocks(request: Request):
     state = _stocks_state(request.query_params, mode="none")
     rows = await repo.list(sort=state.sort, direction=state.direction, **state.filters)
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(["Symbol", "Name", "Price"])
-    writer.writerows((r.symbol, r.name, r.price) for r in rows)
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="stocks.csv"'})
+    return csv_download([["Symbol", "Name", "Price"],
+                         *([r.symbol, r.name, csv_value(r.price)] for r in rows)], "stocks.csv")
 ```
 
-For very large tables, stream the rows with `StreamingResponse` instead of building one string.
+`csv_download` and `csv_value` are greentechhub-fastapi's (v0.15, `greentechhub_fastapi.downloads`): a UTF-8
+attachment with a BOM so Excel reads it as UTF-8, and Decimals and dates written plainly. For very large tables,
+stream the rows with `StreamingResponse` instead of building one string.
+
+#### A pane without a TableState (v0.16)
+
+```jinja
+{# table.html #}
+gth_filter_bar(url, target, export_url=None, export_label="CSV", trigger="change", bar_class="mb-3")
+{# A <form> whose {% call %} controls re-request `url` into the htmx `target` on `trigger`,
+   with a gth_download_button at the end of the row when export_url is set. #}
+gth_download_button(url, label="CSV", button_class="btn-outline-secondary gth-download")
+{# A plain <a download> styled as a button; gth_data_table's export link is one. #}
+```
+
+For a report or summary under a plain `gth_table`, where there's no `TableState` to carry the filters:
+
+```jinja
+{% call gth_filter_bar("/reports/gains", "closest .tab-pane",
+                       export_url="/reports/gains.csv?fy=" ~ report.fy) %}
+  {{ gth_select("fy", "Financial year", fy_options, value=report.fy, id="gains-fy", field_class="mb-0") }}
+{% endcall %}
+```
 
 ### Form field extras
 
@@ -992,7 +1072,7 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers four filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers six filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
@@ -1000,6 +1080,16 @@ that the app already registered**, so an app's own `money` wins.
 {{ value|number(places=None) }}           {# Decimal("100.500") → 100.5 · 100 → 100 (never 1E+2) · 1234567.891 → 1,234,567.891 #}
 {{ value|date(fmt=None) }}                {# date / datetime / ISO string → 5 Feb 2025 · |date("%Y-%m-%d") → 2025-02-05 #}
 {{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
+{{ value|tone(places=None) }}             {# 12.5 → text-success · -3 → text-danger · 0 → "" (v0.16) #}
+{{ fy|fy(start_month=7) }}                {# 2024 → 2024–25 · 1999 → 1999–00 · start_month=1 → 2024 (v0.16) #}
+```
+
+```jinja
+{# amount.html (v0.16) — needs the money / number / tone filters #}
+gth_amount(value, kind="money", places=None, amount_class="")
+{# <span class="gth-amount text-success">$1,234.50</span>: coloured by sign, plain at zero.
+   kind "number" uses the number filter. The tone is judged at the shown precision,
+   so -0.004 as "$0.00" isn't red. #}
 ```
 
 - **Empty in, empty out:** `None` and `""` render nothing, and a value that can't be parsed renders as-is. A
@@ -1008,6 +1098,9 @@ that the app already registered**, so an app's own `money` wins.
   binary expansion. There's no need for PyFinBot's old `|string|qty` dance.
 - **`money`:** rounds half-up (`2.675` → `$2.68`), puts the sign before the symbol, and never shows `-$0.00`.
   `number(places=n)` gives fixed decimals the same way.
+- **`tone` and `fy` (v0.16):** `tone` is the colour class for a gain or loss (`gth_amount` wraps it). `fy` is
+  greentechhub-core's `dates.fiscal_year_label`, copied because this package doesn't import core at runtime; a test
+  keeps the two in step.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
 - **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
@@ -1033,6 +1126,8 @@ format_date(value, fmt=None, *, date_format=None, tz=None)
 format_datetime(value, fmt=None, *, date_format=None, time_format=None, tz=None)
 money(value, symbol="$", places=2, *, number_format=None)
 number(value, places=None, *, number_format=None)
+tone(value, places=None)
+fiscal_year_label(fy, start_month=7)
 ```
 
 The plain functions never read `user_settings`, so a CSV export keeps `1,234.56` unless you pass `number_format`.
@@ -1203,7 +1298,7 @@ A navbar bell with a live unread count, a dropdown panel and a full page, for gr
 gth_notification_item(n, next_url=None)
 gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None)
 gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary")
-gth_notification_bell(url="/notifications", label="Notifications")
+gth_notification_bell(url="/notifications", label="Notifications", badge_url=None, panel_url=None)
 ```
 
 - A notification `n` is a dict in `toast()`'s message shape plus its state: `message`, `kind`, `title`, `icon`,
@@ -1219,8 +1314,10 @@ gth_notification_bell(url="/notifications", label="Notifications")
 - **The bell.** Pass `notifications_url` to the shell (a context key, or a global). With a signed-in
   `current_user`, `gth_navbar` puts `gth_notification_bell(notifications_url)` before the user menu, in both
   layouts. Its badge is `gth_nav_badge`'s live kind (`{url}/badge`, on load and on `gth:notifications`). Its
-  dropdown loads `{url}/panel` each time it opens. greentechhub-fastapi's `notifications_nav_item()` gives a
-  sidebar or navbar link with the same live badge.
+  dropdown loads `{url}/panel` each time it opens. Those two are greentechhub-fastapi's routes; an adapter whose
+  routes differ passes `notifications_badge_url` / `notifications_panel_url` to the shell, or `badge_url=` /
+  `panel_url=` to the macro (v0.16). greentechhub-fastapi's `notifications_nav_item()` gives a sidebar or navbar
+  link with the same live badge.
 
 | Template | Context |
 |---|---|
