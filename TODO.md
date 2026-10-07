@@ -93,10 +93,6 @@ assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopt
      `gth_modal_form(id, title, action, size=None)` (`gth_modal` + `gth_form` + the standard htmx attributes +
      actions). The Cancel/Save row is in PyFinBot's stock and transaction forms and in this package's own
      `confirm_delete.html`; `gth_modal` has no footer slot.
-  4. A signed-amount tone — a `tone` filter or `gth_amount(value, kind="money")` adding `text-success`/
-     `text-danger`, next to `formatting.py`'s `money` (PyFinBot hand-writes it 3×).
-  5. A `fy` filter giving the same label as core's `fiscal_year_label` (ui doesn't import core at runtime, so a
-     test pins the two together; PyFinBot registers its own today).
   6. `gth_stat_grid(cards, cols=…)` for the `row`/`col` wrappers around `gth_stat_card` (4 PyFinBot pages).
 
 ### Ideas — not scheduled
