@@ -78,9 +78,6 @@ assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopt
   - **Why:** `components/notifications.html` builds `url ~ "/badge"` and `url ~ "/panel"`, exactly
     greentechhub-fastapi's routes. A Django adapter would have to copy that URL shape.
   - **Scope:** optional parameters, defaulting to today's behaviour.
-- [ ] U2. `fix(forms)`: `id=` on `gth_segmented` and `gth_switch`
-  - **Why:** v0.15 added the `id=` prefix to `gth_select`/`gth_form_field` only; the others still hard-code
-    `gth-field-{{ name }}` and collide when a page has two with the same name.
 - [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
   1. `gth_result_panel(heading, badges, problems=None, error=None, link=None)` — an operation's result: an error
      alert, or a card of count badges, a problems list (a `caller()` slot for a table) and a follow-up link.
