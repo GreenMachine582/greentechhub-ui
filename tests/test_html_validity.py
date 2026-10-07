@@ -53,6 +53,8 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "select_with_placeholder_and_errors",
         "select_hide_label",
         "select_id",
+        "result_panel",
+        "result_panel_error",
         "segmented_id",
         "switch_id",
         "form_field_id",
