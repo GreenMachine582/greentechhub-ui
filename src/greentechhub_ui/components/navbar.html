@@ -46,7 +46,7 @@
 {%- endif %}
 {%- endmacro %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None, user_display_name=None) %}
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None, user_display_name=None, notifications_badge_url=None, notifications_panel_url=None) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
@@ -62,6 +62,8 @@
    and, with logout_url, a Log out button that POSTs there.
    notifications_url (v0.15): with a current_user, a bell before the user
    menu (gth_notification_bell) with the live unread count and the panel.
+   notifications_badge_url / notifications_panel_url (v0.16): the bell's badge
+   and panel URLs, when they aren't {notifications_url}/badge and /panel.
    user_display_name (v0.15): the user menu's name instead of the user ID,
    with its initials as the avatar. #}
 {% if sidebar %}
@@ -89,7 +91,7 @@
       {% endif %}
       {% if show_theme_toggle %}{{ gth_theme_toggle() }}{% endif %}
       {%- if current_user and notifications_url %}
-      {{ gth_notification_bell(notifications_url) }}
+      {{ gth_notification_bell(notifications_url, badge_url=notifications_badge_url, panel_url=notifications_panel_url) }}
       {%- endif %}
       {%- if current_user %}
       {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name) }}
@@ -156,7 +158,7 @@
         {% endif %}
         {%- if current_user and notifications_url %}
         <li class="nav-item d-flex align-items-center ms-md-2">
-          {{ gth_notification_bell(notifications_url) }}
+          {{ gth_notification_bell(notifications_url, badge_url=notifications_badge_url, panel_url=notifications_panel_url) }}
         </li>
         {%- endif %}
         {%- if current_user %}

@@ -191,9 +191,7 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
 {% macro _toolbar(state, headers, view_options, export_label) %}
 <div class="gth-table-toolbar">
   {%- if state.export_url %}
-  <a class="btn btn-sm btn-outline-secondary gth-table-export" href="{{ state.export_url|e }}" download>
-    <i class="bi bi-download" aria-hidden="true"></i> {{ export_label }}
-  </a>
+  {{ gth_download_button(state.export_url, export_label, button_class="btn-sm btn-outline-secondary gth-table-export") }}
   {%- endif %}
   {%- if view_options %}
   <div class="dropdown" data-gth-view-menu hidden>
@@ -318,3 +316,29 @@ hx-target="#{{ state.id }}" hx-swap="outerHTML" hx-indicator="#{{ state.id }}"{%
   </div>
 </form>
 {% endmacro %}
+
+{% macro gth_download_button(url, label="CSV", button_class="btn-outline-secondary gth-download") %}
+{#- A download link styled as a button (v0.16): a plain <a download>, so it
+    works without JS. gth_data_table's export link and gth_filter_bar use it. -#}
+<a class="btn {{ button_class }}" href="{{ url|e }}" download>
+    <i class="bi bi-download" aria-hidden="true"></i> {{ label }}
+  </a>
+{%- endmacro %}
+
+{% macro gth_filter_bar(url, target, export_url=None, export_label="CSV", trigger="change", bar_class="mb-3") %}
+{#- A filter row for a pane that isn't a gth_data_table (v0.16), e.g. a
+    report under a plain gth_table: the {% call %} body's controls (e.g. a
+    gth_select with field_class="mb-0") re-request `url` into `target` (an
+    htmx target, e.g. "closest .tab-pane") on `trigger`. With export_url, a
+    gth_download_button at the end of the row. A gth_data_table has
+    gth_table_filter and state.export_url instead. -#}
+<form class="d-flex flex-wrap align-items-end gap-2 gth-filter-bar {{ bar_class }}"
+  hx-get="{{ url|e }}" hx-target="{{ target|e }}" hx-trigger="{{ trigger|e }}">
+  {%- if caller is defined %}
+  {{ caller() }}
+  {%- endif %}
+  {%- if export_url %}
+  {{ gth_download_button(export_url, export_label, button_class="btn-outline-secondary ms-auto gth-download") }}
+  {%- endif %}
+</form>
+{%- endmacro %}
