@@ -65,13 +65,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
   on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
   Update `VENDORED.md` hash/size when it lands
 
-### Leaner services — from the PyFinBot review (2026-10-07)
-A review of PyFinBot's templates found markup it repeats that this package could own, and two adapter
-assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopts them.
-
-- [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
-  6. `gth_stat_grid(cards, cols=…)` for the `row`/`col` wrappers around `gth_stat_card` (4 PyFinBot pages).
-
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
