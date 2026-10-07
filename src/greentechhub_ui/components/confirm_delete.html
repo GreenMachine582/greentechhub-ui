@@ -1,16 +1,10 @@
 {% from "modal.html" import gth_modal %}
+{% from "form.html" import gth_form_actions %}
 
 {% macro gth_confirm_delete(id, target_url, item_label, hx_target=None) %}
 {% call gth_modal(id, title="Delete " ~ item_label ~ "?", static_backdrop=True) %}
 <p class="gth-confirm-delete-message">This can't be undone.</p>
-<div class="d-flex justify-content-end gap-2">
-  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-  <button type="button" class="btn btn-danger gth-confirm-delete-button"
-    hx-delete="{{ target_url }}"
-    {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
-    data-bs-dismiss="modal">
-    Delete
-  </button>
-</div>
+{{ gth_form_actions("Delete", submit_type="button", submit_class="btn-danger gth-confirm-delete-button",
+    submit_attrs={"hx-delete": target_url, "hx-target": hx_target, "data-bs-dismiss": "modal"}) }}
 {% endcall %}
 {% endmacro %}

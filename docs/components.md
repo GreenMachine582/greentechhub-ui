@@ -147,6 +147,36 @@ gth_modal(id, title, size=None, static_backdrop=False)
 gth_confirm_delete(id, target_url, item_label, hx_target=None)
 ```
 
+### Form actions and modal forms (v0.16)
+
+```jinja
+{# form.html #}
+gth_form_actions(submit_label="Save", cancel=True, busy_label=None, submit_class="btn-primary",
+                 cancel_label="Cancel", submit_type="submit", submit_attrs=None, actions_class="")
+{# The right-aligned Cancel + submit row. cancel: True closes the enclosing modal, a URL is a
+   link back, False leaves it out. busy_label: a gth_busy_button(submit=True) instead (the form
+   needs hx-disabled-elt="find button[type=submit]"). submit_type/submit_attrs: e.g. "button"
+   with {"hx-delete": url}, as gth_confirm_delete uses it; None values are left out. #}
+gth_modal_form(id, title, action, size=None, submit_label="Save", busy_label=None, error=None,
+               form_only=False, static_backdrop=False)
+{# gth_modal + gth_form (hx-post=action, hx-target="this", hx-swap="outerHTML") + the call
+   body's fields + gth_form_actions. form_only=True renders just the form, for the 422
+   response that re-renders it inside the open modal. #}
+```
+
+One template serves both the modal and its error re-render:
+
+```jinja
+{# _stock_form.html #}
+{% call gth_modal_form("stock-modal", "Edit stock" if stock else "New stock", action,
+                       form_only=form_only, error=error) %}
+  {{ gth_form_field("name", "Name", value=values.get("name"), errors=errors.get("name")) }}
+{% endcall %}
+```
+
+The route renders it with `form_only=False` to open the modal and `form_only=True` with `status_code=422` when
+validation fails.
+
 ## Shipped signatures (v0.7)
 
 Extracted from PyFinBot's Stocks/Transactions pages. Each JS-backed piece is a vanilla script under `static/js/`, loaded through its own `*_js_url` global ([docs/contract.md](contract.md#static-asset-globals)); `shell_globals()` sets all of them.
