@@ -65,11 +65,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
   on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
   Update `VENDORED.md` hash/size when it lands
 
-### Development
-- [ ] `chore(dev): local GTH mode` — `scripts/use-local-gth.sh` and a CONTRIBUTING pointer, as in
-  greentechhub-fastapi and PyFinBot (core's `scripts/local_gth.py` is on `dev`); links the sibling core and fastapi
-  checkouts into `.venv`
-
 ### Leaner services — from the PyFinBot review (2026-10-07)
 A review of PyFinBot's templates found markup it repeats that this package could own, and two adapter
 assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopts them.
