@@ -705,6 +705,35 @@ Warning/danger alerts are `role="alert"`, so one swapped in (an htmx result pane
 {% endif %}
 ```
 
+### Result panel (v0.16)
+
+```jinja
+{# result_panel.html #}
+gth_result_panel(heading, badges=(), problems=None, error=None, link=None, error_title=None,
+                 error_action=None, problems_heading="Problems")
+{# badges: (label, tone) pairs or {label, tone} dicts (gth_badge's tones). problems: messages.
+   A {% call %} body renders after the problems. link: (url, label) or {url, label}.
+   error: a danger gth_alert (title error_title or heading, action error_action) instead. #}
+gth_live_region(id, politeness="polite", region_class="")
+{# the empty aria-live target an htmx form swaps the result into #}
+```
+
+An operation's result, such as an import or a sync: either an error alert, or a card of count badges, a problems
+list and a follow-up link. Each part is left out when it's empty.
+
+```jinja
+<form hx-post="/import" hx-target="#import-result" hx-encoding="multipart/form-data">…</form>
+{{ gth_live_region("import-result") }}
+
+{# _import_result.html, the response #}
+{% call gth_result_panel("Results — " ~ filename,
+    badges=[(s.total ~ " rows", "neutral"), (s.created ~ " imported", "good" if s.created else "neutral")],
+    error=error, error_title="Couldn't import " ~ filename,
+    link=("/transactions", "View transactions") if s.created else None) %}
+  {% if s.row_errors %}{# a gth_table of row errors and a note #}{% endif %}
+{% endcall %}
+```
+
 ### Back to top (v0.8)
 
 ```jinja

@@ -82,10 +82,6 @@ assumptions. One PR each; PyFinBot's `todo.md` lists what it drops when it adopt
   - **Why:** v0.15 added the `id=` prefix to `gth_select`/`gth_form_field` only; the others still hard-code
     `gth-field-{{ name }}` and collide when a page has two with the same name.
 - [ ] U3. New macros for markup services repeat, ranked by how often PyFinBot repeats each:
-  1. `gth_result_panel(heading, badges, problems=None, error=None, link=None)` — an operation's result: an error
-     alert, or a card of count badges, a problems list (a `caller()` slot for a table) and a follow-up link.
-     PyFinBot's `_import_result.html` and `_sync_result.html` are the same card; it pairs with `gth_timeline`
-     later. Its `aria-live` target slot is repeated in 3 pages too.
   2. `gth_filter_bar(url, target, export_url=None)` with a `caller()` slot for fields, plus a public
      `gth_download_button(url, label="CSV")` — for panes that use a plain `gth_table`, not `TableState`.
      PyFinBot's three report panes repeat it; the download markup exists privately in `table.html`.
