@@ -951,15 +951,33 @@ def _stocks_state(query, **kw):
 async def export_stocks(request: Request):
     state = _stocks_state(request.query_params, mode="none")
     rows = await repo.list(sort=state.sort, direction=state.direction, **state.filters)
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(["Symbol", "Name", "Price"])
-    writer.writerows((r.symbol, r.name, r.price) for r in rows)
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="stocks.csv"'})
+    return csv_download([["Symbol", "Name", "Price"],
+                         *([r.symbol, r.name, csv_value(r.price)] for r in rows)], "stocks.csv")
 ```
 
-For very large tables, stream the rows with `StreamingResponse` instead of building one string.
+`csv_download` and `csv_value` are greentechhub-fastapi's (v0.15, `greentechhub_fastapi.downloads`): a UTF-8
+attachment with a BOM so Excel reads it as UTF-8, and Decimals and dates written plainly. For very large tables,
+stream the rows with `StreamingResponse` instead of building one string.
+
+#### A pane without a TableState (v0.16)
+
+```jinja
+{# table.html #}
+gth_filter_bar(url, target, export_url=None, export_label="CSV", trigger="change", bar_class="mb-3")
+{# A <form> whose {% call %} controls re-request `url` into the htmx `target` on `trigger`,
+   with a gth_download_button at the end of the row when export_url is set. #}
+gth_download_button(url, label="CSV", button_class="btn-outline-secondary gth-download")
+{# A plain <a download> styled as a button; gth_data_table's export link is one. #}
+```
+
+For a report or summary under a plain `gth_table`, where there's no `TableState` to carry the filters:
+
+```jinja
+{% call gth_filter_bar("/reports/gains", "closest .tab-pane",
+                       export_url="/reports/gains.csv?fy=" ~ report.fy) %}
+  {{ gth_select("fy", "Financial year", fy_options, value=report.fy, id="gains-fy", field_class="mb-0") }}
+{% endcall %}
+```
 
 ### Form field extras
 
