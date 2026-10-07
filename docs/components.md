@@ -1203,7 +1203,7 @@ A navbar bell with a live unread count, a dropdown panel and a full page, for gr
 gth_notification_item(n, next_url=None)
 gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None)
 gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary")
-gth_notification_bell(url="/notifications", label="Notifications")
+gth_notification_bell(url="/notifications", label="Notifications", badge_url=None, panel_url=None)
 ```
 
 - A notification `n` is a dict in `toast()`'s message shape plus its state: `message`, `kind`, `title`, `icon`,
@@ -1219,8 +1219,10 @@ gth_notification_bell(url="/notifications", label="Notifications")
 - **The bell.** Pass `notifications_url` to the shell (a context key, or a global). With a signed-in
   `current_user`, `gth_navbar` puts `gth_notification_bell(notifications_url)` before the user menu, in both
   layouts. Its badge is `gth_nav_badge`'s live kind (`{url}/badge`, on load and on `gth:notifications`). Its
-  dropdown loads `{url}/panel` each time it opens. greentechhub-fastapi's `notifications_nav_item()` gives a
-  sidebar or navbar link with the same live badge.
+  dropdown loads `{url}/panel` each time it opens. Those two are greentechhub-fastapi's routes; an adapter whose
+  routes differ passes `notifications_badge_url` / `notifications_panel_url` to the shell, or `badge_url=` /
+  `panel_url=` to the macro (v0.16). greentechhub-fastapi's `notifications_nav_item()` gives a sidebar or navbar
+  link with the same live badge.
 
 | Template | Context |
 |---|---|

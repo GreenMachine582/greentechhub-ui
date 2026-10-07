@@ -62,18 +62,22 @@
 </form>
 {%- endmacro %}
 
-{% macro gth_notification_bell(url="/notifications", label="Notifications") %}
-{#- A navbar bell: the live unread badge (fetched from {url}/badge on load and
-    on "gth:notifications") and a dropdown that loads {url}/panel when it
-    opens. gth_navbar renders it with notifications_url. -#}
+{% macro gth_notification_bell(url="/notifications", label="Notifications", badge_url=None, panel_url=None) %}
+{#- A navbar bell: the live unread badge (fetched from badge_url on load and
+    on "gth:notifications") and a dropdown that loads panel_url when it
+    opens. They default to {url}/badge and {url}/panel, greentechhub-fastapi's
+    routes; pass them when an adapter's routes differ (v0.16). gth_navbar
+    renders it with notifications_url. -#}
+{%- set badge_url = badge_url or url ~ "/badge" %}
+{%- set panel_url = panel_url or url ~ "/panel" %}
 <div class="dropdown gth-notification-bell">
   <button type="button" class="btn btn-sm btn-link text-body position-relative d-inline-flex align-items-center px-2"
     data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="{{ label|e }}">
     <i class="bi bi-bell fs-5" aria-hidden="true"></i>
-    {{- gth_nav_badge({"badge_url": url ~ "/badge", "badge_event": "gth:notifications"}, "gth-notification-badge") }}
+    {{- gth_nav_badge({"badge_url": badge_url, "badge_event": "gth:notifications"}, "gth-notification-badge") }}
   </button>
   <div class="dropdown-menu dropdown-menu-end p-0 gth-notification-panel"
-    hx-get="{{ (url ~ '/panel')|e }}" hx-trigger="show.bs.dropdown from:closest .dropdown, gth:notifications from:body"
+    hx-get="{{ panel_url|e }}" hx-trigger="show.bs.dropdown from:closest .dropdown, gth:notifications from:body"
     hx-swap="innerHTML">
     <div class="p-3 text-secondary small">Loading…</div>
   </div>
