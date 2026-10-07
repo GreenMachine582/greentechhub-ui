@@ -1,7 +1,7 @@
 {% extends "page.html" %}
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
-{% from "stat_card.html" import gth_stat_card %}
+{% from "stat_card.html" import gth_stat_card, gth_stat_grid %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
 {% from "badge.html" import gth_badge %}
@@ -31,13 +31,13 @@
 </section>
 
 <section class="mb-5" id="stat-card">
-  <h2 class="h4">gth-stat-card</h2>
-  <div class="row g-3">
-    <div class="col-6 col-md-3">{{ gth_stat_card("Open tasks", "5", icon="list-check") }}</div>
-    <div class="col-6 col-md-3">{{ gth_stat_card("Avg priority", "56", delta="+12", delta_tone="bad") }}</div>
-    <div class="col-6 col-md-3">{{ gth_stat_card("Completed", "2", delta="-1", delta_tone="good") }}</div>
-    <div class="col-6 col-md-3">{{ gth_stat_card("Blocked", "2", value_tone="bad") }}</div>
-  </div>
+  <h2 class="h4">gth-stat-card + gth-stat-grid</h2>
+  {{ gth_stat_grid([
+      {"label": "Open tasks", "value": "5", "icon": "list-check"},
+      {"label": "Avg priority", "value": "56", "delta": "+12", "delta_tone": "bad"},
+      {"label": "Completed", "value": "2", "delta": "-1", "delta_tone": "good"},
+      {"label": "Blocked", "value": "2", "value_tone": "bad"},
+    ], grid_class="") }}
 </section>
 
 <section class="mb-5" id="empty-state">

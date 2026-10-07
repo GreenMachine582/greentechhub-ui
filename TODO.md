@@ -101,8 +101,9 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-Nothing open: it pins v0.15 and uses `gth_select(id=)` on the report panes. Its follow-ups (the "Leaner services"
-macros above, and a few templates still hand-building markup an existing macro covers) are in PyFinBot's `todo.md`.
+Nothing open here: it pins v0.15 and uses `gth_select(id=)` on the report panes. Adopting v0.16's macros
+(`gth_result_panel`, `gth_filter_bar`, `gth_modal_form`, `gth_amount`, `|fy`, `gth_stat_grid`) and the templates
+still hand-building markup an existing macro covers is tracked in PyFinBot's `todo.md`.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

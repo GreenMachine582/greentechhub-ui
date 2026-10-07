@@ -10,11 +10,10 @@ directly:
 """
 
 import asyncio
-import csv
-import io
 import json
 import re
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
@@ -32,6 +31,7 @@ from greentechhub_core.settings.builtins import (
 )
 from greentechhub_fastapi import register_email
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
+from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.email import email_looks_valid
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
@@ -39,6 +39,7 @@ from markupsafe import Markup
 from starlette.datastructures import UploadFile
 
 import greentechhub_ui
+from greentechhub_ui.formatting import fiscal_year_label
 from greentechhub_ui.htmx import trigger, wants_fragment
 
 _here = Path(__file__).parent
@@ -748,6 +749,39 @@ async def progress_start(request: Request):
     return _progress_live(request)
 
 
+# /demo/report: realised gains per financial year, for the data page's report
+# pane (gth_filter_bar + gth_stat_grid + gth_amount) and its CSV.
+REPORT = {
+    2023: [{"symbol": "BHP", "units": Decimal("120"), "gain": Decimal("842.50")},
+           {"symbol": "CBA", "units": Decimal("15"), "gain": Decimal("-131.20")}],
+    2024: [{"symbol": "WES", "units": Decimal("40"), "gain": Decimal("1210.00")},
+           {"symbol": "TLS", "units": Decimal("1000"), "gain": Decimal("-385.75")},
+           {"symbol": "CSL", "units": Decimal("2.5"), "gain": Decimal("0.00")}],
+}
+
+
+def _report_year(fy: str) -> int:
+    return int(fy) if fy.isdigit() and int(fy) in REPORT else max(REPORT)
+
+
+@app.get("/demo/report", response_class=HTMLResponse)
+async def demo_report(request: Request, fy: str = ""):
+    year = _report_year(fy)
+    rows = REPORT[year]
+    return templates.TemplateResponse(request, "_report.html", {
+        "fy": year, "rows": rows, "total": sum(r["gain"] for r in rows),
+        "fy_options": [(y, fiscal_year_label(y)) for y in sorted(REPORT, reverse=True)],
+    })
+
+
+@app.get("/demo/report.csv")
+async def demo_report_csv(fy: str = ""):
+    year = _report_year(fy)
+    return csv_download([["Stock", "Units", "Gain/loss"],
+                         *([r["symbol"], csv_value(r["units"]), csv_value(r["gain"])]
+                           for r in REPORT[year])], f"gains-{year}.csv")
+
+
 @app.get("/demo/progress", response_class=HTMLResponse)
 async def progress_poll(request: Request):
     """One poll: advance, and at 100% return the bar without poll_url (polling
@@ -1406,14 +1440,9 @@ async def tables_export(request: Request):
     state = _records_state(request.query_params, user_settings=_preferences(request),
                            mode="none", scroll=False, base_url="/tables")
     rows, _ = _query_records(state)
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(["ID", "Name", "Category", "Stock", "Price", "Added"])
-    for r in rows:
-        writer.writerow([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
-                         r["added"].isoformat()])
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="records.csv"'})
+    return csv_download([["ID", "Name", "Category", "Stock", "Price", "Added"],
+                         *([r["id"], r["name"], r["category"], r["stock"], f"{r['price']:.2f}",
+                            csv_value(r["added"])] for r in rows)], "records.csv")
 
 
 @app.get("/tables", response_class=HTMLResponse)
@@ -1669,7 +1698,8 @@ async def demo_modal_submit(request: Request, widget: str = Form(""), size: str 
         context = _modal_context(widget, size, {"widget": ["Pick a widget from the list."]},
                                      widget_search, record, record_label)
         # Re-render just the form (hx-target="this"); the modal stays open.
-        return templates.TemplateResponse(request, "_modal_form.html", context, status_code=422)
+        return templates.TemplateResponse(request, "_modal.html", {**context, "form_only": True},
+                                          status_code=422)
     part = _record(record)
     return hx_response(greentechhub_ui.toast(
         f"Saved {WIDGETS[int(widget) - 1]} ({size})" + (f" for {part['name']}" if part else ""),
