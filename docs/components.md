@@ -196,7 +196,7 @@ gth_combobox_empty(message="No matches")
 
 {# segmented.html #}
 gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_text=None, errors=None,
-              variant=None)
+              variant=None, id=None)
 {# options: [{"value", "label", "style"?, "icon"?}]. Checked = value, or the
    first option. Submits name=<value> like any radio group (arrow keys move
    the selection).
@@ -205,7 +205,9 @@ gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_te
    focus ring — or "buttons", the joined full-width Bootstrap group where each
    option's style (a btn-outline-* class, default btn-outline-primary) applies.
    None picks "buttons" when any option sets a style, so per-option colours
-   (e.g. Buy/Sell) keep their meaning, and "track" otherwise. #}
+   (e.g. Buy/Sell) keep their meaning, and "track" otherwise.
+   id (v0.16): the element-id prefix (default "gth-field-<name>"), as on
+   gth_select — for two with the same name on one page. #}
 ```
 
 ```python
@@ -320,9 +322,10 @@ gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None)
    icon on checked ones. Submits name=<value> per checked chip (FastAPI
    list[str]; Django getlist). #}
 gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3",
-           input_attrs=None)
+           input_attrs=None, errors=None, off_value=None, id=None)
 {# form-switch with role="switch" in the brand color. Unchecked submits nothing.
-   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change. #}
+   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change.
+   id (v0.16): the element-id prefix, as on gth_segmented. #}
 ```
 
 ### Multi-select and tags (v0.7)
