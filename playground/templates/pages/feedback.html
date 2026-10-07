@@ -1,6 +1,7 @@
 {% extends "page.html" %}
 {% from "toast.html" import gth_toast_flashes, gth_alert %}
 {% from "alert_banner.html" import gth_alert_banner %}
+{% from "result_panel.html" import gth_result_panel %}
 
 {% macro _preset(name, label, style="btn-outline-secondary") -%}
 <button type="button" class="btn btn-sm {{ style }}" hx-post="/toast-demo?preset={{ name }}" hx-swap="none"
@@ -92,6 +93,25 @@
     {{ gth_alert("Wrong user ID or password.", kind="danger", variant="solid") }}
     {{ gth_alert("Dividend history is shared. See <a href='#inline-alert'>how syncing works</a>.", kind="neutral",
         html=True, alert_class="mb-0") }}
+  </div>
+</section>
+
+<section class="mb-5" id="result-panel">
+  <h2 class="h4">gth-result-panel</h2>
+  <p class="text-secondary">
+    An operation's result, swapped into a <code>gth_live_region</code>: count badges, problems and a follow-up
+    link, or, on failure, a danger alert in its place.
+  </p>
+  <div class="row g-3" id="result-panel-demo">
+    <div class="col-md-6">
+      {{ gth_result_panel("Results — trades.csv",
+          badges=[("14 rows", "neutral"), ("12 imported", "good"), ("2 skipped", "warn")],
+          problems=["Row 4: no date", "Row 9: unknown stock"], link=("#result-panel", "View transactions")) }}
+    </div>
+    <div class="col-md-6">
+      {{ gth_result_panel("Email sync", error="Couldn't reach the mailbox.",
+          error_action={"label": "Open Settings", "url": "#result-panel"}) }}
+    </div>
   </div>
 </section>
 

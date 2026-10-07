@@ -196,7 +196,7 @@ gth_combobox_empty(message="No matches")
 
 {# segmented.html #}
 gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_text=None, errors=None,
-              variant=None)
+              variant=None, id=None)
 {# options: [{"value", "label", "style"?, "icon"?}]. Checked = value, or the
    first option. Submits name=<value> like any radio group (arrow keys move
    the selection).
@@ -205,7 +205,9 @@ gth_segmented(name, options, value=None, label=None, field_class="mb-3", help_te
    focus ring — or "buttons", the joined full-width Bootstrap group where each
    option's style (a btn-outline-* class, default btn-outline-primary) applies.
    None picks "buttons" when any option sets a style, so per-option colours
-   (e.g. Buy/Sell) keep their meaning, and "track" otherwise. #}
+   (e.g. Buy/Sell) keep their meaning, and "track" otherwise.
+   id (v0.16): the element-id prefix (default "gth-field-<name>"), as on
+   gth_select — for two with the same name on one page. #}
 ```
 
 ```python
@@ -320,9 +322,10 @@ gth_chips(name, options, values=(), label=None, field_class="mb-3", id=None)
    icon on checked ones. Submits name=<value> per checked chip (FastAPI
    list[str]; Django getlist). #}
 gth_switch(name, label, checked=False, value="on", help_text=None, field_class="mb-3",
-           input_attrs=None)
+           input_attrs=None, errors=None, off_value=None, id=None)
 {# form-switch with role="switch" in the brand color. Unchecked submits nothing.
-   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change. #}
+   input_attrs: extra attributes, e.g. {"hx-post": "/prefs"} to save on change.
+   id (v0.16): the element-id prefix, as on gth_segmented. #}
 ```
 
 ### Multi-select and tags (v0.7)
@@ -703,6 +706,35 @@ Warning/danger alerts are `role="alert"`, so one swapped in (an htmx result pane
   {{ gth_alert(error, kind="danger", title="Couldn't import " ~ filename,
       action={"label": "Open Settings", "url": "/settings#email"}) }}
 {% endif %}
+```
+
+### Result panel (v0.16)
+
+```jinja
+{# result_panel.html #}
+gth_result_panel(heading, badges=(), problems=None, error=None, link=None, error_title=None,
+                 error_action=None, problems_heading="Problems")
+{# badges: (label, tone) pairs or {label, tone} dicts (gth_badge's tones). problems: messages.
+   A {% call %} body renders after the problems. link: (url, label) or {url, label}.
+   error: a danger gth_alert (title error_title or heading, action error_action) instead. #}
+gth_live_region(id, politeness="polite", region_class="")
+{# the empty aria-live target an htmx form swaps the result into #}
+```
+
+An operation's result, such as an import or a sync: either an error alert, or a card of count badges, a problems
+list and a follow-up link. Each part is left out when it's empty.
+
+```jinja
+<form hx-post="/import" hx-target="#import-result" hx-encoding="multipart/form-data">…</form>
+{{ gth_live_region("import-result") }}
+
+{# _import_result.html, the response #}
+{% call gth_result_panel("Results — " ~ filename,
+    badges=[(s.total ~ " rows", "neutral"), (s.created ~ " imported", "good" if s.created else "neutral")],
+    error=error, error_title="Couldn't import " ~ filename,
+    link=("/transactions", "View transactions") if s.created else None) %}
+  {% if s.row_errors %}{# a gth_table of row errors and a note #}{% endif %}
+{% endcall %}
 ```
 
 ### Back to top (v0.8)
@@ -1218,7 +1250,7 @@ A navbar bell with a live unread count, a dropdown panel and a full page, for gr
 gth_notification_item(n, next_url=None)
 gth_notification_list(notifications, empty_message="You're all caught up.", next_url=None)
 gth_mark_all_read(url, next_url=None, button_class="btn btn-sm btn-outline-secondary")
-gth_notification_bell(url="/notifications", label="Notifications")
+gth_notification_bell(url="/notifications", label="Notifications", badge_url=None, panel_url=None)
 ```
 
 - A notification `n` is a dict in `toast()`'s message shape plus its state: `message`, `kind`, `title`, `icon`,
@@ -1234,8 +1266,10 @@ gth_notification_bell(url="/notifications", label="Notifications")
 - **The bell.** Pass `notifications_url` to the shell (a context key, or a global). With a signed-in
   `current_user`, `gth_navbar` puts `gth_notification_bell(notifications_url)` before the user menu, in both
   layouts. Its badge is `gth_nav_badge`'s live kind (`{url}/badge`, on load and on `gth:notifications`). Its
-  dropdown loads `{url}/panel` each time it opens. greentechhub-fastapi's `notifications_nav_item()` gives a
-  sidebar or navbar link with the same live badge.
+  dropdown loads `{url}/panel` each time it opens. Those two are greentechhub-fastapi's routes; an adapter whose
+  routes differ passes `notifications_badge_url` / `notifications_panel_url` to the shell, or `badge_url=` /
+  `panel_url=` to the macro (v0.16). greentechhub-fastapi's `notifications_nav_item()` gives a sidebar or navbar
+  link with the same live badge.
 
 | Template | Context |
 |---|---|

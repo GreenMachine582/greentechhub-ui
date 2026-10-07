@@ -1,0 +1,51 @@
+{% from "badge.html" import gth_badge %}
+{% from "card.html" import gth_card %}
+{% from "toast.html" import gth_alert %}
+
+{% macro gth_result_panel(heading, badges=(), problems=None, error=None, link=None, error_title=None, error_action=None, problems_heading="Problems") %}
+{#- An operation's result (v0.16), e.g. an import or a sync, swapped into a
+    gth_live_region by htmx. With error: a danger gth_alert titled
+    error_title (default heading), with error_action {label, url}.
+    Otherwise a card titled heading with:
+    - badges: count pills, (label, tone) pairs or {label, tone} dicts in
+      gth_badge's tones, e.g. ("12 imported", "good");
+    - problems: a list of messages under problems_heading;
+    - a {% call %} body, after the problems: anything richer, e.g. a
+      gth_table of row errors and a note;
+    - link: a follow-up button, a (url, label) pair or {url, label} dict.
+    Each part is left out when empty. -#}
+{%- if error %}
+{{ gth_alert(error, kind="danger", title=error_title or heading, action=error_action) }}
+{%- else %}
+{%- set body = caller() if caller is defined else "" %}
+{% call gth_card(heading, card_class="gth-result-panel") %}
+  {%- if badges %}
+  <p class="d-flex flex-wrap gap-2 mb-3 gth-result-badges">
+    {%- for badge in badges %}
+    {%- if badge is mapping %}{{ gth_badge(badge.label, badge.tone|default("neutral")) }}
+    {%- else %}{{ gth_badge(badge[0], badge[1]) }}{% endif %}
+    {%- endfor %}
+  </p>
+  {%- endif %}
+  {%- if problems %}
+  <h6>{{ problems_heading }}</h6>
+  <ul class="small mb-3 gth-result-problems">
+    {%- for problem in problems %}
+    <li>{{ problem }}</li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+  {{- body }}
+  {%- if link %}
+  {%- set url, label = (link.url, link.label) if link is mapping else (link[0], link[1]) %}
+  <a href="{{ url|e }}" class="btn btn-outline-primary btn-sm">{{ label }}</a>
+  {%- endif %}
+{% endcall %}
+{%- endif %}
+{%- endmacro %}
+
+{% macro gth_live_region(id, politeness="polite", region_class="") %}
+{#- The empty target an htmx form swaps its result into (v0.16), e.g.
+    hx-target="#import-result": announced to screen readers when it changes. -#}
+<div id="{{ id }}" aria-live="{{ politeness }}"{% if region_class %} class="{{ region_class }}"{% endif %}></div>
+{%- endmacro %}
