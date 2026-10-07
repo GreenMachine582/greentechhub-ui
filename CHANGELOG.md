@@ -5,6 +5,30 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.16.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.15.0...v0.16.0) (2026-10-07)
+
+
+### Features
+
+* **components:** gth_result_panel and gth_live_region ([#89](https://github.com/GreenMachine582/greentechhub-ui/issues/89)) ([3efd6cd](https://github.com/GreenMachine582/greentechhub-ui/commit/3efd6cd9ca8c79113c33892c243f0e3198e7548d))
+* **components:** gth_stat_grid ([#93](https://github.com/GreenMachine582/greentechhub-ui/issues/93)) ([0a2a51c](https://github.com/GreenMachine582/greentechhub-ui/commit/0a2a51c4a6e81c37e9a911ac8da88ccb9c1bc497))
+* **formatting:** tone and fy filters, gth_amount ([#92](https://github.com/GreenMachine582/greentechhub-ui/issues/92)) ([357ca62](https://github.com/GreenMachine582/greentechhub-ui/commit/357ca624f09f91f563852afbd04ef34790d6325a))
+* **forms:** gth_form_actions and gth_modal_form ([#91](https://github.com/GreenMachine582/greentechhub-ui/issues/91)) ([de5692a](https://github.com/GreenMachine582/greentechhub-ui/commit/de5692a85965245520ffce098396ee7c1d3bb7ec))
+* **notifications:** badge and panel URLs on the bell ([#87](https://github.com/GreenMachine582/greentechhub-ui/issues/87)) ([8f72cb7](https://github.com/GreenMachine582/greentechhub-ui/commit/8f72cb7eb5c71e0e09706209afeb9952eefd2ad1))
+* **table:** gth_filter_bar and gth_download_button ([#90](https://github.com/GreenMachine582/greentechhub-ui/issues/90)) ([5b46846](https://github.com/GreenMachine582/greentechhub-ui/commit/5b46846f5d04cec40a3f265b246e165096ef6850))
+* **templates:** an email field and check-your-email on the sign-up page ([#81](https://github.com/GreenMachine582/greentechhub-ui/issues/81)) ([c75ab74](https://github.com/GreenMachine582/greentechhub-ui/commit/c75ab74e9ab8509fd2f9ba069f328507c2104b9e))
+
+
+### Bug Fixes
+
+* **forms:** id= on gth_segmented and gth_switch ([#88](https://github.com/GreenMachine582/greentechhub-ui/issues/88)) ([fef897a](https://github.com/GreenMachine582/greentechhub-ui/commit/fef897ac57bbaf60f3c3166264f140bee653f559))
+
+
+### Build
+
+* **deps:** core v0.13.0 and fastapi v0.15.0; the playground shows v0.16's macros ([#94](https://github.com/GreenMachine582/greentechhub-ui/issues/94)) ([08421a9](https://github.com/GreenMachine582/greentechhub-ui/commit/08421a9802130bb2971346e175da665fec31567c))
+* **deps:** fastapi v0.13.0 for the playground ([#82](https://github.com/GreenMachine582/greentechhub-ui/issues/82)) ([d8177aa](https://github.com/GreenMachine582/greentechhub-ui/commit/d8177aa26daf26c777aab81e313edf9052cdd742))
+
 ## [0.15.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.14.0...v0.15.0) (2026-10-05)
 
 
