@@ -293,6 +293,7 @@ PLAYGROUND_NAV = [
         {"label": "Page header", "url": "/layout#page-header"},
         {"label": "Card", "url": "/layout#card"},
         {"label": "Stat card", "url": "/layout#stat-card"},
+        {"label": "Charts", "url": "/layout#charts"},
         {"label": "Empty state", "url": "/layout#empty-state"},
         {"label": "Skeleton", "url": "/layout#skeleton"},
         {"label": "Badge", "url": "/layout#badge"},
