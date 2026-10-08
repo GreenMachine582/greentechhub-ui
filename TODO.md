@@ -20,8 +20,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 ### Display & charts
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's audit log (`AuditStore`, core v0.10); pairs with the
   notification centre
-- [ ] `gth_embed_card` — iframe card with loading and error states, passing the current theme to Grafana panels —
-  PyFinBot's Grafana slot
 - [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
   response)
   - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,

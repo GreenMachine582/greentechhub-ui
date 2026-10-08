@@ -3,6 +3,7 @@
 {% from "card.html" import gth_card %}
 {% from "stat_card.html" import gth_stat_card, gth_stat_grid %}
 {% from "charts.html" import gth_sparkline, gth_bar_chart, gth_line_chart %}
+{% from "embed_card.html" import gth_embed_card %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
 {% from "badge.html" import gth_badge %}
@@ -62,6 +63,17 @@
                          ("Jan", 35.9), ("Feb", 36.4), ("Mar", 38.0), ("Apr", 37.1), ("May", 39.6), ("Jun", 41.2)],
           "Cost base", prefix="$", suffix="k", places=1, zero=False, columns=("Month", "Cost base")) }}
     </div>
+  </div>
+</section>
+
+<section class="mb-5" id="embed-card">
+  <h2 class="h4">gth-embed-card</h2>
+  <p class="text-secondary">An iframe card, e.g. a Grafana panel: themed with the page (toggle the theme to see it
+    reload), a loading state, an error state after <code>timeout</code>, and a placeholder with no <code>src</code>.</p>
+  <div class="row g-3">
+    <div class="col-md-4">{{ gth_embed_card("/demo/embed", "Portfolio value", height=200) }}</div>
+    <div class="col-md-4">{{ gth_embed_card("/demo/embed?delay=4", "Slow panel", height=200, timeout=2) }}</div>
+    <div class="col-md-4">{{ gth_embed_card(none, "Dividends panel", height=200) }}</div>
   </div>
 </section>
 

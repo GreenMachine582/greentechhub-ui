@@ -2713,3 +2713,42 @@ def test_charts_fill_their_plot_box(page, playground_url):
     assert line["y"] + line["height"] <= body["y"] + body["height"] + 2
     expect(page.locator("#charts .gth-sparkline").first).to_have_attribute(
         "aria-label", "Holdings: from $31.0k to $41.2k, low $31.0k, high $41.2k")
+
+
+# ── gth-embed-card (v0.17) ─────────────────────────────────────────────────
+
+EMBED = "#embed-card .col-md-4"
+
+
+def test_embed_card_loads_themed_and_reloads_on_theme_change(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    box = page.locator(f"{EMBED} >> nth=0").locator("[data-gth-embed]")
+    box.scroll_into_view_if_needed()
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded")
+    panel = page.frame_locator(f"{EMBED} >> nth=0 >> iframe.gth-embed-card-frame")
+    expect(panel.locator("#panel-theme")).to_have_text("A stand-in panel, theme: dark")
+    expect(box.locator(".gth-embed-card-loading")).to_be_hidden()
+
+    page.click(".gth-theme-toggle")  # dark → light
+    expect(panel.locator("#panel-theme")).to_have_text("A stand-in panel, theme: light")
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded")
+
+
+def test_embed_card_shows_an_error_after_its_timeout(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    box = page.locator(f"{EMBED} >> nth=1").locator("[data-gth-embed]")
+    box.scroll_into_view_if_needed()
+    expect(box.locator(".gth-embed-card-loading")).to_be_visible()
+    expect(box).to_have_attribute("data-gth-embed-state", "error", timeout=4000)
+    expect(box.locator(".gth-embed-card-error")).to_be_visible()
+    expect(box.locator(".gth-embed-card-error a")).to_have_attribute("target", "_blank")
+    # The slow source arrives (after 4s) and clears the error.
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded", timeout=8000)
+    expect(box.locator(".gth-embed-card-error")).to_be_hidden()
+
+
+def test_embed_card_placeholder(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    empty = page.locator(f"{EMBED} >> nth=2")
+    expect(empty.locator(".gth-embed-card-empty")).to_have_text("Not configured yet.")
+    expect(empty.locator("iframe")).to_have_count(0)
