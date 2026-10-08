@@ -293,6 +293,7 @@ PLAYGROUND_NAV = [
         {"label": "Page header", "url": "/layout#page-header"},
         {"label": "Card", "url": "/layout#card"},
         {"label": "Stat card", "url": "/layout#stat-card"},
+        {"label": "Embed card", "url": "/layout#embed-card"},
         {"label": "Empty state", "url": "/layout#empty-state"},
         {"label": "Skeleton", "url": "/layout#skeleton"},
         {"label": "Badge", "url": "/layout#badge"},
@@ -733,6 +734,21 @@ async def layout_page(request: Request):
 @app.get("/data", response_class=HTMLResponse)
 async def data_page(request: Request):
     return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
+
+
+# gth_embed_card demo: a stand-in for a Grafana panel that shows the theme
+# embed-card.js passed it; ?delay= holds the response, for the error state.
+@app.get("/demo/embed", response_class=HTMLResponse)
+async def demo_embed(theme: str = "", delay: float = 0):
+    await asyncio.sleep(min(max(delay, 0), 10))
+    theme = theme if theme in ("light", "dark") else "none"  # echoed below: never raw input
+    dark = theme == "dark"
+    return HTMLResponse(
+        "<!doctype html><title>Panel</title>"
+        '<body style="margin:0;display:grid;place-items:center;height:100vh;font-family:sans-serif;'
+        f'background:{"#181b1f" if dark else "#f4f5f5"};'
+        f'color:{"#ccccdc" if dark else "#24292e"}">'
+        f'<p id="panel-theme">A stand-in panel, theme: {theme}</p></body>')
 
 
 # gth_progress live demo: a fake sync that advances 25% per poll.

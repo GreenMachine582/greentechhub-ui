@@ -312,6 +312,37 @@
   font-size: 0.8rem;
 }
 
+/* gth-embed-card (embed_card.html, v0.17): the frame fills the body; the
+   loading and error states cover it, the loading one only while
+   embed-card.js says so (so it never sticks without the script). */
+.gth-embed-card-body { position: relative; }
+.gth-embed-card-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.gth-embed-card-loading,
+.gth-embed-card-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  background: var(--bs-body-bg);
+}
+.gth-embed-card-loading { display: none; color: var(--bs-secondary-color); }
+[data-gth-embed-state="loading"] .gth-embed-card-loading { display: flex; }
+.gth-embed-card-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
 /* gth-form — equivalent to BottleBot's .error-banner, ported here for the
    same reason as .gth-stat-card above. */
 .gth-form-error {

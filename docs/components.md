@@ -69,6 +69,19 @@ gth_stat_grid(cards, cols=4, grid_class="mb-3")   {# v0.16 #}
 {# cards: dicts of gth_stat_card's kwargs, in a row g-3 grid: two per row on phones,
    `cols` (1, 2, 3, 4 or 6) from md up. #}
 
+{# embed_card.html (v0.17) — the frame's behaviour in static/js/embed-card.js (embed_card_js_url) #}
+gth_embed_card(src, title, height=360, theme_param="theme", timeout=15, open_label="Open",
+               empty_message="Not configured yet.", card_class="")
+{# An iframe card (e.g. a Grafana panel): the header has the title and an open-in-a-new-tab
+   link. embed-card.js loads the frame when the card scrolls into view, adds the page's
+   theme as `theme_param`=light|dark (Grafana's `theme`; None to leave src alone) and
+   reloads it when the theme changes. A loading state shows until the frame's load event,
+   and an error state with a new-tab link if none comes within `timeout` seconds (a late
+   load clears it). A site that refuses framing still fires load with the browser's own
+   error page, so only unreachable or slow sources reach the error state. No src: the
+   card shows empty_message, a slot for a panel not set up yet. Without the script, a
+   <noscript> frame loads src unthemed. #}
+
 {# table.html — two composable macros, not one, so a table can be split across
    a full-page render and an HTMX partial that only swaps the <tbody> #}
 gth_table(headers, table_class="", tbody_id=None)          {# shell: <table><thead>+<tbody>, body via {% call %} #}

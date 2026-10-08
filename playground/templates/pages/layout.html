@@ -2,6 +2,7 @@
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
 {% from "stat_card.html" import gth_stat_card, gth_stat_grid %}
+{% from "embed_card.html" import gth_embed_card %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
 {% from "badge.html" import gth_badge %}
@@ -38,6 +39,17 @@
       {"label": "Completed", "value": "2", "delta": "-1", "delta_tone": "good"},
       {"label": "Blocked", "value": "2", "value_tone": "bad"},
     ], grid_class="") }}
+</section>
+
+<section class="mb-5" id="embed-card">
+  <h2 class="h4">gth-embed-card</h2>
+  <p class="text-secondary">An iframe card, e.g. a Grafana panel: themed with the page (toggle the theme to see it
+    reload), a loading state, an error state after <code>timeout</code>, and a placeholder with no <code>src</code>.</p>
+  <div class="row g-3">
+    <div class="col-md-4">{{ gth_embed_card("/demo/embed", "Portfolio value", height=200) }}</div>
+    <div class="col-md-4">{{ gth_embed_card("/demo/embed?delay=4", "Slow panel", height=200, timeout=2) }}</div>
+    <div class="col-md-4">{{ gth_embed_card(none, "Dividends panel", height=200) }}</div>
+  </div>
 </section>
 
 <section class="mb-5" id="empty-state">
