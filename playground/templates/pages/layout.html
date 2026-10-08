@@ -2,6 +2,7 @@
 {% from "page_header.html" import gth_page_header %}
 {% from "card.html" import gth_card %}
 {% from "stat_card.html" import gth_stat_card, gth_stat_grid %}
+{% from "charts.html" import gth_sparkline, gth_bar_chart, gth_line_chart %}
 {% from "embed_card.html" import gth_embed_card %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "skeleton.html" import gth_skeleton, gth_skeleton_rows %}
@@ -39,6 +40,30 @@
       {"label": "Completed", "value": "2", "delta": "-1", "delta_tone": "good"},
       {"label": "Blocked", "value": "2", "value_tone": "bad"},
     ], grid_class="") }}
+</section>
+
+<section class="mb-5" id="charts">
+  <h2 class="h4">gth-sparkline, gth-bar-chart, gth-line-chart</h2>
+  <p class="text-secondary">Server-rendered SVG, no JS; colours from theme tokens; a hidden data table for screen readers.</p>
+  {{ gth_stat_grid([
+      {"label": "Holdings", "value": "$41,200",
+       "chart": gth_sparkline([31, 33, 32, 36, 35, 38, 41.2], label="Holdings", prefix="$", suffix="k", places=1)},
+      {"label": "Net gain", "value": "-$310", "value_tone": "bad",
+       "chart": gth_sparkline([400, 120, -80, -310], label="Net gain", prefix="$", tone="trend")},
+      {"label": "Dividends", "value": "$1,940",
+       "chart": gth_sparkline([210, 0, 260, 0, 290, 0, 330], label="Dividends", prefix="$", tone="good")},
+    ], cols=3, grid_class="mb-4") }}
+  <div class="row g-4">
+    <div class="col-md-6">
+      {{ gth_bar_chart([("2021–22", 1850), ("2022–23", -640), ("2023–24", 2310), ("2024–25", 980), ("2025–26", -210)],
+          "Realised gain by FY", tone="signed", prefix="$", columns=("FY", "Gain/loss")) }}
+    </div>
+    <div class="col-md-6">
+      {{ gth_line_chart([("Jul", 30.1), ("Aug", 31.4), ("Sep", 30.8), ("Oct", 33.0), ("Nov", 34.2), ("Dec", 33.7),
+                         ("Jan", 35.9), ("Feb", 36.4), ("Mar", 38.0), ("Apr", 37.1), ("May", 39.6), ("Jun", 41.2)],
+          "Cost base", prefix="$", suffix="k", places=1, zero=False, columns=("Month", "Cost base")) }}
+    </div>
+  </div>
 </section>
 
 <section class="mb-5" id="embed-card">

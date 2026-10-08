@@ -61,13 +61,36 @@ The table above describes intent; these are the actual macro signatures as imple
 gth_card(title=None, footer=None, card_class="", body_class="")
 
 {# stat_card.html #}
-gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="")
+gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="",
+              chart=None)
 {# label/value/delta are trusted HTML (| safe) — same trust model as gth-card's
    title/footer. delta_tone/value_tone are "good"|"bad"|"neutral" — deliberately
-   not sign-inferred, since "lower is better" is a per-consumer judgment call. #}
+   not sign-inferred, since "lower is better" is a per-consumer judgment call.
+   chart (v0.17): trusted HTML under the value, typically a gth_sparkline. #}
 gth_stat_grid(cards, cols=4, grid_class="mb-3")   {# v0.16 #}
 {# cards: dicts of gth_stat_card's kwargs, in a row g-3 grid: two per row on phones,
    `cols` (1, 2, 3, 4 or 6) from md up. #}
+
+{# charts.html (v0.17) — server-rendered SVG, no JS. Marks are currentColor, toned by
+   theme tokens: tone="primary"|"good"|"bad"|"neutral", "signed" (bars: green ≥ 0, red
+   below) or "trend" (sparkline: green if it ends at or above its start). items are
+   {"label", "value"} dicts or (label, value) pairs; numbers in axis labels, tooltips and
+   summaries are formatted from prefix/suffix/places ("$1,250"), since the macros can't
+   assume an app's money filter is installed. #}
+gth_sparkline(values, label=None, tone="primary", width=96, height=28, fill=True,
+              prefix="", suffix="", places=0, sparkline_class="")
+{# a fixed-size trend line (px) for a stat card's chart= or a table cell: role="img",
+   aria-label "Label: from $10 to $14, low $9, high $15". #}
+gth_bar_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+              columns=("Label", "Value"), show_label=True, max_x_labels=6, chart_class="")
+gth_line_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+               zero=True, fill=True, columns=("Label", "Value"), show_label=True,
+               max_x_labels=6, chart_class="")
+{# a <figure>: figcaption = label (show_label=False keeps it for screen readers only),
+   an aria-hidden plot as wide as its container with y labels for the top, zero and
+   bottom, at most max_x_labels x labels, and a visually hidden data table (columns
+   are its headers). Bars start at zero and carry <title> tooltips; a line chart keeps
+   zero on the axis unless zero=False, and fill shades under the line. #}
 
 {# embed_card.html (v0.17) — the frame's behaviour in static/js/embed-card.js (embed_card_js_url) #}
 gth_embed_card(src, title, height=360, theme_param="theme", timeout=15, open_label="Open",

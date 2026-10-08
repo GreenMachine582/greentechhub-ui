@@ -1,6 +1,8 @@
-{% macro gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="") %}
+{% macro gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="",
+                       chart=None) %}
 {# label/value/delta are trusted HTML, same trust model as gth-card's title/footer —
-   callers may pass pre-built markup (e.g. a colored inner <span> within delta). #}
+   callers may pass pre-built markup (e.g. a colored inner <span> within delta).
+   chart: trusted HTML under the value, typically a gth_sparkline (v0.17). #}
 <div class="metric-card gth-stat-card {{ card_class }}">
   {% if icon %}<div class="gth-stat-card-icon"><i class="bi bi-{{ icon }}" aria-hidden="true"></i></div>{% endif %}
   <div class="metric-label gth-stat-card-label">{{ label | safe }}</div>
@@ -8,6 +10,9 @@
   {% if delta is not none %}
   <div class="metric-delta gth-stat-card-delta{% if delta_tone == 'good' %} text-success{% elif delta_tone == 'bad' %} text-danger{% endif %}">{{ delta | safe }}</div>
   {% endif %}
+  {%- if chart is not none %}
+  <div class="gth-stat-card-chart">{{ chart | safe }}</div>
+  {%- endif %}
 </div>
 {% endmacro %}
 

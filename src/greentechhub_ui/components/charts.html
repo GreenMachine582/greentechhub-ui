@@ -1,0 +1,193 @@
+{#- Server-rendered charts (v0.17): inline SVG, no JavaScript, coloured from
+    theme tokens so light and dark both work. Each bar and line chart is a
+    <figure> whose plot is aria-hidden, with the same data in a visually
+    hidden table for screen readers; a sparkline is one role="img" with a
+    text summary.
+
+    Data: `items` are {"label", "value"} dicts or (label, value) pairs;
+    values are numbers (Decimal, float, int or numeric strings). Numbers in
+    labels and summaries are formatted with `prefix`, `suffix` and `places`
+    decimals ("$1,250" for prefix="$"), since these macros can't assume an
+    app's money/number filters are installed.
+
+    tone: "primary" (the default), "good", "bad", "neutral" (secondary),
+    "signed" (bar chart: green above zero, red below) or "trend" (sparkline:
+    green if it ends at or above where it started, else red). -#}
+
+{%- macro _fmt(value, prefix="", suffix="", places=0) -%}
+{%- set v = value|float -%}
+{{ "-" if v < 0 else "" }}{{ prefix }}{{ ("{:,.%df}" % places).format(v|abs) }}{{ suffix }}
+{%- endmacro -%}
+
+{%- macro gth_sparkline(values, label=None, tone="primary", width=96, height=28, fill=True,
+                        prefix="", suffix="", places=0, sparkline_class="") -%}
+{#- A small trend line for a stat card or a table cell: `values` are
+    numbers, oldest first. role="img" with an aria-label summary ("Label:
+    from $10 to $14, low $9, high $15"). Fixed size in px (width × height). -#}
+{%- set ns = namespace(points=[], lo=none, hi=none) -%}
+{%- set nums = values|map("float")|list -%}
+{%- if nums -%}
+  {%- set lo = nums|min -%}{%- set hi = nums|max -%}
+  {%- set span = (hi - lo) or 1 -%}
+  {%- set pad = 2 -%}
+  {%- for v in nums -%}
+    {%- set x = (pad + (width - 2 * pad) * (loop.index0 / (nums|length - 1) if nums|length > 1 else 0.5)) -%}
+    {%- set y = (pad + (height - 2 * pad) * (1 - ((v - lo) / span if hi != lo else 0.5))) -%}
+    {%- set ns.points = ns.points + ["%.2f,%.2f"|format(x, y)] -%}
+  {%- endfor -%}
+  {%- set ns.lo, ns.hi = lo, hi -%}
+{%- endif -%}
+{%- if tone == "trend" -%}
+  {%- set tone = "good" if nums and nums[-1] >= nums[0] else "bad" -%}
+{%- endif -%}
+{%- set summary -%}
+{%- if label %}{{ label }}: {% endif -%}
+{%- if not nums %}no data
+{%- elif nums|length == 1 %}{{ _fmt(nums[0], prefix, suffix, places) }}
+{%- else %}from {{ _fmt(nums[0], prefix, suffix, places) }} to {{ _fmt(nums[-1], prefix, suffix, places) }}, low {{ _fmt(ns.lo, prefix, suffix, places) }}, high {{ _fmt(ns.hi, prefix, suffix, places) }}
+{%- endif -%}
+{%- endset -%}
+<svg class="gth-sparkline gth-chart-{{ tone }}{% if sparkline_class %} {{ sparkline_class }}{% endif %}" width="{{ width }}" height="{{ height }}" viewBox="0 0 {{ width }} {{ height }}" role="img" aria-label="{{ summary|trim }}">
+  {%- if ns.points|length > 1 and fill %}
+  <polygon class="gth-chart-area" points="{{ ns.points[0].split(',')[0] }},{{ height }} {{ ns.points|join(' ') }} {{ ns.points[-1].split(',')[0] }},{{ height }}"/>
+  {%- endif %}
+  {%- if ns.points|length > 1 %}
+  <polyline class="gth-chart-line" points="{{ ns.points|join(' ') }}"/>
+  {%- elif ns.points %}
+  <circle class="gth-chart-dot" cx="{{ ns.points[0].split(',')[0] }}" cy="{{ ns.points[0].split(',')[1] }}" r="2"/>
+  {%- endif %}
+</svg>
+{%- endmacro -%}
+
+{%- macro _data_table(label, labels, nums, columns, prefix, suffix, places) -%}
+<table class="visually-hidden">
+    <caption>{{ label }}</caption>
+    <thead><tr><th scope="col">{{ columns[0] }}</th><th scope="col">{{ columns[1] }}</th></tr></thead>
+    <tbody>
+      {%- for l in labels %}
+      <tr><th scope="row">{{ l }}</th><td>{{ _fmt(nums[loop.index0], prefix, suffix, places) }}</td></tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+{%- endmacro -%}
+
+{%- macro _y_axis(hi, lo, prefix, suffix, places) -%}
+<div class="gth-chart-y" aria-hidden="true">
+      <span style="top: 0%">{{ _fmt(hi, prefix, suffix, places) }}</span>
+      {%- if lo < 0 < hi %}
+      <span style="top: {{ '%.2f'|format(hi / (hi - lo) * 100) }}%">{{ _fmt(0, prefix, suffix, places) }}</span>
+      {%- endif %}
+      <span style="top: 100%">{{ _fmt(lo, prefix, suffix, places) }}</span>
+    </div>
+{%- endmacro -%}
+
+{%- macro _x_shown(i, n, every) -%}
+{#- "1" when the i-th of n x labels is shown: every `every`-th, and the
+    last, minus one that would sit closer than `every` to the last. -#}
+{{- "1" if i == n - 1 or (i % every == 0 and n - 1 - i >= every) else "" -}}
+{%- endmacro -%}
+
+{%- macro _x_axis(labels, every) -%}
+{#- A bar chart's x labels: one grid cell per bar, under its centre. -#}
+<div class="gth-chart-x" aria-hidden="true" style="grid-template-columns: repeat({{ labels|length }}, 1fr)">
+    {%- for l in labels %}
+    <span>{{ l if _x_shown(loop.index0, labels|length, every) else "" }}</span>
+    {%- endfor %}
+  </div>
+{%- endmacro -%}
+
+{%- macro _x_axis_points(labels, every) -%}
+{#- A line chart's x labels, each at its point's x. -#}
+{%- set n = labels|length -%}
+<div class="gth-chart-x" aria-hidden="true">
+    {%- for l in labels %}{% if _x_shown(loop.index0, n, every) %}
+    <span style="left: {{ '%.2f'|format(loop.index0 / (n - 1) * 100 if n > 1 else 50) }}%">{{ l }}</span>
+    {%- endif %}{% endfor %}
+  </div>
+{%- endmacro -%}
+
+{%- macro gth_bar_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+                        columns=("Label", "Value"), show_label=True, max_x_labels=6, chart_class="") -%}
+{#- Vertical bars, one per item, from a zero baseline (negative values
+    hang below it). The y axis labels the top, zero (when the bars cross it)
+    and the bottom; the x axis every item's label, or every n-th once there
+    are more than max_x_labels (6 by default: they share the chart's
+    width, phones included). Each bar has a <title> tooltip.
+    columns: the hidden data table's header cells. show_label=False keeps
+    the caption for screen readers only. -#}
+{%- set ns = namespace(labels=[], nums=[]) -%}
+{%- for it in items -%}
+  {%- if it is mapping %}{% set ns.labels = ns.labels + [it.label] %}{% set ns.nums = ns.nums + [it.value|float] %}
+  {%- else %}{% set ns.labels = ns.labels + [it[0]] %}{% set ns.nums = ns.nums + [it[1]|float] %}{% endif -%}
+{%- endfor -%}
+{%- set n = ns.nums|length -%}
+{%- set hi = [0] + ns.nums -%}{%- set hi = hi|max -%}
+{%- set lo = [0] + ns.nums -%}{%- set lo = lo|min -%}
+{%- if hi == lo %}{% set hi = lo + 1 %}{% endif -%}
+{%- set span = hi - lo -%}
+{%- set zero = hi / span * 100 -%}
+<figure class="gth-chart gth-bar-chart{% if chart_class %} {{ chart_class }}{% endif %}">
+  <figcaption class="gth-chart-caption{% if not show_label %} visually-hidden{% endif %}">{{ label }}</figcaption>
+  {%- if n %}
+  <div class="gth-chart-body" style="height: {{ height }}px">
+    {{ _y_axis(hi, lo, prefix, suffix, places) }}
+    <svg class="gth-chart-plot" width="100%" height="100%" aria-hidden="true" focusable="false">
+      <line class="gth-chart-baseline" x1="0" x2="100%" y1="{{ '%.2f'|format(zero) }}%" y2="{{ '%.2f'|format(zero) }}%"/>
+      {%- for v in ns.nums %}
+      {%- set slot = 100 / n %}
+      {%- set bar_tone = (("good" if v >= 0 else "bad") if tone == "signed" else tone) %}
+      <rect class="gth-chart-bar gth-chart-{{ bar_tone }}" x="{{ '%.2f'|format(slot * loop.index0 + slot * 0.15) }}%" width="{{ '%.2f'|format(slot * 0.7) }}%" y="{{ '%.2f'|format((hi - ([v, 0]|max)) / span * 100) }}%" height="{{ '%.2f'|format((v|abs) / span * 100) }}%"><title>{{ ns.labels[loop.index0] }}: {{ _fmt(v, prefix, suffix, places) }}</title></rect>
+      {%- endfor %}
+    </svg>
+  </div>
+  {{ _x_axis(ns.labels, ((n + max_x_labels - 1) // max_x_labels) or 1) }}
+  {{ _data_table(label, ns.labels, ns.nums, columns, prefix, suffix, places) }}
+  {%- else %}
+  <p class="gth-chart-empty text-secondary">No data.</p>
+  {%- endif %}
+</figure>
+{%- endmacro -%}
+
+{%- macro gth_line_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+                         zero=True, fill=True, columns=("Label", "Value"), show_label=True,
+                         max_x_labels=6, chart_class="") -%}
+{#- A line through the items in order, stretched to the container's width.
+    zero=True keeps 0 on the y axis (honest for amounts); False fits the
+    axis to the data, for values far from zero. fill shades the area under
+    the line. Axis labels, caption and hidden data table as gth_bar_chart. -#}
+{%- set ns = namespace(labels=[], nums=[], points=[]) -%}
+{%- for it in items -%}
+  {%- if it is mapping %}{% set ns.labels = ns.labels + [it.label] %}{% set ns.nums = ns.nums + [it.value|float] %}
+  {%- else %}{% set ns.labels = ns.labels + [it[0]] %}{% set ns.nums = ns.nums + [it[1]|float] %}{% endif -%}
+{%- endfor -%}
+{%- set n = ns.nums|length -%}
+{%- set hi = (([0] if zero else []) + ns.nums or [0])|max -%}
+{%- set lo = (([0] if zero else []) + ns.nums or [0])|min -%}
+{%- if hi == lo %}{% set hi = lo + 1 %}{% endif -%}
+{%- set span = hi - lo -%}
+{%- for v in ns.nums -%}
+  {%- set x = (loop.index0 / (n - 1) * 100) if n > 1 else 50 -%}
+  {%- set ns.points = ns.points + ["%.2f,%.2f"|format(x, (hi - v) / span * 100)] -%}
+{%- endfor -%}
+<figure class="gth-chart gth-line-chart{% if chart_class %} {{ chart_class }}{% endif %}">
+  <figcaption class="gth-chart-caption{% if not show_label %} visually-hidden{% endif %}">{{ label }}</figcaption>
+  {%- if n %}
+  <div class="gth-chart-body" style="height: {{ height }}px">
+    {{ _y_axis(hi, lo, prefix, suffix, places) }}
+    <svg class="gth-chart-plot gth-chart-{{ tone }}" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {%- if lo < 0 < hi %}
+      <line class="gth-chart-baseline" x1="0" x2="100" y1="{{ '%.2f'|format(hi / span * 100) }}" y2="{{ '%.2f'|format(hi / span * 100) }}"/>
+      {%- endif %}
+      {%- if fill and n > 1 %}
+      <polygon class="gth-chart-area" points="0,100 {{ ns.points|join(' ') }} 100,100"/>
+      {%- endif %}
+      <polyline class="gth-chart-line" points="{{ ns.points|join(' ') if n > 1 else '0,' ~ ns.points[0].split(',')[1] ~ ' 100,' ~ ns.points[0].split(',')[1] }}"/>
+    </svg>
+  </div>
+  {{ _x_axis_points(ns.labels, ((n + max_x_labels - 1) // max_x_labels) or 1) }}
+  {{ _data_table(label, ns.labels, ns.nums, columns, prefix, suffix, places) }}
+  {%- else %}
+  <p class="gth-chart-empty text-secondary">No data.</p>
+  {%- endif %}
+</figure>
+{%- endmacro -%}

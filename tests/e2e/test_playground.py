@@ -2695,6 +2695,26 @@ def test_sign_up_with_an_email_and_confirm_it(page, playground_url):
     page.request.post(f"{playground_url}/demo/reset")
 
 
+# ── gth charts (v0.17) ─────────────────────────────────────────────────────
+
+
+def test_charts_fill_their_plot_box(page, playground_url):
+    """The plot stretches to the chart's box (no viewBox-driven height), and
+    the bars and line stay inside it."""
+    page.goto(f"{playground_url}/layout")
+    for chart in (".gth-bar-chart", ".gth-line-chart"):
+        body = page.locator(f"#charts {chart} .gth-chart-body").bounding_box()
+        plot = page.locator(f"#charts {chart} .gth-chart-plot").bounding_box()
+        assert abs(plot["height"] - body["height"]) < 1 and abs(plot["width"] - body["width"]) < 1
+        assert body["height"] == 180
+    line = page.locator("#charts .gth-line-chart .gth-chart-line").bounding_box()
+    body = page.locator("#charts .gth-line-chart .gth-chart-body").bounding_box()
+    assert line["y"] >= body["y"] - 2
+    assert line["y"] + line["height"] <= body["y"] + body["height"] + 2
+    expect(page.locator("#charts .gth-sparkline").first).to_have_attribute(
+        "aria-label", "Holdings: from $31.0k to $41.2k, low $31.0k, high $41.2k")
+
+
 # ── gth-embed-card (v0.17) ─────────────────────────────────────────────────
 
 EMBED = "#embed-card .col-md-4"
