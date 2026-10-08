@@ -312,6 +312,81 @@
   font-size: 0.8rem;
 }
 
+.gth-stat-card-chart {
+  margin-top: 0.25rem;
+  line-height: 0;
+}
+
+/* gth charts (charts.html, v0.17) — inline SVG coloured through `color`, so
+   every mark is currentColor and the tones follow the theme's tokens in
+   light and dark mode. Strokes keep their width when a plot is stretched. */
+.gth-chart-primary { color: var(--bs-primary); }
+.gth-chart-good { color: var(--bs-success); }
+.gth-chart-bad { color: var(--bs-danger); }
+.gth-chart-neutral { color: var(--bs-secondary-color); }
+.gth-chart-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.gth-chart-area { fill: currentColor; opacity: 0.15; }
+.gth-chart-bar, .gth-chart-dot { fill: currentColor; }
+.gth-chart-baseline {
+  stroke: var(--bs-border-color);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.gth-sparkline { display: inline-block; vertical-align: middle; overflow: visible; }
+.gth-chart { --gth-chart-y-width: 4.5rem; margin: 0 0 1rem; }
+.gth-chart-caption { font-weight: 600; margin-bottom: 0.5rem; }
+/* The plot box: its height is set inline; the y labels hang in the gutter to
+   its left, so the plot and the x labels below share one width. The top and
+   bottom y labels centre on their lines, hence the vertical margin. */
+.gth-chart-body {
+  position: relative;
+  margin: 0.5rem 0 0.5rem var(--gth-chart-y-width);
+}
+.gth-chart-plot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.gth-chart-y {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--gth-chart-y-width));
+  width: var(--gth-chart-y-width);
+}
+.gth-chart-y span,
+.gth-chart-x span {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+.gth-chart-y span {
+  position: absolute;
+  right: 0.5rem;
+  transform: translateY(-50%);
+}
+/* Bar charts: one grid cell per bar. Line charts: each label sits at its
+   point (left: x%), the end ones kept inside the plot. */
+.gth-chart-x {
+  margin-left: var(--gth-chart-y-width);
+  text-align: center;
+}
+.gth-bar-chart .gth-chart-x { display: grid; }
+.gth-bar-chart .gth-chart-x span { overflow: hidden; text-overflow: ellipsis; padding: 0 1px; }
+.gth-line-chart .gth-chart-x { position: relative; height: 1.25rem; }
+.gth-line-chart .gth-chart-x span { position: absolute; transform: translateX(-50%); }
+.gth-line-chart .gth-chart-x span:first-child { transform: none; }
+.gth-line-chart .gth-chart-x span:last-child { transform: translateX(-100%); }
+
 /* gth-form — equivalent to BottleBot's .error-banner, ported here for the
    same reason as .gth-stat-card above. */
 .gth-form-error {

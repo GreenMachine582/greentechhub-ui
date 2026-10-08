@@ -18,9 +18,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Sidebar: pinned/favourite items
 
 ### Display & charts
-- [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
-  `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
-  and reports until real Grafana panels exist
 - [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's audit log (`AuditStore`, core v0.10); pairs with the
   notification centre
 - [ ] `gth_embed_card` — iframe card with loading and error states, passing the current theme to Grafana panels —
