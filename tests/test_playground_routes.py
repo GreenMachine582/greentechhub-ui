@@ -73,6 +73,27 @@ def test_every_sidebar_link_returns_200():
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
 
 
+def test_every_demo_section_is_in_the_sidebar():
+    # A demo section the nav doesn't link is missing from the sidebar, the
+    # command palette and the overview cards alike.
+    from pathlib import Path
+
+    from greentechhub_ui.navigation import flatten
+    from playground.app import PLAYGROUND_NAV
+
+    linked = {entry["url"] for entry in flatten(PLAYGROUND_NAV)}
+    pages = Path(playground_app.__file__).parent / "templates" / "pages"
+    for category in PLAYGROUND_NAV:
+        if not category.get("children"):
+            continue  # a single-page entry (Extensibility, Personas) links the page itself
+        page = pages / (category["url"].lstrip("/") + ".html")
+        if not page.exists():
+            continue  # e.g. /settings renders a shipped template
+        ids = re.findall(r'<section\b[^>]*\sid="([^"]+)"', page.read_text(encoding="utf-8"))
+        missing = [i for i in ids if f"{category['url']}#{i}" not in linked]
+        assert not missing, (category["url"], missing)
+
+
 def test_table_filter_returns_matching_rows_only():
     response = _run(_get("/table-demo/filter", params={"q": "release"}))
     assert response.status_code == 200
