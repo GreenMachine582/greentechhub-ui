@@ -1,0 +1,17 @@
+{#- 403.html (v0.17) — a signed-in viewer without the permission, or a
+    signed-out one (current_user is none) with a login_url, who also gets a
+    sign-in link back to this page. See error_page.html. -#}
+{% extends "error_page.html" %}
+{% set error_code = 403 %}
+{% set error_title = "Access denied" %}
+{% set error_message = error_message|default("You don't have access to this page.") %}
+{% set error_detail = error_detail|default(
+    "Ask an admin for access if you need it." if current_user|default(none)
+    else "You may need to sign in first.") %}
+
+{% block error_actions %}
+{{ super() }}
+{%- if login_url|default(none) and not current_user|default(none) %}
+<a class="btn btn-outline-secondary" href="{{ login_url|e }}{% if current_path|default(none) %}?next={{ current_path|urlencode }}{% endif %}">Sign in</a>
+{%- endif %}
+{% endblock %}

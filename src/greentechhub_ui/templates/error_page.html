@@ -1,0 +1,33 @@
+{#- error_page.html — the shared base for 403.html, 404.html and 500.html
+    (v0.17), on page.html: the page header with error_title, then the status
+    code, error_message and an optional error_detail, a reference
+    (error_reference, e.g. a request id, so a report can be matched to the
+    logs) and the actions: a link home (home_url, default "/") and, for a
+    signed-out visitor on a 403, a sign-in link (login_url).
+
+    Every variable is optional, so a page renders with nothing but install()'s
+    globals: Django's default 500 handler renders 500.html with an empty
+    context. Each error template sets its own code and copy; a service can
+    pass error_message / error_detail to override them, or extend this base
+    for another status. -#}
+{% extends "page.html" %}
+
+{% set page_title = error_title|default(page_title|default("Error")) %}
+
+{% block page %}
+<div class="gth-error-page text-center py-4">
+  <p class="gth-error-page-code" aria-hidden="true">{{ error_code|default("") }}</p>
+  <p class="lead mb-2">{{ error_message|default("") }}</p>
+  {%- if error_detail|default(none) %}
+  <p class="text-secondary">{{ error_detail }}</p>
+  {%- endif %}
+  {%- if error_reference|default(none) %}
+  <p class="text-secondary small">Reference: <code class="user-select-all">{{ error_reference }}</code></p>
+  {%- endif %}
+  <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+    {%- block error_actions %}
+    <a class="btn btn-primary" href="{{ home_url|default('/')|e }}">Go to the home page</a>
+    {%- endblock %}
+  </div>
+</div>
+{% endblock %}
