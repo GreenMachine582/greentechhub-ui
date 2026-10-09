@@ -1,0 +1,16 @@
+{#- 500.html (v0.17) — an unhandled error. Pass error_reference (a request
+    id) so a report can be matched to the logs. Keep the context small: it
+    renders after something already failed (Django's default handler passes
+    none at all). See error_page.html. -#}
+{% extends "error_page.html" %}
+{% set error_code = 500 %}
+{% set error_title = "Something went wrong" %}
+{% set error_message = error_message|default("Something went wrong on our side.") %}
+{% set error_detail = error_detail|default("It's been logged. Try again in a moment.") %}
+
+{% block error_actions %}
+{%- if current_path|default(none) %}
+<a class="btn btn-outline-secondary" href="{{ current_path|e }}">Try again</a>
+{%- endif %}
+{{ super() }}
+{% endblock %}

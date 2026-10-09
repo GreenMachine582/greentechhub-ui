@@ -137,4 +137,14 @@
     onclick="Object.keys(localStorage).filter(k => k.startsWith('gth-banner:')).forEach(k => localStorage.removeItem(k)); location.reload()">
     Reset dismissed banners</button>
 </section>
+<section class="mb-5" id="error-pages">
+  <h2 class="h4">Error pages</h2>
+  <p class="text-secondary"><code>403.html</code>, <code>404.html</code> and <code>500.html</code>, wired as
+    docs/components.md shows: page requests get them, JSON and htmx requests keep the defaults.</p>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="/demo/error/403">403</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/no-such-page">404</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/demo/error/500">500</a>
+  </div>
+</section>
 {% endblock %}

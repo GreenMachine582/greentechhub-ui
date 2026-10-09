@@ -18,8 +18,15 @@ from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
 
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.templating import Jinja2Templates
 from greentechhub_core.email import InMemoryEmailSender
 from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
@@ -37,6 +44,7 @@ from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
 from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import greentechhub_ui
 from greentechhub_ui.formatting import fiscal_year_label
@@ -328,6 +336,7 @@ PLAYGROUND_NAV = [
         {"label": "Inline alert", "url": "/feedback#inline-alert"},
         {"label": "Result panel", "url": "/feedback#result-panel"},
         {"label": "Alert banner", "url": "/feedback#alert-banner"},
+        {"label": "Error pages", "url": "/feedback#error-pages"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
         {"label": "Modal + modal form", "url": "/overlays#modal"},
@@ -393,6 +402,44 @@ greentechhub_ui.install(
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 mount_static_dirs(app, greentechhub_ui.static_dirs())
+
+# Error pages (docs/components.md › Error pages): 403.html / 404.html /
+# 500.html for a browser's page request; JSON and htmx requests keep the
+# defaults.
+ERROR_PAGES = {403: "403.html", 404: "404.html"}
+
+
+def wants_error_page(request: Request) -> bool:
+    return ("text/html" in request.headers.get("accept", "")
+            and "hx-request" not in request.headers
+            and not request.url.path.startswith("/api"))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_page(request: Request, exc: StarletteHTTPException):
+    if exc.status_code in ERROR_PAGES and wants_error_page(request):
+        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
+                                          status_code=exc.status_code)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def server_error_page(request: Request, exc: Exception):
+    if not wants_error_page(request):
+        return PlainTextResponse("Internal Server Error", status_code=500)
+    return templates.TemplateResponse(request, "500.html",
+                                      {"error_reference": request.headers.get("x-request-id")},
+                                      status_code=500)
+
+
+@app.get("/demo/error/{code}")
+async def demo_error(code: int):
+    """The error pages on demand: 403 or 500 (any other code is a 404)."""
+    if code == 403:
+        raise HTTPException(status_code=403)
+    if code == 500:
+        raise RuntimeError("A demo failure, for the 500 page")
+    raise HTTPException(status_code=404)
 
 
 def _macro(template: str, macro: str, *args, **kwargs) -> Markup:

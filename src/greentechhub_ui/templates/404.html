@@ -1,0 +1,6 @@
+{#- 404.html (v0.17) — see error_page.html. -#}
+{% extends "error_page.html" %}
+{% set error_code = 404 %}
+{% set error_title = "Page not found" %}
+{% set error_message = error_message|default("There's no page at this address.") %}
+{% set error_detail = error_detail|default("It may have moved, or the link may be mistyped.") %}

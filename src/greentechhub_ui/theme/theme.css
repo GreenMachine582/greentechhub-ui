@@ -1587,6 +1587,17 @@ body.gth-picker-modal-open {
   margin-bottom: 0 !important;
 }
 
+/* error_page.html (403/404/500, v0.17): the status code, large and quiet,
+   above the message. */
+.gth-error-page-code {
+  font-size: 4.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 1rem;
+}
+
 /* ── Viewer preferences (v0.12): greentechhub-core's ui.motion / ui.density,
    set on <html> by app.html from user_settings ─────────────────────────── */
 
