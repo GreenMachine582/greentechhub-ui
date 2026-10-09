@@ -7,10 +7,20 @@
 {%- set _density = _prefs.get("ui.density") if _prefs.get("ui.density") in ("comfortable", "compact") else none %}
 {%- set _motion = _prefs.get("ui.motion") if _prefs.get("ui.motion") in ("system", "reduce", "full") else none %}
 {%- set _sidebar = _prefs.get("ui.sidebar_default") if _prefs.get("ui.sidebar_default") in ("expanded", "rail") else none %}
+{#- csp_nonce (v0.17): a per-request nonce for a Content-Security-Policy
+    script-src (docs/contract.md › Content-Security-Policy). Every <script>
+    here carries it; without it nothing changes. -#}
+{#- Made a real str with "%s"|format — |string and ~ hand a str-like
+    object back as is: Django's lazy nonce (django.middleware.csp) is falsy
+    until read, and reading it is what puts it in the header. -#}
+{%- set _csp_nonce = "%s"|format(csp_nonce) if csp_nonce|default(none) is not none else "" %}
+{%- macro _nonce() %}{% if _csp_nonce %} nonce="{{ _csp_nonce|e }}"{% endif %}{% endmacro %}
+{%- set _prepaint_sidebar = layout|default("navbar") == "sidebar" %}
+{%- set _prepaint_banners = alert_banner_js_url|default(none) is not none %}
 <html lang="en" data-bs-theme="dark"{% if theme_save_url|default(none) %} data-gth-theme-save-url="{{ theme_save_url|e }}"{% endif %}
   {%- if _density %} data-gth-density="{{ _density }}"{% endif %}{% if _motion %} data-gth-motion="{{ _motion }}"{% endif %}>
 <head>
-  <script>
+  <script{{ _nonce() }}>
     // Anti-FOUC: picks the theme before first paint. The server's theme_mode
     // (the signed-in user's saved preference: light | dark | system) wins and
     // is mirrored to localStorage; without it, a choice the toggle stored
@@ -33,8 +43,17 @@
       root.setAttribute("data-bs-theme", mode);
     })();
   </script>
-  {%- if layout|default("navbar") == "sidebar" %}
-  <script>
+  {%- if prepaint_js_url|default(none) and (_prepaint_sidebar or _prepaint_banners) %}
+  {#- The sidebar rail and dismissed-banner pre-paint (static/js/prepaint.js,
+      v0.17): synchronous in <head>, so it still runs before first paint. -#}
+  <script src="{{ prepaint_js_url }}"
+    {%- if _prepaint_sidebar %} data-sidebar="{{ _sidebar or '' }}"{% endif %}
+    {%- if _prepaint_banners %} data-banners{% endif %}{{ _nonce() }}></script>
+  {%- else %}
+  {#- Without prepaint_js_url (a consumer setting globals by hand): the same
+      two pre-paint steps inline. Keep in step with static/js/prepaint.js. -#}
+  {%- if _prepaint_sidebar %}
+  <script{{ _nonce() }}>
     // Same idea for gth_sidebar's icon rail (gth_sidebar_rail_toggle): this
     // browser's own toggle ("rail"/"full" in localStorage) wins; with none,
     // the viewer's ui.sidebar_default from user_settings (v0.12) decides.
@@ -48,8 +67,8 @@
     })();
   </script>
   {%- endif %}
-  {%- if alert_banner_js_url|default(none) %}
-  <script>
+  {%- if _prepaint_banners %}
+  <script{{ _nonce() }}>
     // gth_alert_banner: hide banners this browser dismissed before first
     // paint (alert-banner.js reveals any whose message has since changed).
     (function () {
@@ -70,23 +89,43 @@
     })();
   </script>
   {%- endif %}
+  {%- endif %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ brand.service_name or brand.name }} {% block title %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ bootstrap_css_url|default('https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css') }}">
-  <script src="{{ htmx_js_url|default('https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js') }}"></script>
-  <script>
+  {%- if _csp_nonce %}
+  {#- Under a CSP: htmx runs <script>s in swapped content only with this
+      nonce, and doesn't inject its own indicator <style> (theme.css has
+      the same .htmx-indicator rules). -#}
+  <meta name="htmx-config" content='{{ {"inlineScriptNonce": _csp_nonce, "includeIndicatorStyles": false}|tojson }}'>
+  {%- endif %}
+  <script src="{{ htmx_js_url|default('https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js') }}"{{ _nonce() }}></script>
+  {%- if htmx_setup_js_url|default(none) %}
+  <script src="{{ htmx_setup_js_url }}"{{ _nonce() }}></script>
+  {%- else %}
+  <script{{ _nonce() }}>
     // gth-form's validation-error responses use 422 (correct REST semantics),
     // but HTMX only swaps 2xx responses by default — this treats 422 as
     // swappable too, matching HTMX's own documented pattern for exactly this
     // scenario. Without it, gth-form's inline errors are computed correctly
-    // server-side but silently never appear in the DOM.
+    // server-side but silently never appear in the DOM. (static/js/htmx-setup.js
+    // when htmx_setup_js_url is set.)
     document.addEventListener("htmx:beforeSwap", function (evt) {
       if (evt.detail.xhr.status === 422) {
         evt.detail.shouldSwap = true;
       }
     });
+    // gth_table_filter: drop its search box's own `change` (see htmx-setup.js).
+    document.addEventListener("htmx:confirm", function (evt) {
+      var e = evt.detail.triggeringEvent;
+      if (e && e.type === "change" && e.target && e.target.type === "search" &&
+          evt.detail.elt.classList && evt.detail.elt.classList.contains("gth-table-filter")) {
+        evt.preventDefault();
+      }
+    });
   </script>
+  {%- endif %}
   {% if brand.favicon_url %}<link rel="icon" type="image/png" sizes="64x64" href="{{ brand.favicon_url }}">{% endif %}
   {% if theme_css_url|default(none) %}<link rel="stylesheet" href="{{ theme_css_url }}">{% endif %}
   {% if icons_css_url|default(none) %}<link rel="stylesheet" href="{{ icons_css_url }}">{% endif %}
@@ -179,35 +218,35 @@
   {%- if back_to_top_js_url|default(none) %}
   {% from "back_to_top.html" import gth_back_to_top %}
   {{ gth_back_to_top() }}
-  <script src="{{ back_to_top_js_url }}"></script>
+  <script src="{{ back_to_top_js_url }}"{{ _nonce() }}></script>
   {%- endif %}
   {%- if command_palette_js_url|default(none) and layout|default("navbar") != "auth" and (layout|default("navbar") == "sidebar" or show_command_palette|default(false)) %}
   {% from "command_palette.html" import gth_command_palette %}
   {{ gth_command_palette(nav_items, command_search_url|default(none)) }}
-  <script src="{{ command_palette_js_url }}"></script>
+  <script src="{{ command_palette_js_url }}"{{ _nonce() }}></script>
   {%- endif %}
 
-  <script src="{{ bootstrap_js_url|default('https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js') }}"></script>
-  {% if toast_js_url|default(none) %}<script src="{{ toast_js_url }}"></script>{% endif %}
-  {% if loading_bar_js_url|default(none) %}<script src="{{ loading_bar_js_url }}"></script>{% endif %}
-  {% if theme_toggle_js_url|default(none) %}<script src="{{ theme_toggle_js_url }}"></script>{% endif %}
-  {% if modal_host_js_url|default(none) %}<script src="{{ modal_host_js_url }}"></script>{% endif %}
-  {% if combobox_js_url|default(none) %}<script src="{{ combobox_js_url }}"></script>{% endif %}
-  {% if record_picker_js_url|default(none) %}<script src="{{ record_picker_js_url }}"></script>{% endif %}
-  {% if date_range_js_url|default(none) %}<script src="{{ date_range_js_url }}"></script>{% endif %}
-  {% if file_drop_js_url|default(none) %}<script src="{{ file_drop_js_url }}"></script>{% endif %}
-  {% if table_select_js_url|default(none) %}<script src="{{ table_select_js_url }}"></script>{% endif %}
-  {% if table_view_js_url|default(none) %}<script src="{{ table_view_js_url }}"></script>{% endif %}
-  {% if char_counter_js_url|default(none) %}<script src="{{ char_counter_js_url }}"></script>{% endif %}
-  {% if embed_card_js_url|default(none) %}<script src="{{ embed_card_js_url }}"></script>{% endif %}
-  {% if alert_banner_js_url|default(none) %}<script src="{{ alert_banner_js_url }}"></script>{% endif %}
+  <script src="{{ bootstrap_js_url|default('https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js') }}"{{ _nonce() }}></script>
+  {% if toast_js_url|default(none) %}<script src="{{ toast_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if loading_bar_js_url|default(none) %}<script src="{{ loading_bar_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if theme_toggle_js_url|default(none) %}<script src="{{ theme_toggle_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if modal_host_js_url|default(none) %}<script src="{{ modal_host_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if combobox_js_url|default(none) %}<script src="{{ combobox_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if record_picker_js_url|default(none) %}<script src="{{ record_picker_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if date_range_js_url|default(none) %}<script src="{{ date_range_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if file_drop_js_url|default(none) %}<script src="{{ file_drop_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if table_select_js_url|default(none) %}<script src="{{ table_select_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if table_view_js_url|default(none) %}<script src="{{ table_view_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if char_counter_js_url|default(none) %}<script src="{{ char_counter_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if embed_card_js_url|default(none) %}<script src="{{ embed_card_js_url }}"{{ _nonce() }}></script>{% endif %}
+  {% if alert_banner_js_url|default(none) %}<script src="{{ alert_banner_js_url }}"{{ _nonce() }}></script>{% endif %}
   {%- if tree_js_url|default(none) %}
-  <script src="{{ tree_js_url }}"></script>
+  <script src="{{ tree_js_url }}"{{ _nonce() }}></script>
   {%- endif %}
   {%- if sidebar_js_url|default(none) and layout|default("navbar") == "sidebar" %}
-  <script src="{{ sidebar_js_url }}"></script>
+  <script src="{{ sidebar_js_url }}"{{ _nonce() }}></script>
   {%- endif %}
-  {% for url in extra_js|default([]) %}<script src="{{ url }}"></script>{% endfor %}
+  {% for url in extra_js|default([]) %}<script src="{{ url }}"{{ _nonce() }}></script>{% endfor %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

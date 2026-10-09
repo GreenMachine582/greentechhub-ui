@@ -59,6 +59,8 @@ def shell_globals(
         "bootstrap_css_url": f"{assets_prefix}/css/bootstrap.min.css",
         "bootstrap_js_url": f"{assets_prefix}/js/bootstrap.bundle.min.js",
         "htmx_js_url": f"{assets_prefix}/js/htmx.min.js",
+        "htmx_setup_js_url": f"{assets_prefix}/js/htmx-setup.js",
+        "prepaint_js_url": f"{assets_prefix}/js/prepaint.js",
         "toast_js_url": f"{assets_prefix}/js/toast.js",
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
