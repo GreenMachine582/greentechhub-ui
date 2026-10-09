@@ -1587,6 +1587,56 @@ body.gth-picker-modal-open {
   margin-bottom: 0 !important;
 }
 
+/* htmx's request-indicator rules, which htmx otherwise injects as a <style>
+   at load. app.html turns that injection off under a CSP (csp_nonce, v0.17),
+   which would block it; these are the same rules, so nothing changes. */
+.htmx-indicator { opacity: 0; }
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+/* error_page.html (403/404/500, v0.17): the status code, large and quiet,
+   above the message. */
+.gth-error-page-code {
+  font-size: 4.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 1rem;
+}
+
+/* gth-loading-bar (loading_bar.html, v0.17): a 3px bar fixed to the top of
+   the viewport. .is-active creeps it towards 85% (fast, then slower and
+   slower); .is-done runs it to 100% and fades it. */
+.gth-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1090;
+  width: 0;
+  height: 3px;
+  background: var(--bs-primary);
+  opacity: 0;
+  pointer-events: none;
+}
+.gth-loading-bar.is-active {
+  width: 85%;
+  opacity: 1;
+  transition: width 10s cubic-bezier(0.08, 0.7, 0.2, 1), opacity 0.15s;
+}
+.gth-loading-bar.is-done {
+  width: 100%;
+  opacity: 0;
+  transition: width 0.2s ease-out, opacity 0.3s ease 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-gth-motion="full"]) .gth-loading-bar.is-active { width: 100%; transition: none; }
+}
+:root[data-gth-motion="reduce"] .gth-loading-bar.is-active { width: 100%; }
+
 /* ── Viewer preferences (v0.12): greentechhub-core's ui.motion / ui.density,
    set on <html> by app.html from user_settings ─────────────────────────── */
 

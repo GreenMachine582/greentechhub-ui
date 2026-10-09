@@ -78,6 +78,8 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `bootstrap_css_url` | the upstream Bootstrap 5.3.3 CDN URL |
 | `bootstrap_js_url` | the upstream Bootstrap 5.3.3 CDN URL |
 | `htmx_js_url` | the upstream HTMX 1.9.10 CDN URL |
+| `htmx_setup_js_url` | none — `app.html` inlines the same htmx setup (422 swaps, the table filter's search `change`) (v0.17) |
+| `prepaint_js_url` | none — `app.html` inlines the sidebar-rail and dismissed-banner pre-paint steps instead (v0.17) |
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
@@ -89,6 +91,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `embed_card_js_url` | none — `gth_embed_card` frames then load `src` unthemed through `<noscript>`, with no loading or error state (v0.17) |
 | `alert_banner_js_url` | none — `gth_alert_banner`s render without a close button, and `app.html` skips the pre-paint hide (v0.13) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
+| `loading_bar_js_url` | none — with it set, `app.html` renders `gth-loading-bar` and its script (v0.17); `loading_bar_delay` (default 300 ms) is how long a request runs before the bar shows |
 | `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
 | `command_palette_js_url` | none — with it set, `gth-command-palette` is included in `layout="sidebar"`, or in the default layout when `show_command_palette` is true (v0.8) |
@@ -209,3 +212,77 @@ A per-request context value overrides a global of the same name — e.g. one pag
 with its own `nav_items` (the playground's `/layouts/sidebar`).
 
 `greentechhub_ui.shell_globals(service_name=..., nav_items=...)` returns every global above (plus `brand`/`nav_items`) pointing at the vendored copies under the `/gth-assets` / `/gth-static` mount prefixes — prefer it over setting them one by one.
+
+## Content-Security-Policy (v0.17)
+
+`app.html` runs under a strict policy: no inline script without a nonce, no `eval`. Pass the request's nonce as
+`csp_nonce` and send the header:
+
+- Every `<script>` the shell renders carries `nonce="…"`. That covers the vendored files and `extra_js`, so a
+  `'strict-dynamic'` policy works too.
+- Only one script stays inline: the pre-paint theme bootstrap, which needs the server's `theme_mode` before first
+  paint.
+- The sidebar-rail and dismissed-banner pre-paint run from `static/js/prepaint.js`, and the htmx setup from
+  `static/js/htmx-setup.js`. `shell_globals()` sets both URLs. Without them `app.html` inlines the same code, with
+  the nonce.
+- With a nonce set, `app.html` emits `<meta name="htmx-config">`:
+  - `inlineScriptNonce`, so a `<script>` in swapped content runs;
+  - `includeIndicatorStyles: false`, because `theme.css` already has htmx's `.htmx-indicator` rules and htmx's
+    injected `<style>` would otherwise need `style-src 'unsafe-inline'`.
+
+The recommended policy, as the playground sends it on every response (so the e2e suite runs under it):
+
+```
+default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline';
+img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self';
+base-uri 'self'; form-action 'self'; object-src 'none'
+```
+
+- **`script-src`:** `'self'` plus the nonce. There's no `'unsafe-inline'` or `'unsafe-eval'`, so components must
+  not use what htmx `eval`s:
+  - `hx-on`;
+  - `hx-vars`;
+  - `js:` in `hx-vals`;
+  - `[…]` filters in `hx-trigger`.
+
+  `tests/test_csp_shell.py` checks every component and template for these. A service's own templates should
+  follow the same rule, or add `'unsafe-eval'`.
+- **`style-src 'unsafe-inline'`:** components set `style="…"` attributes (chart geometry, card heights, progress
+  widths). Those are style attributes, not scripts.
+- **`img-src data:`:** Bootstrap's CSS draws its form-control icons (select arrows, validation marks) as `data:` SVGs.
+- **`frame-src`:** add your Grafana origin for `gth_embed_card`.
+- **The CDN defaults:** mount `static_dirs()` and use `shell_globals()`. The CDN defaults (`bootstrap_*_url`,
+  `htmx_js_url`) are off-origin, so `'self'` alone won't allow them.
+
+**FastAPI** — a middleware that makes a nonce per request, plus a context processor that hands it to templates:
+
+```python
+import secrets
+
+CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; "
+       "base-uri 'self'; form-action 'self'; object-src 'none'")
+
+
+@app.middleware("http")
+async def content_security_policy(request, call_next):
+    request.state.csp_nonce = secrets.token_urlsafe(16)
+    response = await call_next(request)
+    response.headers.setdefault("Content-Security-Policy", CSP.format(nonce=request.state.csp_nonce))
+    return response
+
+
+def csp_context(request):
+    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
+
+templates = Jinja2Templates(directory="templates", context_processors=[ui_context, csp_context])
+```
+
+**Django 6+** — the built-in support uses the same name:
+
+- Add `django.middleware.csp.ContentSecurityPolicyMiddleware`.
+- Set `SECURE_CSP = {"script-src": [CSP.SELF, CSP.NONCE], …}`.
+- Add `"django.template.context_processors.csp"` to the Jinja2 backend's `OPTIONS["context_processors"]`.
+
+The context processor gives templates `csp_nonce`, a lazy value that's falsy until read. Reading it is what adds it
+to the header, and `app.html` reads it as a string.

@@ -148,8 +148,8 @@ def test_form_demo_above_max_returns_422():
 def test_pages_render_demos_with_vendored_assets():
     overlays = _run(_get("/overlays")).text
     assert 'id="gth-modal-host"' in overlays
-    assert '<script src="/gth-assets/js/modal-host.js"></script>' in overlays
-    assert '<script src="/gth-assets/js/combobox.js"></script>' in overlays
+    assert '<script src="/gth-assets/js/modal-host.js" nonce="' in overlays
+    assert '<script src="/gth-assets/js/combobox.js" nonce="' in overlays
     assert "gth-busy-button" in _run(_get("/forms")).text
     assert "gth-table-load-more" in _run(_get("/data")).text
 
@@ -157,7 +157,7 @@ def test_pages_render_demos_with_vendored_assets():
 def test_playground_runs_in_the_sidebar_layout():
     html = _run(_get("/forms")).text
     assert 'id="gth-sidebar"' in html
-    assert '<script src="/gth-assets/js/sidebar.js"></script>' in html
+    assert '<script src="/gth-assets/js/sidebar.js" nonce="' in html
     assert "<dialog" in html  # the command palette comes with the sidebar layout
     # Breadcrumbs derived from the nav: /tables sits under the Data group.
     tables = _run(_get("/tables")).text
@@ -794,8 +794,10 @@ def test_saved_sidebar_default_reaches_the_pre_paint_script():
             return before, after
 
     before, after = _run(flow())
-    assert "var preferred = null;" in before.text
-    assert 'var preferred = "rail";' in after.text
+    # static/js/prepaint.js reads it from its tag's data-sidebar (v0.17).
+    tag = '<script src="/gth-assets/js/prepaint.js" data-sidebar="{}" data-banners nonce="'
+    assert tag.format("") in before.text
+    assert tag.format("rail") in after.text
 
 
 

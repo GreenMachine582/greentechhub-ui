@@ -815,6 +815,18 @@ gth_back_to_top(threshold=400, label="Back to top")
    prefers-reduced-motion) and moves focus to <main>. The toast stack lifts above it. #}
 ```
 
+### Loading bar (v0.17)
+
+```jinja
+{# loading_bar.html — app.html renders it when loading_bar_js_url is set (shell_globals sets it) #}
+gth_loading_bar(delay=300)
+{# A 3px bar fixed to the top of the viewport, shown once an htmx request has run for
+   `delay` ms (app.html passes the loading_bar_delay global), creeping towards the end
+   while any request is in flight and completing when the last one ends. Each request
+   counts until its xhr's loadend (success, error, abort or timeout). aria-hidden; a
+   static full-width bar under reduced motion. #}
+```
+
 ### Record picker panel layout (v0.8)
 
 The panel is layered at both sizes: its header, the endpoint's `gth_table_filter` and the data table's
@@ -1429,3 +1441,63 @@ grants per user). greentechhub-fastapi's `RoleAdminViews` renders them by defaul
 The playground's `/roles` page (impersonate the admin on `/personas`; going there signed out takes you to pick one)
 runs this flow over an in-memory stand-in for a
 `GrantStore`.
+
+### Error pages (v0.17)
+
+`403.html`, `404.html` and `500.html` extend `error_page.html`, which extends `page.html`: the service's own shell
+(navbar or sidebar), a header (`error_title`), the status code, a message and the next step. Every variable is
+optional, so each renders with nothing but `install()`'s globals.
+
+| Context | |
+|---|---|
+| `error_message` / `error_detail` | override the page's own copy (e.g. "No such stock.") |
+| `error_reference` | shown as "Reference: …" — a request id, so a report can be matched to the logs |
+| `home_url` | the "Go to the home page" link (default `/`) |
+| `login_url` | 403 only: a signed-out visitor (`current_user` none) also gets "Sign in", with `?next=` the current path |
+| `current_path` | 500 only: a "Try again" link back to it (ui_context supplies it per request) |
+
+Another status: `{% extends "error_page.html" %}` and set `error_code`, `error_title`, `error_message` (and
+`error_detail`) at the top, or override `{% block error_actions %}`.
+
+**FastAPI** — answer browser page requests with the pages, and leave API and htmx requests to the defaults (JSON,
+and htmx's own error handling; an htmx swap of a whole page into a fragment target is never wanted):
+
+```python
+from fastapi import Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+ERROR_PAGES = {403: "403.html", 404: "404.html"}
+
+
+def wants_error_page(request: Request) -> bool:
+    return ("text/html" in request.headers.get("accept", "")
+            and "hx-request" not in request.headers
+            and not request.url.path.startswith("/api"))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_page(request: Request, exc: StarletteHTTPException):
+    if exc.status_code in ERROR_PAGES and wants_error_page(request):
+        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
+                                          status_code=exc.status_code)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)  # Starlette's ServerErrorMiddleware: still logged and re-raised
+async def server_error_page(request: Request, exc: Exception):
+    if not wants_error_page(request):
+        return PlainTextResponse("Internal Server Error", status_code=500)
+    return templates.TemplateResponse(request, "500.html",
+                                      {"error_reference": request.headers.get("x-request-id")},
+                                      status_code=500)
+```
+
+Keep the 500 context small and failure-proof: it renders after something already went wrong. The playground wires
+exactly this (`/feedback#error-pages` links to each page).
+
+**Django** — nothing to wire: `django.views.defaults` renders `404.html`, `403.html` and `500.html` (when
+`DEBUG = False`) through the configured template engine, so with gth-ui's template directories in the Jinja2
+backend's `DIRS` and `install()` in its `environment` callable (for `brand` and the nav), the defaults use these
+pages. The 500 handler passes no context and no request, which these templates are built for.

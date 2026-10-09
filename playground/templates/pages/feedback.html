@@ -133,8 +133,36 @@
     {{ gth_alert_banner("All systems normal.", tone="good") }}
     {{ gth_alert_banner("Read-only mode for the demo dataset.", tone="neutral", dismissible=False) }}
   </div>
-  <button type="button" class="btn btn-sm btn-outline-secondary" id="banner-reset"
-    onclick="Object.keys(localStorage).filter(k => k.startsWith('gth-banner:')).forEach(k => localStorage.removeItem(k)); location.reload()">
+  <button type="button" class="btn btn-sm btn-outline-secondary" id="banner-reset">
     Reset dismissed banners</button>
+  <script nonce="{{ csp_nonce }}">
+    // A page's own script under the CSP: it carries the request's nonce.
+    document.getElementById("banner-reset").addEventListener("click", function () {
+      Object.keys(localStorage).filter(function (k) { return k.startsWith("gth-banner:"); })
+        .forEach(function (k) { localStorage.removeItem(k); });
+      location.reload();
+    });
+  </script>
+</section>
+<section class="mb-5" id="loading-bar">
+  <h2 class="h4">gth-loading-bar</h2>
+  <p class="text-secondary">The bar along the top of the window shows only for htmx requests slower than 300 ms.</p>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="loading-bar-fast"
+      hx-get="/demo/slow?ms=50" hx-target="#loading-bar-result">Quick request (50 ms)</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="loading-bar-slow"
+      hx-get="/demo/slow?ms=1500" hx-target="#loading-bar-result">Slow request (1.5 s)</button>
+    <span class="text-secondary small" id="loading-bar-result" aria-live="polite"></span>
+  </div>
+</section>
+<section class="mb-5" id="error-pages">
+  <h2 class="h4">Error pages</h2>
+  <p class="text-secondary"><code>403.html</code>, <code>404.html</code> and <code>500.html</code>, wired as
+    docs/components.md shows: page requests get them, JSON and htmx requests keep the defaults.</p>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="/demo/error-page/403">403</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/no-such-page">404</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/demo/error-page/500">500</a>
+  </div>
 </section>
 {% endblock %}

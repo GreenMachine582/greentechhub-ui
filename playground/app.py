@@ -13,14 +13,22 @@ import asyncio
 import json
 import os
 import re
+import secrets
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
 
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.templating import Jinja2Templates
 from greentechhub_core.email import InMemoryEmailSender
 from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
@@ -38,6 +46,7 @@ from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
 from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import greentechhub_ui
 from greentechhub_ui.formatting import fiscal_year_label
@@ -137,13 +146,14 @@ _WATCHLIST_INITIAL = (
 # Module state the confirm-delete demo mutates; POST /demo/reset restores it.
 WATCHLIST_DEMO = [dict(item) for item in _WATCHLIST_INITIAL]
 
-# extra_css/extra_js/extra_head demo — data: URIs so this needs no external
-# network resource and no extra static file, just to prove the data-driven
-# slots (docs/contract.md) actually render and execute in a real browser.
-EXTRA_CSS_DATA_URL = "data:text/css," + quote(".gth-extra-css-demo { color: hotpink; }")
-EXTRA_JS_DATA_URL = "data:text/javascript," + quote(
-    "document.getElementById('gth-extra-js-demo').textContent = 'extra_js worked!';"
-)
+# extra_css/extra_js/extra_head demo — two tiny same-origin routes (served
+# below, so the playground's Content-Security-Policy needs no data: source),
+# just to prove the data-driven slots (docs/contract.md) actually render and
+# execute in a real browser.
+EXTRA_CSS_URL = "/demo/extra.css"
+EXTRA_CSS = ".gth-extra-css-demo { color: hotpink; }"
+EXTRA_JS_URL = "/demo/extra.js"
+EXTRA_JS = "document.getElementById('gth-extra-js-demo').textContent = 'extra_js worked!';"
 EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
 # ── Jinja/FastAPI wiring — the setup any consumer uses (docs/contract.md,
@@ -154,6 +164,12 @@ EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 # and nav_breadcrumbs need it.
 THEME_COOKIE = "playground-theme"
 THEME_MODES = ("light", "dark", "system")
+
+
+def csp_context(request: Request) -> dict:
+    """csp_nonce for app.html (and the playground's own inline script): the
+    per-request nonce content_security_policy put in the CSP header."""
+    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
 
 
 def theme_context(request: Request) -> dict:
@@ -285,8 +301,9 @@ def site_banners_context(request: Request) -> dict:
 
 
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, theme_context, user_context,
-                                                settings_values_context, site_banners_context])
+                            context_processors=[ui_context, csp_context, theme_context,
+                                                user_context, settings_values_context,
+                                                site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -329,6 +346,8 @@ PLAYGROUND_NAV = [
         {"label": "Inline alert", "url": "/feedback#inline-alert"},
         {"label": "Result panel", "url": "/feedback#result-panel"},
         {"label": "Alert banner", "url": "/feedback#alert-banner"},
+        {"label": "Loading bar", "url": "/feedback#loading-bar"},
+        {"label": "Error pages", "url": "/feedback#error-pages"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
         {"label": "Modal + modal form", "url": "/overlays#modal"},
@@ -397,6 +416,62 @@ greentechhub_ui.install(
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 mount_static_dirs(app, greentechhub_ui.static_dirs())
+
+# The recommended Content-Security-Policy (docs/contract.md ›
+# Content-Security-Policy) on every response, with a fresh nonce per request
+# that csp_context hands app.html as csp_nonce — so the e2e suite (no console
+# errors, every page) proves the shell and every component run under it.
+CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; "
+       "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'")
+
+
+@app.middleware("http")
+async def content_security_policy(request: Request, call_next):
+    request.state.csp_nonce = secrets.token_urlsafe(16)
+    response = await call_next(request)
+    response.headers.setdefault("Content-Security-Policy",
+                                CSP.format(nonce=request.state.csp_nonce))
+    return response
+  
+# Error pages (docs/components.md › Error pages): 403.html / 404.html /
+# 500.html for a browser's page request; JSON and htmx requests keep the
+# defaults.
+ERROR_PAGES = {403: "403.html", 404: "404.html"}
+
+
+def wants_error_page(request: Request) -> bool:
+    return ("text/html" in request.headers.get("accept", "")
+            and "hx-request" not in request.headers
+            and not request.url.path.startswith("/api"))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_page(request: Request, exc: StarletteHTTPException):
+    if exc.status_code in ERROR_PAGES and wants_error_page(request):
+        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
+                                          status_code=exc.status_code)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def server_error_page(request: Request, exc: Exception):
+    if not wants_error_page(request):
+        return PlainTextResponse("Internal Server Error", status_code=500)
+    return templates.TemplateResponse(request, "500.html",
+                                      {"error_reference": request.headers.get("x-request-id")},
+                                      status_code=500)
+
+
+@app.get("/demo/error-page/{code}")
+async def demo_error_page(code: int):
+    """The error pages on demand: 403 or 500 (any other code is a 404). Not
+    /demo/error/{status}: that's the error-toast demo's route."""
+    if code == 403:
+        raise HTTPException(status_code=403)
+    if code == 500:
+        raise RuntimeError("A demo failure, for the 500 page")
+    raise HTTPException(status_code=404)
 
 
 def _macro(template: str, macro: str, *args, **kwargs) -> Markup:
@@ -756,6 +831,15 @@ async def demo_embed(theme: str = "", delay: float = 0):
         f'<p id="panel-theme">A stand-in panel, theme: {theme}</p></body>')
 
 
+# gth_loading_bar demo: a response held for ?ms= (at most 5s), so the bar
+# shows for a slow request and not for a quick one.
+@app.get("/demo/slow", response_class=HTMLResponse)
+async def demo_slow(ms: int = 0):
+    ms = min(max(ms, 0), 5000)
+    await asyncio.sleep(ms / 1000)
+    return HTMLResponse(f"Answered after {ms} ms.")
+
+
 # gth_progress live demo: a fake sync that advances 25% per poll.
 PROGRESS_DEMO = {"value": 0}
 
@@ -870,8 +954,18 @@ async def navigation_page(request: Request):
 
 @app.get("/extensibility", response_class=HTMLResponse)
 async def extensibility_page(request: Request):
-    return _page(request, "extensibility", extra_css=[EXTRA_CSS_DATA_URL],
-                 extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
+    return _page(request, "extensibility", extra_css=[EXTRA_CSS_URL],
+                 extra_js=[EXTRA_JS_URL], extra_head=[EXTRA_HEAD_DEMO])
+
+
+@app.get(EXTRA_CSS_URL)
+async def extra_css():
+    return Response(EXTRA_CSS, media_type="text/css")
+
+
+@app.get(EXTRA_JS_URL)
+async def extra_js():
+    return Response(EXTRA_JS, media_type="text/javascript")
 
 
 @app.get("/personas", response_class=HTMLResponse)
