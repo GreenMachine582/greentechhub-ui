@@ -22,6 +22,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["table_view_js_url"] == "/gth-assets/js/table-view.js"
     assert g["char_counter_js_url"] == "/gth-assets/js/char-counter.js"
     assert g["alert_banner_js_url"] == "/gth-assets/js/alert-banner.js"
+    assert g["loading_bar_js_url"] == "/gth-assets/js/loading-bar.js"
     assert g["embed_card_js_url"] == "/gth-assets/js/embed-card.js"
 
 

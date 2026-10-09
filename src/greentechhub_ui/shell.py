@@ -73,6 +73,7 @@ def shell_globals(
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",
         "back_to_top_js_url": f"{assets_prefix}/js/back-to-top.js",
+        "loading_bar_js_url": f"{assets_prefix}/js/loading-bar.js",
         "embed_card_js_url": f"{assets_prefix}/js/embed-card.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,

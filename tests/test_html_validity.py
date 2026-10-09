@@ -125,6 +125,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "stat_card_with_chart",
         "embed_card",
         "embed_card_empty",
+        "loading_bar",
     ],
 )
 def test_macro_output_is_well_formed(snapshot_name):
