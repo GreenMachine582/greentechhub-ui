@@ -11,6 +11,7 @@ directly:
 
 import asyncio
 import json
+import os
 import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
@@ -398,6 +399,9 @@ greentechhub_ui.install(
     service_name="Playground",
     show_logo=True,
     layout="sidebar",
+    # PLAYGROUND_HTMX=2: the whole playground (and so the e2e suite) on the
+    # vendored htmx 2.x — docs/htmx2.md, CI's e2e-htmx2 job.
+    htmx=int(os.environ.get("PLAYGROUND_HTMX", "1")),
     nav_items=greentechhub_ui.navigation.build_nav_items(
         custom_items=PLAYGROUND_NAV,
         # Demonstrates the built-in + consumer-registered merge docs/components.md

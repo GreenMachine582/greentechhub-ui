@@ -9,11 +9,16 @@ so bumping a version here is a file-replacement + hash update, not a template ch
 To update one: fetch the new version from its source URL, confirm the SHA256, replace the file in place, and
 update its row below.
 
+`js/htmx-2.min.js` sits beside 1.9.10 during the htmx 2 migration: `shell_globals(htmx=2)` opts into it. See
+[docs/htmx2.md](../../../docs/htmx2.md). When 2.x becomes the default it replaces `js/htmx.min.js`, and this row
+goes.
+
 | File | Source | Version | SHA256 | Size |
 |---|---|---|---|---|
 | `css/bootstrap.min.css` | https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css | 5.3.3 | `3c8f27e6009ccfd710a905e6dcf12d0ee3c6f2ac7da05b0572d3e0d12e736fc8` | 232,803 bytes |
 | `js/bootstrap.bundle.min.js` | https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js | 5.3.3 | `0833b2e9c3a26c258476c46266e6877fc75218625162e0460be9a3a098a61c6c` | 80,721 bytes |
 | `js/htmx.min.js` | https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js | 1.9.10 | `b3bdcf5c741897a53648b1207fff0469a0d61901429ba1f6e88f98ebd84e669e` | 47,755 bytes |
+| `js/htmx-2.min.js` | https://unpkg.com/htmx.org@2.0.11/dist/htmx.min.js (npm `htmx.org@2.0.11`, tarball integrity checked against the registry) | 2.0.11 | `d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717` | 52,182 bytes |
 | `icons/bootstrap-icons.min.css` | https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css | 1.13.1 | `a5d6387a32ca3baec4d02336b5b3edab50c9dd518355576a011ea3dd9c1d884e` | 87,008 bytes |
 | `icons/fonts/bootstrap-icons.woff2` | https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/fonts/bootstrap-icons.woff2 | 1.13.1 | `6c75710364a1ca5604267716f6d28997b26319fdb078cf11e0b42ab66ff2ea61` | 134,044 bytes |
 | `logo/logo.png` | Original artwork (green circuit/leaf mark), generated with an external image model for `greentechhub-ui`'s own brand identity — not copied from an upstream file | 2026-09-13 | `4665bbc5ab4f8edace0cc73373d32483f6b53d8e083ff0f5a2caf38843221f0a` | 157,095 bytes |
