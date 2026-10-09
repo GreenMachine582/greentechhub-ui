@@ -1442,6 +1442,25 @@ The playground's `/roles` page (impersonate the admin on `/personas`; going ther
 runs this flow over an in-memory stand-in for a
 `GrantStore`.
 
+### Audit log (v0.17)
+
+`audit_page.html` renders an audit log from data, over greentechhub-core's `AuditStore`. greentechhub-fastapi's
+`AuditViews` renders it by default. It extends `page.html` (`page_title`, `page_subtitle`), then shows a filter row
+as a plain GET form, a table of entries newest first, and an "Older entries" link.
+
+| Context | |
+|---|---|
+| `audit_url` | the page's own url, the filter form's action |
+| `audit_filters` | `{"actor", "action", "on_or_before"}` as submitted (`""` when unset); the form keeps them, with a Clear link while any is set |
+| `audit_entries` | `[{"at" (a datetime), "actor" (None for the system), "action", "target" ("type:id" or None), "summary"}]`, newest first |
+| `audit_next_url` | the older page's url, keeping the filters, or None |
+| `audit_actions_help` | optional hint under the action field |
+
+- `at` shows through the `datetime` filter inside a `<time datetime>`. A missing actor shows as "System".
+- Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
+
+The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
+
 ### Error pages (v0.17)
 
 `403.html`, `404.html` and `500.html` extend `error_page.html`, which extends `page.html`: the service's own shell

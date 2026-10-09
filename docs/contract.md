@@ -127,6 +127,10 @@ the browser's own rail toggle is used.
 optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 [docs/components.md](components.md#role-assignments).
 
+**Audit log page (v0.17)** — the context `audit_page.html` takes (greentechhub-fastapi's `AuditViews` supplies
+it): `audit_url`, `audit_filters`, `audit_entries`, `audit_next_url`, and optionally `audit_actions_help`. Shapes are
+in [docs/components.md](components.md#audit-log-v017).
+
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in
