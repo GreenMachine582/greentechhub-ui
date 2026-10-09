@@ -54,11 +54,10 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
   services must mount `greentechhub_ui.static_dirs()` for `app.html` to keep working. Also required for a strict
   CSP. Blocked on BottleBot, which still loads Bootstrap/htmx from the CDN defaults — lands after its `install()`
   migration below
-- [ ] htmx 2 migration plan — audit our usage against the 2.x breaking changes (`hx-on`, `htmx.config` defaults,
-  extensions) and run the playground + e2e suite on 2.x behind a global. Also retires the 1.9.10 bug where one
-  `requestCount` is shared between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks
-  on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
-  Update `VENDORED.md` hash/size when it lands
+- [ ] **Breaking:** switch to htmx 2 by default. The audit is done and the full e2e suite passes on 2.0.11 behind
+  `shell_globals(htmx=2)`, with CI's `e2e-htmx2` job running it on every PR. What's left is the switch itself:
+  [docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release). Best after the CDN-defaults removal
+  above, so `htmx_js_url` loses its 1.9.10 CDN default at the same time
 
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in

@@ -2752,3 +2752,20 @@ def test_embed_card_placeholder(page, playground_url):
     empty = page.locator(f"{EMBED} >> nth=2")
     expect(empty.locator(".gth-embed-card-empty")).to_have_text("Not configured yet.")
     expect(empty.locator("iframe")).to_have_count(0)
+
+
+# ── htmx 2 migration (docs/htmx2.md) ───────────────────────────────────────
+
+def test_busy_button_request_class_on_each_htmx(page, playground_url):
+    """htmx 1.9.10 shares one requestCount between the request-indicator
+    class and hx-disabled-elt, so .htmx-request sticks on an element that is
+    both (why gth-busy-button keys on :disabled); htmx 2 clears it. Run on
+    both by CI (PLAYGROUND_HTMX=2 in the e2e-htmx2 job)."""
+    page.goto(f"{playground_url}/forms")
+    button = page.locator("#busy-button .gth-busy-button[type=button]")
+    button.click()
+    expect(button).to_be_disabled()
+    expect(button).to_be_enabled(timeout=5000)
+    page.wait_for_timeout(100)
+    sticks = "htmx-request" in (button.get_attribute("class") or "")
+    assert sticks is page.evaluate("htmx.version").startswith("1.")
