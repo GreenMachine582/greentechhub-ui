@@ -45,7 +45,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
     Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
-- [ ] Top loading bar for htmx requests slower than ~300ms
 - [ ] CSP-ready shell — move `app.html`'s inline `<script>`s to static files (the pre-paint theme bootstrap
   stays inline behind a `csp_nonce` global) and document a recommended `Content-Security-Policy`
 - [ ] **Breaking:** drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` (overdue);
