@@ -433,9 +433,10 @@ async def server_error_page(request: Request, exc: Exception):
                                       status_code=500)
 
 
-@app.get("/demo/error/{code}")
-async def demo_error(code: int):
-    """The error pages on demand: 403 or 500 (any other code is a 404)."""
+@app.get("/demo/error-page/{code}")
+async def demo_error_page(code: int):
+    """The error pages on demand: 403 or 500 (any other code is a 404). Not
+    /demo/error/{status}: that's the error-toast demo's route."""
     if code == 403:
         raise HTTPException(status_code=403)
     if code == 500:
