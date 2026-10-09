@@ -133,7 +133,11 @@
   {% for item in extra_head|default([]) %}{{ item | safe }}{% endfor %}
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+{#- csrf_token (v0.17; greentechhub-fastapi's register_csrf + ui_context): sent
+    on every htmx request as the `csrf_header` header (default X-CSRF-Token;
+    Django's CsrfViewMiddleware reads X-CSRFToken), and in the navbar's logout
+    form. |string: Django's csrf_token is a lazy object. #}
+<body{% if csrf_token|default(none) %} hx-headers='{{ {csrf_header|default("X-CSRF-Token"): csrf_token|string}|tojson }}'{% endif %}>
   {%- if loading_bar_js_url|default(none) %}
   {% from "loading_bar.html" import gth_loading_bar %}
   {{ gth_loading_bar(loading_bar_delay|default(300)) }}
@@ -170,7 +174,8 @@
       granted=granted|default(none), notifications_url=notifications_url|default(none),
       user_display_name=user_display_name|default(none),
       notifications_badge_url=notifications_badge_url|default(none),
-      notifications_panel_url=notifications_panel_url|default(none)) }}
+      notifications_panel_url=notifications_panel_url|default(none),
+      csrf_token=csrf_token|default(none)) }}
   <div class="gth-shell">
     <aside class="offcanvas-lg offcanvas-start gth-sidebar" tabindex="-1" id="gth-sidebar" aria-labelledby="gth-sidebar-title">
       <div class="offcanvas-header border-bottom d-lg-none">
@@ -195,7 +200,8 @@
       granted=granted|default(none), notifications_url=notifications_url|default(none),
       user_display_name=user_display_name|default(none),
       notifications_badge_url=notifications_badge_url|default(none),
-      notifications_panel_url=notifications_panel_url|default(none)) }}
+      notifications_panel_url=notifications_panel_url|default(none),
+      csrf_token=csrf_token|default(none)) }}
 
   <main class="container py-4">
   {%- endif %}

@@ -188,6 +188,8 @@ token in the page's `hx-headers` instead.
 | `user_display_name` | (v0.15) the user menu's name instead of the user ID, with its initials as the avatar. greentechhub-fastapi's `settings_context` passes the profile's display name (fastapi v0.12+) |
 | `notifications_url` | (v0.15) the notification centre's root, e.g. `/notifications`: the navbar shows a bell with its live unread count (`{url}/badge`) and panel (`{url}/panel`). See [components.md](components.md#notification-centre-v015) |
 | `notifications_badge_url` / `notifications_panel_url` | (v0.16) the bell's badge and panel URLs when they aren't `{notifications_url}/badge` and `/panel`, for an adapter whose routes differ |
+| `csrf_token` | (v0.17) a CSRF token: `<body>` sends it on every htmx request through `hx-headers`, and the navbar's logout form carries it as a hidden `csrf_token` field. greentechhub-fastapi's `ui_context` passes it once `register_csrf` runs (fastapi v0.16+). On Django it's Django's own token, rendered as text |
+| `csrf_header` | (v0.17) the header name `csrf_token` goes in, default `X-CSRF-Token` (greentechhub-fastapi's `require_csrf`). Django's `CsrfViewMiddleware` reads `X-CSRFToken` |
 
 `nav_visible` (installed by `shell_globals`) is the per-request filter `app.html` applies to `nav_items`.
 
