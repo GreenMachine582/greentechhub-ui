@@ -2777,3 +2777,46 @@ def test_every_page_runs_under_the_strict_csp(page, playground_url):
     assert violations == []
     # (Every other e2e test runs under the same policy, so htmx swaps, the
     # 422 form errors, toasts, modals and the pre-paint all work under it.)
+    
+# ── gth-loading-bar (v0.17) ────────────────────────────────────────────────
+
+LOADING_BAR = "[data-gth-loading-bar]"
+
+
+def test_loading_bar_skips_quick_requests(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    page.evaluate("""() => {
+        window.__barShown = false;
+        new MutationObserver(() => {
+            if (document.querySelector('[data-gth-loading-bar]').classList.contains('is-active'))
+                window.__barShown = true;
+        }).observe(document.querySelector('[data-gth-loading-bar]'), {attributes: true});
+    }""")
+    page.click("#loading-bar-fast")
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 50 ms.")
+    page.wait_for_timeout(400)  # past the 300 ms delay
+    assert page.evaluate("window.__barShown") is False
+
+
+def test_loading_bar_shows_for_a_slow_request_then_completes(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    bar = page.locator(LOADING_BAR)
+    page.click("#loading-bar-slow")
+    expect(bar).to_have_class("gth-loading-bar is-active", timeout=1000)
+    expect(bar).to_be_visible()
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 1500 ms.")
+    expect(bar).not_to_have_class("gth-loading-bar is-active")
+    expect(bar).to_have_class("gth-loading-bar", timeout=2000)  # faded and reset
+
+
+def test_loading_bar_waits_for_every_request(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    bar = page.locator(LOADING_BAR)
+    page.evaluate("""() => {
+        htmx.ajax('GET', '/demo/slow?ms=600', {target: '#loading-bar-result'});
+        htmx.ajax('GET', '/demo/slow?ms=1800', {target: '#loading-bar-result', swap: 'none'});
+    }""")
+    expect(bar).to_have_class("gth-loading-bar is-active", timeout=1000)
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 600 ms.")
+    expect(bar).to_have_class("gth-loading-bar is-active")  # the 1.8 s one is still running
+    expect(bar).not_to_have_class("gth-loading-bar is-active", timeout=3000)

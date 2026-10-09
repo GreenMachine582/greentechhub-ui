@@ -45,7 +45,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
     Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
-- [ ] Top loading bar for htmx requests slower than ~300ms
 - [ ] Error pages — `403.html` / `404.html` / `500.html` extending `page.html`, with FastAPI and Django
   exception-handler wiring in the docs
 - [ ] **Breaking:** drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` (overdue);

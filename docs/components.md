@@ -815,6 +815,18 @@ gth_back_to_top(threshold=400, label="Back to top")
    prefers-reduced-motion) and moves focus to <main>. The toast stack lifts above it. #}
 ```
 
+### Loading bar (v0.17)
+
+```jinja
+{# loading_bar.html — app.html renders it when loading_bar_js_url is set (shell_globals sets it) #}
+gth_loading_bar(delay=300)
+{# A 3px bar fixed to the top of the viewport, shown once an htmx request has run for
+   `delay` ms (app.html passes the loading_bar_delay global), creeping towards the end
+   while any request is in flight and completing when the last one ends. Each request
+   counts until its xhr's loadend (success, error, abort or timeout). aria-hidden; a
+   static full-width bar under reduced motion. #}
+```
+
 ### Record picker panel layout (v0.8)
 
 The panel is layered at both sizes: its header, the endpoint's `gth_table_filter` and the data table's

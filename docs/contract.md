@@ -91,6 +91,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `embed_card_js_url` | none — `gth_embed_card` frames then load `src` unthemed through `<noscript>`, with no loading or error state (v0.17) |
 | `alert_banner_js_url` | none — `gth_alert_banner`s render without a close button, and `app.html` skips the pre-paint hide (v0.13) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
+| `loading_bar_js_url` | none — with it set, `app.html` renders `gth-loading-bar` and its script (v0.17); `loading_bar_delay` (default 300 ms) is how long a request runs before the bar shows |
 | `back_to_top_js_url` | none — with it set, `app.html` renders `gth-back-to-top` and its script (v0.8) |
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
 | `command_palette_js_url` | none — with it set, `gth-command-palette` is included in `layout="sidebar"`, or in the default layout when `show_command_palette` is true (v0.8) |

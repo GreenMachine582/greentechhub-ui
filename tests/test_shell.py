@@ -24,6 +24,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["alert_banner_js_url"] == "/gth-assets/js/alert-banner.js"
     assert g["prepaint_js_url"] == "/gth-assets/js/prepaint.js"
     assert g["htmx_setup_js_url"] == "/gth-assets/js/htmx-setup.js"
+    assert g["loading_bar_js_url"] == "/gth-assets/js/loading-bar.js"
     assert g["embed_card_js_url"] == "/gth-assets/js/embed-card.js"
 
 

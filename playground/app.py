@@ -337,6 +337,7 @@ PLAYGROUND_NAV = [
         {"label": "Inline alert", "url": "/feedback#inline-alert"},
         {"label": "Result panel", "url": "/feedback#result-panel"},
         {"label": "Alert banner", "url": "/feedback#alert-banner"},
+        {"label": "Loading bar", "url": "/feedback#loading-bar"},
     ]},
     {"label": "Overlays", "url": "/overlays", "icon": "window-stack", "children": [
         {"label": "Modal + modal form", "url": "/overlays#modal"},
@@ -776,6 +777,15 @@ async def demo_embed(theme: str = "", delay: float = 0):
         f'background:{"#181b1f" if dark else "#f4f5f5"};'
         f'color:{"#ccccdc" if dark else "#24292e"}">'
         f'<p id="panel-theme">A stand-in panel, theme: {theme}</p></body>')
+
+
+# gth_loading_bar demo: a response held for ?ms= (at most 5s), so the bar
+# shows for a slow request and not for a quick one.
+@app.get("/demo/slow", response_class=HTMLResponse)
+async def demo_slow(ms: int = 0):
+    ms = min(max(ms, 0), 5000)
+    await asyncio.sleep(ms / 1000)
+    return HTMLResponse(f"Answered after {ms} ms.")
 
 
 # gth_progress live demo: a fake sync that advances 25% per poll.
