@@ -1587,6 +1587,16 @@ body.gth-picker-modal-open {
   margin-bottom: 0 !important;
 }
 
+/* htmx's request-indicator rules, which htmx otherwise injects as a <style>
+   at load. app.html turns that injection off under a CSP (csp_nonce, v0.17),
+   which would block it; these are the same rules, so nothing changes. */
+.htmx-indicator { opacity: 0; }
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
 /* ── Viewer preferences (v0.12): greentechhub-core's ui.motion / ui.density,
    set on <html> by app.html from user_settings ─────────────────────────── */
 

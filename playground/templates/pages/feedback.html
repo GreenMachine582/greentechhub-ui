@@ -133,8 +133,15 @@
     {{ gth_alert_banner("All systems normal.", tone="good") }}
     {{ gth_alert_banner("Read-only mode for the demo dataset.", tone="neutral", dismissible=False) }}
   </div>
-  <button type="button" class="btn btn-sm btn-outline-secondary" id="banner-reset"
-    onclick="Object.keys(localStorage).filter(k => k.startsWith('gth-banner:')).forEach(k => localStorage.removeItem(k)); location.reload()">
+  <button type="button" class="btn btn-sm btn-outline-secondary" id="banner-reset">
     Reset dismissed banners</button>
+  <script nonce="{{ csp_nonce }}">
+    // A page's own script under the CSP: it carries the request's nonce.
+    document.getElementById("banner-reset").addEventListener("click", function () {
+      Object.keys(localStorage).filter(function (k) { return k.startsWith("gth-banner:"); })
+        .forEach(function (k) { localStorage.removeItem(k); });
+      location.reload();
+    });
+  </script>
 </section>
 {% endblock %}

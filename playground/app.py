@@ -12,6 +12,7 @@ directly:
 import asyncio
 import json
 import re
+import secrets
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
@@ -136,13 +137,14 @@ _WATCHLIST_INITIAL = (
 # Module state the confirm-delete demo mutates; POST /demo/reset restores it.
 WATCHLIST_DEMO = [dict(item) for item in _WATCHLIST_INITIAL]
 
-# extra_css/extra_js/extra_head demo — data: URIs so this needs no external
-# network resource and no extra static file, just to prove the data-driven
-# slots (docs/contract.md) actually render and execute in a real browser.
-EXTRA_CSS_DATA_URL = "data:text/css," + quote(".gth-extra-css-demo { color: hotpink; }")
-EXTRA_JS_DATA_URL = "data:text/javascript," + quote(
-    "document.getElementById('gth-extra-js-demo').textContent = 'extra_js worked!';"
-)
+# extra_css/extra_js/extra_head demo — two tiny same-origin routes (served
+# below, so the playground's Content-Security-Policy needs no data: source),
+# just to prove the data-driven slots (docs/contract.md) actually render and
+# execute in a real browser.
+EXTRA_CSS_URL = "/demo/extra.css"
+EXTRA_CSS = ".gth-extra-css-demo { color: hotpink; }"
+EXTRA_JS_URL = "/demo/extra.js"
+EXTRA_JS = "document.getElementById('gth-extra-js-demo').textContent = 'extra_js worked!';"
 EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 
 # ── Jinja/FastAPI wiring — the setup any consumer uses (docs/contract.md,
@@ -153,6 +155,12 @@ EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 # and nav_breadcrumbs need it.
 THEME_COOKIE = "playground-theme"
 THEME_MODES = ("light", "dark", "system")
+
+
+def csp_context(request: Request) -> dict:
+    """csp_nonce for app.html (and the playground's own inline script): the
+    per-request nonce content_security_policy put in the CSP header."""
+    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
 
 
 def theme_context(request: Request) -> dict:
@@ -284,8 +292,9 @@ def site_banners_context(request: Request) -> dict:
 
 
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, theme_context, user_context,
-                                                settings_values_context, site_banners_context])
+                            context_processors=[ui_context, csp_context, theme_context,
+                                                user_context, settings_values_context,
+                                                site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
 # demo section an anchor the sidebar (and the command palette) links to.
 PLAYGROUND_NAV = [
@@ -393,6 +402,23 @@ greentechhub_ui.install(
 
 app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 mount_static_dirs(app, greentechhub_ui.static_dirs())
+
+# The recommended Content-Security-Policy (docs/contract.md ›
+# Content-Security-Policy) on every response, with a fresh nonce per request
+# that csp_context hands app.html as csp_nonce — so the e2e suite (no console
+# errors, every page) proves the shell and every component run under it.
+CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; "
+       "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'")
+
+
+@app.middleware("http")
+async def content_security_policy(request: Request, call_next):
+    request.state.csp_nonce = secrets.token_urlsafe(16)
+    response = await call_next(request)
+    response.headers.setdefault("Content-Security-Policy",
+                                CSP.format(nonce=request.state.csp_nonce))
+    return response
 
 
 def _macro(template: str, macro: str, *args, **kwargs) -> Markup:
@@ -866,8 +892,18 @@ async def navigation_page(request: Request):
 
 @app.get("/extensibility", response_class=HTMLResponse)
 async def extensibility_page(request: Request):
-    return _page(request, "extensibility", extra_css=[EXTRA_CSS_DATA_URL],
-                 extra_js=[EXTRA_JS_DATA_URL], extra_head=[EXTRA_HEAD_DEMO])
+    return _page(request, "extensibility", extra_css=[EXTRA_CSS_URL],
+                 extra_js=[EXTRA_JS_URL], extra_head=[EXTRA_HEAD_DEMO])
+
+
+@app.get(EXTRA_CSS_URL)
+async def extra_css():
+    return Response(EXTRA_CSS, media_type="text/css")
+
+
+@app.get(EXTRA_JS_URL)
+async def extra_js():
+    return Response(EXTRA_JS, media_type="text/javascript")
 
 
 @app.get("/personas", response_class=HTMLResponse)

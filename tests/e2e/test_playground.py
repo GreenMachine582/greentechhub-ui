@@ -2752,3 +2752,28 @@ def test_embed_card_placeholder(page, playground_url):
     empty = page.locator(f"{EMBED} >> nth=2")
     expect(empty.locator(".gth-embed-card-empty")).to_have_text("Not configured yet.")
     expect(empty.locator("iframe")).to_have_count(0)
+
+
+# ── CSP-ready shell (v0.17) ────────────────────────────────────────────────
+
+def test_every_page_runs_under_the_strict_csp(page, playground_url):
+    """The playground sends docs/contract.md's recommended policy (script-src
+    'self' plus the per-request nonce, no 'unsafe-inline'/'unsafe-eval'): no
+    page may trip it, and the pre-paint, htmx setup and component scripts must
+    still run."""
+    page.add_init_script("""
+        window.__cspViolations = [];
+        document.addEventListener('securitypolicyviolation', e =>
+            window.__cspViolations.push(
+                e.violatedDirective + ' ' + e.blockedURI + ' ' + e.sourceFile));
+    """)
+    violations = []
+    for path in [*PAGES, "/tables?mode=load_more", "/demo/error/403"]:
+        response = page.goto(f"{playground_url}{path}")
+        csp = response.headers["content-security-policy"]
+        assert "script-src 'self' 'nonce-" in csp and "unsafe-eval" not in csp
+        _htmx_idle(page)
+        violations += page.evaluate("window.__cspViolations")
+    assert violations == []
+    # (Every other e2e test runs under the same policy, so htmx swaps, the
+    # 422 form errors, toasts, modals and the pre-paint all work under it.)
