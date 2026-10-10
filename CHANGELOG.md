@@ -5,6 +5,31 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.17.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.16.0...v0.17.0) (2026-10-10)
+
+
+### Features
+
+* **components:** gth_embed_card ([#99](https://github.com/GreenMachine582/greentechhub-ui/issues/99)) ([666d691](https://github.com/GreenMachine582/greentechhub-ui/commit/666d691df85e8120283276201b15c8d842b3ca32))
+* **components:** gth_loading_bar for slow htmx requests ([#100](https://github.com/GreenMachine582/greentechhub-ui/issues/100)) ([099dc34](https://github.com/GreenMachine582/greentechhub-ui/commit/099dc34ff76402d6a3a2884c9894025e9869d9fb))
+* **components:** server-rendered SVG charts ([#98](https://github.com/GreenMachine582/greentechhub-ui/issues/98)) ([53b9e4a](https://github.com/GreenMachine582/greentechhub-ui/commit/53b9e4aada0742cb2fbdc7c8370b952ce3df50ba))
+* **shell:** CSP-ready app.html ([#102](https://github.com/GreenMachine582/greentechhub-ui/issues/102)) ([3f89f5f](https://github.com/GreenMachine582/greentechhub-ui/commit/3f89f5f63e180514581de74cd8b16d5ab212bdb2))
+* **shell:** CSRF header for htmx ([#106](https://github.com/GreenMachine582/greentechhub-ui/issues/106)) ([12a9121](https://github.com/GreenMachine582/greentechhub-ui/commit/12a912161ee3d964096f52b6bc1e67c315999973))
+* **shell:** htmx 2 behind shell_globals(htmx=2) ([#103](https://github.com/GreenMachine582/greentechhub-ui/issues/103)) ([5593c35](https://github.com/GreenMachine582/greentechhub-ui/commit/5593c35a2f2942e5dd7d98f15286ef686bfcf0ea))
+* **templates:** 403, 404 and 500 error pages ([#101](https://github.com/GreenMachine582/greentechhub-ui/issues/101)) ([9a23e75](https://github.com/GreenMachine582/greentechhub-ui/commit/9a23e7577387112e80f8b5f856515db3f3c469e7))
+* **templates:** audit log page ([#105](https://github.com/GreenMachine582/greentechhub-ui/issues/105)) ([22fae2d](https://github.com/GreenMachine582/greentechhub-ui/commit/22fae2df80666a92cdd34a7d33332b5dfc7a24de))
+
+
+### Bug Fixes
+
+* **playground:** link the filter bar and result panel demos ([#97](https://github.com/GreenMachine582/greentechhub-ui/issues/97)) ([cb8c9cc](https://github.com/GreenMachine582/greentechhub-ui/commit/cb8c9cc1c9f1d0977052f988d500a018d1970758))
+
+
+### Build
+
+* **deps:** core v0.14.0 and fastapi v0.15.1 ([#104](https://github.com/GreenMachine582/greentechhub-ui/issues/104)) ([a724285](https://github.com/GreenMachine582/greentechhub-ui/commit/a724285155fcd9dd93a514318edae49e1b58c327))
+* **deps:** fastapi v0.16.0 ([#108](https://github.com/GreenMachine582/greentechhub-ui/issues/108)) ([e206794](https://github.com/GreenMachine582/greentechhub-ui/commit/e206794bab29e3b835d65ed18188079e9c3c95cf))
+
 ## [0.16.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.15.0...v0.16.0) (2026-10-07)
 
 
