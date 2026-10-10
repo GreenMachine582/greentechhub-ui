@@ -103,9 +103,10 @@ def test_app_shell_optional_component_scripts():
         modal_host_js_url="/a/js/modal-host.js", combobox_js_url="/a/js/combobox.js",
         date_range_js_url="/a/js/date-range.js", file_drop_js_url="/a/js/file-drop.js",
         table_select_js_url="/a/js/table-select.js", table_view_js_url="/a/js/table-view.js",
-        char_counter_js_url="/a/js/char-counter.js",
+        char_counter_js_url="/a/js/char-counter.js", embed_card_js_url="/a/js/embed-card.js",
     ))
     assert '<script src="/a/js/char-counter.js"></script>' in html
+    assert '<script src="/a/js/embed-card.js"></script>' in html
     assert '<script src="/a/js/table-view.js"></script>' in html
     assert '<script src="/a/js/table-select.js"></script>' in html
     assert '<script src="/a/js/date-range.js"></script>' in html

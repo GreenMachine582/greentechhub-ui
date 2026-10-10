@@ -1,0 +1,73 @@
+{#- audit_page.html — a ready-made audit log page: page.html's header, a filter
+    row (user, action, on or before a date) as a plain GET form, the entries
+    newest first, and an "Older entries" link. greentechhub-fastapi's
+    AuditViews renders this by default; any framework can, with the same
+    context:
+      audit_url        the page's own url, the filter form's action
+      audit_filters    {"actor", "action", "on_or_before"} as submitted ("" when unset)
+      audit_entries    [{"at" (a datetime), "actor" (None for the system), "action",
+                         "target" ("type:id" or None), "summary"}], newest first
+      audit_next_url   the next (older) page's url, keeping the filters, or None
+      audit_actions_help  optional hint under the action field -#}
+{% extends "page.html" %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
+{%- set url = audit_url|default("/admin/audit") %}
+{%- set filters = audit_filters|default(none) or {} %}
+{%- set filtered = filters.actor|default("") or filters.action|default("") or filters.on_or_before|default("") %}
+{%- set entries = audit_entries|default([]) %}
+
+{% block page %}
+<section class="gth-audit" id="gth-audit" aria-label="Audit log">
+  <form method="get" action="{{ url|e }}" class="d-flex flex-wrap align-items-end gap-2 gth-filter-bar gth-audit-filters mb-3"
+    role="search" aria-label="Filter the audit log">
+    <div>
+      <label class="form-label small mb-1" for="gth-audit-actor">User</label>
+      <input class="form-control form-control-sm" type="text" id="gth-audit-actor" name="actor"
+        value="{{ filters.actor|default('')|e }}" autocomplete="off">
+    </div>
+    <div>
+      <label class="form-label small mb-1" for="gth-audit-action">Action</label>
+      <input class="form-control form-control-sm" type="text" id="gth-audit-action" name="action"
+        value="{{ filters.action|default('')|e }}" autocomplete="off" aria-describedby="gth-audit-action-help">
+    </div>
+    <div>
+      <label class="form-label small mb-1" for="gth-audit-date">On or before</label>
+      <input class="form-control form-control-sm" type="date" id="gth-audit-date" name="on_or_before"
+        value="{{ filters.on_or_before|default('')|e }}">
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    {%- if filtered %}
+    <a class="btn btn-sm btn-link gth-audit-clear" href="{{ url|e }}">Clear</a>
+    {%- endif %}
+    <div class="form-text w-100 mt-0" id="gth-audit-action-help">
+      {{- audit_actions_help|default('An action, or every action under a prefix ending in a dot, e.g. "auth."') -}}
+    </div>
+  </form>
+
+  {%- if entries %}
+  {% call gth_table(["When", "User", "Action", "Target", "Summary"], table_class="table-sm gth-audit-table") %}
+  {%- for entry in entries %}
+    <tr>
+      <td class="text-nowrap">
+        {%- if entry.at.isoformat is defined %}<time datetime="{{ entry.at.isoformat()|e }}">{{ entry.at|datetime }}</time>
+        {%- else %}{{ entry.at|e }}{% endif -%}
+      </td>
+      <td>{% if entry.actor %}{{ entry.actor|e }}{% else %}<span class="text-secondary">System</span>{% endif %}</td>
+      <td><code class="gth-audit-action">{{ entry.action|e }}</code></td>
+      <td>{{ entry.target|default("", true)|e }}</td>
+      <td>{{ entry.summary|default("", true)|e }}</td>
+    </tr>
+  {%- endfor %}
+  {% endcall %}
+  {%- else %}
+  {{ gth_empty_state("No entries match these filters." if filtered else "Nothing has been recorded yet.") }}
+  {%- endif %}
+
+  {%- if audit_next_url|default(none) %}
+  <nav class="text-center py-2" aria-label="Audit log pages">
+    <a class="btn btn-sm btn-outline-secondary gth-audit-older" href="{{ audit_next_url|e }}">Older entries</a>
+  </nav>
+  {%- endif %}
+</section>
+{% endblock %}

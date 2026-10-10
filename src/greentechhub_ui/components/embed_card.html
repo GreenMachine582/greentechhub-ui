@@ -1,0 +1,42 @@
+{% macro gth_embed_card(src, title, height=360, theme_param="theme", timeout=15, open_label="Open",
+                       empty_message="Not configured yet.", card_class="") %}
+{#- An iframe in a card (v0.17), e.g. a Grafana panel: a header with the
+    title and an "open in a new tab" link, a loading state until the frame
+    loads, and an error state if it hasn't within `timeout` seconds.
+
+    embed-card.js (embed_card_js_url) loads the frame once the card scrolls
+    into view, with the page's current theme added as `theme_param`
+    (light|dark, Grafana's `theme`), and reloads it when the theme changes;
+    theme_param=None leaves src as is. Without the script the frame loads
+    `src` unthemed (<noscript>) and there's no loading or error state.
+
+    src None or empty: the card shows `empty_message` instead — a slot for a
+    panel that isn't set up yet. A frame the other site refuses to be
+    embedded in (X-Frame-Options / CSP frame-ancestors) still "loads" with the
+    browser's own error page: the timeout catches only unreachable or slow
+    sources. -#}
+<div class="card gth-embed-card{% if card_class %} {{ card_class|e }}{% endif %}">
+  <div class="card-header d-flex align-items-center gap-2">
+    <span class="gth-embed-card-title">{{ title|e }}</span>
+    {%- if src %}
+    <a class="ms-auto small" href="{{ src|e }}" target="_blank" rel="noopener noreferrer">{{ open_label|e }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span class="visually-hidden"> {{ title|e }} in a new tab</span></a>
+    {%- endif %}
+  </div>
+  {%- if src %}
+  <div class="gth-embed-card-body" style="height: {{ height }}px" data-gth-embed
+       data-gth-embed-src="{{ src|e }}"{% if theme_param %} data-gth-embed-theme-param="{{ theme_param|e }}"{% endif %}
+       data-gth-embed-timeout="{{ (timeout * 1000)|int }}">
+    <div class="gth-embed-card-loading" role="status">
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Loading {{ title|e }}…
+    </div>
+    <div class="gth-embed-card-error text-secondary" role="alert" hidden>
+      <p class="mb-0">{{ title|e }} didn't load. <a href="{{ src|e }}" target="_blank" rel="noopener noreferrer">{{ open_label|e }} it in a new tab</a>.</p>
+    </div>
+    <iframe class="gth-embed-card-frame" title="{{ title|e }}" hidden></iframe>
+    <noscript><iframe class="gth-embed-card-frame" title="{{ title|e }}" src="{{ src|e }}" loading="lazy"></iframe></noscript>
+  </div>
+  {%- else %}
+  <div class="gth-embed-card-body gth-embed-card-empty text-secondary" style="height: {{ height }}px">{{ empty_message|e }}</div>
+  {%- endif %}
+</div>
+{% endmacro %}

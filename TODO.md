@@ -8,8 +8,31 @@
 
 ## 🗺️ Milestones
 
-Cross-repo order (with greentechhub-core and greentechhub-fastapi): Accounts (M1) → Notifications & email (M2) →
-consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.0.
+Cross-repo order (with greentechhub-core and greentechhub-fastapi): consumers live (M3) → ui breaking release (M4)
+→ PyFinBot ready (M6) → v1.0. M1, M2 and M5 shipped; see the CHANGELOG. The theme sections below are unscheduled
+component work.
+
+### M6 PyFinBot ready — ui's share
+What PyFinBot still needs from this package beyond v0.17. One PR each; PyFinBot's `todo.md` holds the adoption PR for
+each once it ships.
+
+- [ ] 1. `feat(components): gth_timeline`
+  - **Why:** PyFinBot's audit log item ends with an activity feed (sign-ins, role and settings changes, its sync runs
+    and imports), and the audit page (v0.17) is a filterable table, not a feed.
+  - **Scope:**
+    - `gth_timeline(entries, ...)` over the shape greentechhub-fastapi's `AuditViews` passes (`at`, `actor`,
+      `action`, `target`, `summary`);
+    - grouped by day, with an icon and tone per action prefix (`auth.`, `roles.`, `settings.`, or a service's own,
+      e.g. `sync.`), configurable;
+    - relative times inside `<time datetime>`, with "System" for no actor;
+    - an optional "Load older" through `gth_pagination`, and an empty state.
+  - **Done when:** it renders `AuditViews` rows, and the playground shows a feed from its `/audit` store.
+- [ ] 2. `docs: register_csp in the CSP contract` (after greentechhub-fastapi M6.1 ships `register_csp`)
+  - Replace the hand-written FastAPI recipe in docs/contract.md › Content-Security-Policy with `register_csp`, and
+    have the playground send its policy through it, so the e2e suite runs under the helper PyFinBot uses.
+- [ ] 3. `feat(playground): Admin nav group` (after greentechhub-fastapi M6.2 ships `register_admin`)
+  - Move the playground's Roles and Audit log links under `register_admin`'s group, showing what PyFinBot's nav
+    gets; the route test keeps every link reachable as the admin persona.
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
@@ -18,13 +41,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Sidebar: pinned/favourite items
 
 ### Display & charts
-- [ ] Server-rendered SVG charts, no JS — `gth_sparkline` (also a `gth_stat_card` slot), `gth_bar_chart`,
-  `gth_line_chart`: axis labels, theme-token colours, a text summary for screen readers — PyFinBot's dashboard
-  and reports until real Grafana panels exist
-- [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's audit log (`AuditStore`, core v0.10); pairs with the
-  notification centre
-- [ ] `gth_embed_card` — iframe card with loading and error states, passing the current theme to Grafana panels —
-  PyFinBot's Grafana slot
 - [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
   response)
   - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
@@ -50,26 +66,20 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
     Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
-- [ ] Top loading bar for htmx requests slower than ~300ms
-- [ ] Error pages — `403.html` / `404.html` / `500.html` extending `page.html`, with FastAPI and Django
-  exception-handler wiring in the docs
-- [ ] CSP-ready shell — move `app.html`'s inline `<script>`s to static files (the pre-paint theme bootstrap
-  stays inline behind a `csp_nonce` global) and document a recommended `Content-Security-Policy`
 - [ ] **Breaking:** drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` (overdue);
   services must mount `greentechhub_ui.static_dirs()` for `app.html` to keep working. Also required for a strict
   CSP. Blocked on BottleBot, which still loads Bootstrap/htmx from the CDN defaults — lands after its `install()`
   migration below
-- [ ] htmx 2 migration plan — audit our usage against the 2.x breaking changes (`hx-on`, `htmx.config` defaults,
-  extensions) and run the playground + e2e suite on 2.x behind a global. Also retires the 1.9.10 bug where one
-  `requestCount` is shared between the request-indicator class and `hx-disabled-elt`, so `.htmx-request` sticks
-  on an element that is both (why `gth-busy-button` keys on `:disabled`); 1.9.11/1.9.12 don't mention a fix.
-  Update `VENDORED.md` hash/size when it lands
+- [ ] **Breaking:** switch to htmx 2 by default. The audit is done and the full e2e suite passes on 2.0.11 behind
+  `shell_globals(htmx=2)`, with CI's `e2e-htmx2` job running it on every PR. What's left is the switch itself:
+  [docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release). Best after the CDN-defaults removal
+  above, so `htmx_js_url` loses its 1.9.10 CDN default at the same time
 
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
-- Templates for greentechhub-fastapi's planned admin views — an Admin nav group, users admin, a system status page
-  (a status badge per health check)
+- Templates for greentechhub-fastapi's admin view ideas — users admin, a system status page (a status badge per
+  health check). Its Admin nav group (M6.2) is plain nav items and needs none
 - First-run setup wizard on a new `gth_stepper` multi-step form — create the admin, name the site, pick a landing page
 - Customisable dashboard — users arrange and resize stat cards and widgets; the layout saved in settings
 - `gth_kanban` — columns by status, htmx drag between them, a keyboard move mode like the tree reorder
@@ -101,9 +111,16 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-Nothing open here: it pins v0.15 and uses `gth_select(id=)` on the report panes. Adopting v0.16's macros
-(`gth_result_panel`, `gth_filter_bar`, `gth_modal_form`, `gth_amount`, `|fy`, `gth_stat_grid`) and the templates
-still hand-building markup an existing macro covers is tracked in PyFinBot's `todo.md`.
+It pins v0.16, already mounts `static_dirs()` and calls `install()`, so ui's breaking CDN removal (M4) won't touch
+it. What's left is adoption, each a PR tracked in PyFinBot's `todo.md`:
+- v0.16's macros (`gth_result_panel`, `gth_filter_bar`, `gth_download_button`, `gth_form_actions` /
+  `gth_modal_form`, `gth_amount`, `|tone`, `|fy`) where its templates still hand-build the markup;
+- v0.17's charts: sparklines in the dashboard's stat tiles (`gth_stat_card(chart=)`), gains and dividends charts on
+  the reports, and `gth_embed_card` for the Grafana panel;
+- v0.17's CSRF shell, with greentechhub-fastapi's `register_csrf`, and the audit page, with `AuditViews`; then
+  `gth_timeline` once M6.1 above ships;
+- a strict CSP once greentechhub-fastapi ships `register_csp` (the shell is ready since v0.17);
+- optionally, htmx 2 through `shell_globals(htmx=2)` ahead of ui's breaking switch.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

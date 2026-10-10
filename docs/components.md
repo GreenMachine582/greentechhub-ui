@@ -61,13 +61,49 @@ The table above describes intent; these are the actual macro signatures as imple
 gth_card(title=None, footer=None, card_class="", body_class="")
 
 {# stat_card.html #}
-gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="")
+gth_stat_card(label, value, delta=None, delta_tone="neutral", value_tone="neutral", icon=None, card_class="",
+              chart=None)
 {# label/value/delta are trusted HTML (| safe) — same trust model as gth-card's
    title/footer. delta_tone/value_tone are "good"|"bad"|"neutral" — deliberately
-   not sign-inferred, since "lower is better" is a per-consumer judgment call. #}
+   not sign-inferred, since "lower is better" is a per-consumer judgment call.
+   chart (v0.17): trusted HTML under the value, typically a gth_sparkline. #}
 gth_stat_grid(cards, cols=4, grid_class="mb-3")   {# v0.16 #}
 {# cards: dicts of gth_stat_card's kwargs, in a row g-3 grid: two per row on phones,
    `cols` (1, 2, 3, 4 or 6) from md up. #}
+
+{# charts.html (v0.17) — server-rendered SVG, no JS. Marks are currentColor, toned by
+   theme tokens: tone="primary"|"good"|"bad"|"neutral", "signed" (bars: green ≥ 0, red
+   below) or "trend" (sparkline: green if it ends at or above its start). items are
+   {"label", "value"} dicts or (label, value) pairs; numbers in axis labels, tooltips and
+   summaries are formatted from prefix/suffix/places ("$1,250"), since the macros can't
+   assume an app's money filter is installed. #}
+gth_sparkline(values, label=None, tone="primary", width=96, height=28, fill=True,
+              prefix="", suffix="", places=0, sparkline_class="")
+{# a fixed-size trend line (px) for a stat card's chart= or a table cell: role="img",
+   aria-label "Label: from $10 to $14, low $9, high $15". #}
+gth_bar_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+              columns=("Label", "Value"), show_label=True, max_x_labels=6, chart_class="")
+gth_line_chart(items, label, tone="primary", height=180, prefix="", suffix="", places=0,
+               zero=True, fill=True, columns=("Label", "Value"), show_label=True,
+               max_x_labels=6, chart_class="")
+{# a <figure>: figcaption = label (show_label=False keeps it for screen readers only),
+   an aria-hidden plot as wide as its container with y labels for the top, zero and
+   bottom, at most max_x_labels x labels, and a visually hidden data table (columns
+   are its headers). Bars start at zero and carry <title> tooltips; a line chart keeps
+   zero on the axis unless zero=False, and fill shades under the line. #}
+
+{# embed_card.html (v0.17) — the frame's behaviour in static/js/embed-card.js (embed_card_js_url) #}
+gth_embed_card(src, title, height=360, theme_param="theme", timeout=15, open_label="Open",
+               empty_message="Not configured yet.", card_class="")
+{# An iframe card (e.g. a Grafana panel): the header has the title and an open-in-a-new-tab
+   link. embed-card.js loads the frame when the card scrolls into view, adds the page's
+   theme as `theme_param`=light|dark (Grafana's `theme`; None to leave src alone) and
+   reloads it when the theme changes. A loading state shows until the frame's load event,
+   and an error state with a new-tab link if none comes within `timeout` seconds (a late
+   load clears it). A site that refuses framing still fires load with the browser's own
+   error page, so only unreachable or slow sources reach the error state. No src: the
+   card shows empty_message, a slot for a panel not set up yet. Without the script, a
+   <noscript> frame loads src unthemed. #}
 
 {# table.html — two composable macros, not one, so a table can be split across
    a full-page render and an HTMX partial that only swaps the <tbody> #}
@@ -779,6 +815,18 @@ gth_back_to_top(threshold=400, label="Back to top")
    prefers-reduced-motion) and moves focus to <main>. The toast stack lifts above it. #}
 ```
 
+### Loading bar (v0.17)
+
+```jinja
+{# loading_bar.html — app.html renders it when loading_bar_js_url is set (shell_globals sets it) #}
+gth_loading_bar(delay=300)
+{# A 3px bar fixed to the top of the viewport, shown once an htmx request has run for
+   `delay` ms (app.html passes the loading_bar_delay global), creeping towards the end
+   while any request is in flight and completing when the last one ends. Each request
+   counts until its xhr's loadend (success, error, abort or timeout). aria-hidden; a
+   static full-width bar under reduced motion. #}
+```
+
 ### Record picker panel layout (v0.8)
 
 The panel is layered at both sizes: its header, the endpoint's `gth_table_filter` and the data table's
@@ -1348,8 +1396,12 @@ A group left with no children (and no url of its own) is dropped. Breadcrumbs ar
 ```jinja
 {# navbar.html #}
 gth_navbar(..., user_menu_items=None, logout_url=None, granted=None, notifications_url=None,
-           user_display_name=None)
+           user_display_name=None, csrf_token=None)
 ```
+
+With `csrf_token` (v0.17), the Log out form carries it as a hidden `csrf_token` field, for greentechhub-fastapi's
+`LoginViews.logout_csrf`. `app.html` passes it, and also puts it on `<body>` in `hx-headers` for every htmx request
+(see [docs/contract.md](contract.md)).
 
 With `current_user` set, the navbar ends with a user menu, in both layouts: the user's name, then
 `user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a
@@ -1393,3 +1445,82 @@ grants per user). greentechhub-fastapi's `RoleAdminViews` renders them by defaul
 The playground's `/roles` page (impersonate the admin on `/personas`; going there signed out takes you to pick one)
 runs this flow over an in-memory stand-in for a
 `GrantStore`.
+
+### Audit log (v0.17)
+
+`audit_page.html` renders an audit log from data, over greentechhub-core's `AuditStore`. greentechhub-fastapi's
+`AuditViews` renders it by default. It extends `page.html` (`page_title`, `page_subtitle`), then shows a filter row
+as a plain GET form, a table of entries newest first, and an "Older entries" link.
+
+| Context | |
+|---|---|
+| `audit_url` | the page's own url, the filter form's action |
+| `audit_filters` | `{"actor", "action", "on_or_before"}` as submitted (`""` when unset); the form keeps them, with a Clear link while any is set |
+| `audit_entries` | `[{"at" (a datetime), "actor" (None for the system), "action", "target" ("type:id" or None), "summary"}]`, newest first |
+| `audit_next_url` | the older page's url, keeping the filters, or None |
+| `audit_actions_help` | optional hint under the action field |
+
+- `at` shows through the `datetime` filter inside a `<time datetime>`. A missing actor shows as "System".
+- Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
+
+The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
+
+### Error pages (v0.17)
+
+`403.html`, `404.html` and `500.html` extend `error_page.html`, which extends `page.html`: the service's own shell
+(navbar or sidebar), a header (`error_title`), the status code, a message and the next step. Every variable is
+optional, so each renders with nothing but `install()`'s globals.
+
+| Context | |
+|---|---|
+| `error_message` / `error_detail` | override the page's own copy (e.g. "No such stock.") |
+| `error_reference` | shown as "Reference: …" — a request id, so a report can be matched to the logs |
+| `home_url` | the "Go to the home page" link (default `/`) |
+| `login_url` | 403 only: a signed-out visitor (`current_user` none) also gets "Sign in", with `?next=` the current path |
+| `current_path` | 500 only: a "Try again" link back to it (ui_context supplies it per request) |
+
+Another status: `{% extends "error_page.html" %}` and set `error_code`, `error_title`, `error_message` (and
+`error_detail`) at the top, or override `{% block error_actions %}`.
+
+**FastAPI** — answer browser page requests with the pages, and leave API and htmx requests to the defaults (JSON,
+and htmx's own error handling; an htmx swap of a whole page into a fragment target is never wanted):
+
+```python
+from fastapi import Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+ERROR_PAGES = {403: "403.html", 404: "404.html"}
+
+
+def wants_error_page(request: Request) -> bool:
+    return ("text/html" in request.headers.get("accept", "")
+            and "hx-request" not in request.headers
+            and not request.url.path.startswith("/api"))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_page(request: Request, exc: StarletteHTTPException):
+    if exc.status_code in ERROR_PAGES and wants_error_page(request):
+        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
+                                          status_code=exc.status_code)
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)  # Starlette's ServerErrorMiddleware: still logged and re-raised
+async def server_error_page(request: Request, exc: Exception):
+    if not wants_error_page(request):
+        return PlainTextResponse("Internal Server Error", status_code=500)
+    return templates.TemplateResponse(request, "500.html",
+                                      {"error_reference": request.headers.get("x-request-id")},
+                                      status_code=500)
+```
+
+Keep the 500 context small and failure-proof: it renders after something already went wrong. The playground wires
+exactly this (`/feedback#error-pages` links to each page).
+
+**Django** — nothing to wire: `django.views.defaults` renders `404.html`, `403.html` and `500.html` (when
+`DEBUG = False`) through the configured template engine, so with gth-ui's template directories in the Jinja2
+backend's `DIRS` and `install()` in its `environment` callable (for `brand` and the nav), the defaults use these
+pages. The 500 handler passes no context and no request, which these templates are built for.

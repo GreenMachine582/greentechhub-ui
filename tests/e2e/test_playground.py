@@ -2693,3 +2693,146 @@ def test_sign_up_with_an_email_and_confirm_it(page, playground_url):
     page.locator("[data-outbox-link]").first.click()
     expect(page.locator(".gth-auth-card")).to_contain_text("Your email address is confirmed.")
     page.request.post(f"{playground_url}/demo/reset")
+
+
+# ── gth charts (v0.17) ─────────────────────────────────────────────────────
+
+
+def test_charts_fill_their_plot_box(page, playground_url):
+    """The plot stretches to the chart's box (no viewBox-driven height), and
+    the bars and line stay inside it."""
+    page.goto(f"{playground_url}/layout")
+    for chart in (".gth-bar-chart", ".gth-line-chart"):
+        body = page.locator(f"#charts {chart} .gth-chart-body").bounding_box()
+        plot = page.locator(f"#charts {chart} .gth-chart-plot").bounding_box()
+        assert abs(plot["height"] - body["height"]) < 1 and abs(plot["width"] - body["width"]) < 1
+        assert body["height"] == 180
+    line = page.locator("#charts .gth-line-chart .gth-chart-line").bounding_box()
+    body = page.locator("#charts .gth-line-chart .gth-chart-body").bounding_box()
+    assert line["y"] >= body["y"] - 2
+    assert line["y"] + line["height"] <= body["y"] + body["height"] + 2
+    expect(page.locator("#charts .gth-sparkline").first).to_have_attribute(
+        "aria-label", "Holdings: from $31.0k to $41.2k, low $31.0k, high $41.2k")
+
+
+# ── gth-embed-card (v0.17) ─────────────────────────────────────────────────
+
+EMBED = "#embed-card .col-md-4"
+
+
+def test_embed_card_loads_themed_and_reloads_on_theme_change(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    box = page.locator(f"{EMBED} >> nth=0").locator("[data-gth-embed]")
+    box.scroll_into_view_if_needed()
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded")
+    panel = page.frame_locator(f"{EMBED} >> nth=0 >> iframe.gth-embed-card-frame")
+    expect(panel.locator("#panel-theme")).to_have_text("A stand-in panel, theme: dark")
+    expect(box.locator(".gth-embed-card-loading")).to_be_hidden()
+
+    page.click(".gth-theme-toggle")  # dark → light
+    expect(panel.locator("#panel-theme")).to_have_text("A stand-in panel, theme: light")
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded")
+
+
+def test_embed_card_shows_an_error_after_its_timeout(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    box = page.locator(f"{EMBED} >> nth=1").locator("[data-gth-embed]")
+    box.scroll_into_view_if_needed()
+    expect(box.locator(".gth-embed-card-loading")).to_be_visible()
+    expect(box).to_have_attribute("data-gth-embed-state", "error", timeout=4000)
+    expect(box.locator(".gth-embed-card-error")).to_be_visible()
+    expect(box.locator(".gth-embed-card-error a")).to_have_attribute("target", "_blank")
+    # The slow source arrives (after 4s) and clears the error.
+    expect(box).to_have_attribute("data-gth-embed-state", "loaded", timeout=8000)
+    expect(box.locator(".gth-embed-card-error")).to_be_hidden()
+
+
+def test_embed_card_placeholder(page, playground_url):
+    page.goto(f"{playground_url}/layout")
+    empty = page.locator(f"{EMBED} >> nth=2")
+    expect(empty.locator(".gth-embed-card-empty")).to_have_text("Not configured yet.")
+    expect(empty.locator("iframe")).to_have_count(0)
+
+
+# ── htmx 2 migration (docs/htmx2.md) ───────────────────────────────────────
+
+def test_busy_button_request_class_on_each_htmx(page, playground_url):
+    """htmx 1.9.10 shares one requestCount between the request-indicator
+    class and hx-disabled-elt, so .htmx-request sticks on an element that is
+    both (why gth-busy-button keys on :disabled); htmx 2 clears it. Run on
+    both by CI (PLAYGROUND_HTMX=2 in the e2e-htmx2 job)."""
+    page.goto(f"{playground_url}/forms")
+    button = page.locator("#busy-button .gth-busy-button[type=button]")
+    button.click()
+    expect(button).to_be_disabled()
+    expect(button).to_be_enabled(timeout=5000)
+    page.wait_for_timeout(100)
+    sticks = "htmx-request" in (button.get_attribute("class") or "")
+    assert sticks is page.evaluate("htmx.version").startswith("1.")
+    
+# ── CSP-ready shell (v0.17) ────────────────────────────────────────────────
+
+def test_every_page_runs_under_the_strict_csp(page, playground_url):
+    """The playground sends docs/contract.md's recommended policy (script-src
+    'self' plus the per-request nonce, no 'unsafe-inline'/'unsafe-eval'): no
+    page may trip it, and the pre-paint, htmx setup and component scripts must
+    still run."""
+    page.add_init_script("""
+        window.__cspViolations = [];
+        document.addEventListener('securitypolicyviolation', e =>
+            window.__cspViolations.push(
+                e.violatedDirective + ' ' + e.blockedURI + ' ' + e.sourceFile));
+    """)
+    violations = []
+    for path in [*PAGES, "/tables?mode=load_more", "/demo/error/403"]:
+        response = page.goto(f"{playground_url}{path}")
+        csp = response.headers["content-security-policy"]
+        assert "script-src 'self' 'nonce-" in csp and "unsafe-eval" not in csp
+        _htmx_idle(page)
+        violations += page.evaluate("window.__cspViolations")
+    assert violations == []
+    # (Every other e2e test runs under the same policy, so htmx swaps, the
+    # 422 form errors, toasts, modals and the pre-paint all work under it.)
+    
+# ── gth-loading-bar (v0.17) ────────────────────────────────────────────────
+
+LOADING_BAR = "[data-gth-loading-bar]"
+
+
+def test_loading_bar_skips_quick_requests(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    page.evaluate("""() => {
+        window.__barShown = false;
+        new MutationObserver(() => {
+            if (document.querySelector('[data-gth-loading-bar]').classList.contains('is-active'))
+                window.__barShown = true;
+        }).observe(document.querySelector('[data-gth-loading-bar]'), {attributes: true});
+    }""")
+    page.click("#loading-bar-fast")
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 50 ms.")
+    page.wait_for_timeout(400)  # past the 300 ms delay
+    assert page.evaluate("window.__barShown") is False
+
+
+def test_loading_bar_shows_for_a_slow_request_then_completes(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    bar = page.locator(LOADING_BAR)
+    page.click("#loading-bar-slow")
+    expect(bar).to_have_class("gth-loading-bar is-active", timeout=1000)
+    expect(bar).to_be_visible()
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 1500 ms.")
+    expect(bar).not_to_have_class("gth-loading-bar is-active")
+    expect(bar).to_have_class("gth-loading-bar", timeout=2000)  # faded and reset
+
+
+def test_loading_bar_waits_for_every_request(page, playground_url):
+    page.goto(f"{playground_url}/feedback")
+    bar = page.locator(LOADING_BAR)
+    page.evaluate("""() => {
+        htmx.ajax('GET', '/demo/slow?ms=600', {target: '#loading-bar-result'});
+        htmx.ajax('GET', '/demo/slow?ms=1800', {target: '#loading-bar-result', swap: 'none'});
+    }""")
+    expect(bar).to_have_class("gth-loading-bar is-active", timeout=1000)
+    expect(page.locator("#loading-bar-result")).to_have_text("Answered after 600 ms.")
+    expect(bar).to_have_class("gth-loading-bar is-active")  # the 1.8 s one is still running
+    expect(bar).not_to_have_class("gth-loading-bar is-active", timeout=3000)

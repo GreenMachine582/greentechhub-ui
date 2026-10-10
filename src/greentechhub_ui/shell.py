@@ -33,6 +33,7 @@ def shell_globals(
     show_logo: bool = False,
     navbar_theme: str | None = None,
     layout: str = "navbar",
+    htmx: int = 1,
 ) -> dict:
     """Globals for app.html: brand, nav_items, and every asset URL.
 
@@ -40,6 +41,9 @@ def shell_globals(
     `theme_prefix` where `greentechhub_ui.theme_path` is. `navbar_theme="dark"`
     pins gth_navbar dark; by default it follows the color mode.
     `layout="sidebar"` moves nav_items into gth_sidebar (see app.html).
+    `htmx=2` (v0.17) loads the vendored htmx 2.x instead of 1.9.10 — the
+    opt-in half of the htmx 2 migration (docs/htmx2.md); the default stays 1
+    until that migration lands.
 
     Also installs nav helpers as globals: `nav_breadcrumbs(path)` (the
     gth_page_header breadcrumbs derived from nav_items),
@@ -49,6 +53,8 @@ def shell_globals(
     """
     if layout not in ("navbar", "sidebar"):
         raise ValueError(f"layout must be 'navbar' or 'sidebar', got {layout!r}")
+    if htmx not in (1, 2):
+        raise ValueError(f"htmx must be 1 or 2, got {htmx!r}")
     globals_ = {
         "brand": brand_context(
             service_name=service_name, show_logo=show_logo, static_url_prefix=assets_prefix
@@ -58,7 +64,9 @@ def shell_globals(
         "icons_css_url": f"{assets_prefix}/icons/bootstrap-icons.min.css",
         "bootstrap_css_url": f"{assets_prefix}/css/bootstrap.min.css",
         "bootstrap_js_url": f"{assets_prefix}/js/bootstrap.bundle.min.js",
-        "htmx_js_url": f"{assets_prefix}/js/htmx.min.js",
+        "htmx_js_url": f"{assets_prefix}/js/{'htmx-2.min.js' if htmx == 2 else 'htmx.min.js'}",
+        "htmx_setup_js_url": f"{assets_prefix}/js/htmx-setup.js",
+        "prepaint_js_url": f"{assets_prefix}/js/prepaint.js",
         "toast_js_url": f"{assets_prefix}/js/toast.js",
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
@@ -73,6 +81,8 @@ def shell_globals(
         "command_palette_js_url": f"{assets_prefix}/js/command-palette.js",
         "tree_js_url": f"{assets_prefix}/js/tree.js",
         "back_to_top_js_url": f"{assets_prefix}/js/back-to-top.js",
+        "loading_bar_js_url": f"{assets_prefix}/js/loading-bar.js",
+        "embed_card_js_url": f"{assets_prefix}/js/embed-card.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
         "layout": layout,

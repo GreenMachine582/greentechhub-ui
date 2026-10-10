@@ -22,6 +22,10 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["table_view_js_url"] == "/gth-assets/js/table-view.js"
     assert g["char_counter_js_url"] == "/gth-assets/js/char-counter.js"
     assert g["alert_banner_js_url"] == "/gth-assets/js/alert-banner.js"
+    assert g["prepaint_js_url"] == "/gth-assets/js/prepaint.js"
+    assert g["htmx_setup_js_url"] == "/gth-assets/js/htmx-setup.js"
+    assert g["loading_bar_js_url"] == "/gth-assets/js/loading-bar.js"
+    assert g["embed_card_js_url"] == "/gth-assets/js/embed-card.js"
 
 
 def test_every_asset_url_exists_in_the_package():
@@ -64,3 +68,15 @@ def test_layout_and_nav_helpers():
     assert shell_globals(service_name="Svc", nav_items=nav, layout="sidebar")["layout"] == "sidebar"
     with pytest.raises(ValueError):
         shell_globals(service_name="Svc", nav_items=nav, layout="grid")
+
+
+def test_htmx_2_opt_in():
+    import pytest
+
+    default = shell_globals(service_name="Svc", nav_items=NAV)
+    assert default["htmx_js_url"] == "/gth-assets/js/htmx.min.js"
+    g = shell_globals(service_name="Svc", nav_items=NAV, htmx=2)
+    assert g["htmx_js_url"] == "/gth-assets/js/htmx-2.min.js"
+    assert (Path(greentechhub_ui.static_path) / "js" / "htmx-2.min.js").is_file()
+    with pytest.raises(ValueError, match="htmx must be 1 or 2"):
+        shell_globals(service_name="Svc", nav_items=NAV, htmx=3)

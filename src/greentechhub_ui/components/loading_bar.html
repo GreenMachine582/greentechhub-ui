@@ -1,0 +1,11 @@
+{% macro gth_loading_bar(delay=300) %}
+{#- A thin bar along the top of the viewport while htmx requests run (v0.17):
+    it appears only once a request has taken longer than `delay` ms (so
+    quick swaps never flash it), creeps towards the end while any request
+    is in flight, and completes and fades when the last one finishes.
+    Behaviour in static/js/loading-bar.js (loading_bar_js_url); app.html
+    renders it when that global is set. Decorative: screen readers get the
+    swapped content itself, so it's aria-hidden. Under reduced motion it's
+    a static full-width bar. -#}
+<div class="gth-loading-bar" data-gth-loading-bar data-delay="{{ delay|int }}" aria-hidden="true"></div>
+{% endmacro %}

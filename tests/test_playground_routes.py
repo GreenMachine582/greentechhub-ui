@@ -57,7 +57,7 @@ def test_every_sidebar_link_returns_200():
     from playground.app import PLAYGROUND_NAV
 
     paths = {entry["url"].split("#")[0] for entry in flatten(PLAYGROUND_NAV)}
-    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles"} <= paths
+    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles", "/audit"} <= paths
     async def get_as_admin(path):
         # as the demo admin, so permission-gated links (Roles) are reachable too
         transport = httpx.ASGITransport(app=app)
@@ -71,6 +71,27 @@ def test_every_sidebar_link_returns_200():
         if path == "/login-demo":  # layout="auth": no sidebar to mark it
             continue
         assert 'aria-current="page"' in response.text, path  # the sidebar marks it
+
+
+def test_every_demo_section_is_in_the_sidebar():
+    # A demo section the nav doesn't link is missing from the sidebar, the
+    # command palette and the overview cards alike.
+    from pathlib import Path
+
+    from greentechhub_ui.navigation import flatten
+    from playground.app import PLAYGROUND_NAV
+
+    linked = {entry["url"] for entry in flatten(PLAYGROUND_NAV)}
+    pages = Path(playground_app.__file__).parent / "templates" / "pages"
+    for category in PLAYGROUND_NAV:
+        if not category.get("children"):
+            continue  # a single-page entry (Extensibility, Personas) links the page itself
+        page = pages / (category["url"].lstrip("/") + ".html")
+        if not page.exists():
+            continue  # e.g. /settings renders a shipped template
+        ids = re.findall(r'<section\b[^>]*\sid="([^"]+)"', page.read_text(encoding="utf-8"))
+        missing = [i for i in ids if f"{category['url']}#{i}" not in linked]
+        assert not missing, (category["url"], missing)
 
 
 def test_table_filter_returns_matching_rows_only():
@@ -127,8 +148,8 @@ def test_form_demo_above_max_returns_422():
 def test_pages_render_demos_with_vendored_assets():
     overlays = _run(_get("/overlays")).text
     assert 'id="gth-modal-host"' in overlays
-    assert '<script src="/gth-assets/js/modal-host.js"></script>' in overlays
-    assert '<script src="/gth-assets/js/combobox.js"></script>' in overlays
+    assert '<script src="/gth-assets/js/modal-host.js" nonce="' in overlays
+    assert '<script src="/gth-assets/js/combobox.js" nonce="' in overlays
     assert "gth-busy-button" in _run(_get("/forms")).text
     assert "gth-table-load-more" in _run(_get("/data")).text
 
@@ -136,7 +157,7 @@ def test_pages_render_demos_with_vendored_assets():
 def test_playground_runs_in_the_sidebar_layout():
     html = _run(_get("/forms")).text
     assert 'id="gth-sidebar"' in html
-    assert '<script src="/gth-assets/js/sidebar.js"></script>' in html
+    assert '<script src="/gth-assets/js/sidebar.js" nonce="' in html
     assert "<dialog" in html  # the command palette comes with the sidebar layout
     # Breadcrumbs derived from the nav: /tables sits under the Data group.
     tables = _run(_get("/tables")).text
@@ -773,8 +794,10 @@ def test_saved_sidebar_default_reaches_the_pre_paint_script():
             return before, after
 
     before, after = _run(flow())
-    assert "var preferred = null;" in before.text
-    assert 'var preferred = "rail";' in after.text
+    # static/js/prepaint.js reads it from its tag's data-sidebar (v0.17).
+    tag = '<script src="/gth-assets/js/prepaint.js" data-sidebar="{}" data-banners nonce="'
+    assert tag.format("") in before.text
+    assert tag.format("rail") in after.text
 
 
 
