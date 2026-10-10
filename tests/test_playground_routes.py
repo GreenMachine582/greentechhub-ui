@@ -57,7 +57,7 @@ def test_every_sidebar_link_returns_200():
     from playground.app import PLAYGROUND_NAV
 
     paths = {entry["url"].split("#")[0] for entry in flatten(PLAYGROUND_NAV)}
-    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles"} <= paths
+    assert {"/layout", "/data", "/forms", "/tables", "/tree", "/roles", "/audit"} <= paths
     async def get_as_admin(path):
         # as the demo admin, so permission-gated links (Roles) are reachable too
         transport = httpx.ASGITransport(app=app)

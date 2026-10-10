@@ -30,6 +30,7 @@ from fastapi.responses import (
     Response,
 )
 from fastapi.templating import Jinja2Templates
+from greentechhub_core.audit import InMemoryAuditStore, new_entry
 from greentechhub_core.email import InMemoryEmailSender
 from greentechhub_core.notifications import InMemoryNotificationStore, new_notification
 from greentechhub_core.security import InMemoryTokenStore, OneTimeTokens
@@ -371,6 +372,8 @@ PLAYGROUND_NAV = [
     {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
     # Only the demo admin (sign in on /extensibility) sees this.
     {"label": "Roles", "url": "/roles", "icon": "people",
+     "required_permission": "settings.manage"},
+    {"label": "Audit log", "url": "/audit", "icon": "journal-text",
      "required_permission": "settings.manage"},
 ]
 
@@ -1058,6 +1061,62 @@ async def login_demo_submit(request: Request, user_id: str = Form(""), password:
     return templates.TemplateResponse(request, "login_page.html", {
         **LOGIN_DEMO, "user_id": user_id, "error": "Incorrect user ID or password.",
     }, status_code=401)
+
+
+# ── Audit log demo ────────────────────────────────────────────────────────────
+# gth-ui's audit_page.html over greentechhub-core's InMemoryAuditStore, seeded
+# with the events greentechhub-fastapi's views record — the flow its
+# AuditViews runs (filters, newest first, an older-page cursor). Admin only.
+
+AUDIT_STORE = InMemoryAuditStore()
+AUDIT_PAGE_SIZE = 5
+for _days, _action, _actor, _target, _summary in [
+    (9, "auth.signed_in", "admin", "admin", "admin signed in"),
+    (8, "roles.granted", "admin", "bob", "Granted editor to bob"),
+    (7, "auth.sign_in_failed", None, None, "Failed sign-in as bob"),
+    (6, "auth.signed_in", "bob", "bob", "bob signed in"),
+    (5, "settings.changed", "bob", "bob", "Changed ui.theme"),
+    (4, "auth.password_changed", "bob", "bob", "Password changed"),
+    (3, "settings.changed", "admin", None, "Changed site.banner"),
+    (2, "roles.revoked", "admin", "bob", "Revoked editor from bob"),
+]:
+    AUDIT_STORE.record_sync(new_entry(
+        _action, actor=_actor, target=("user", _target) if _target else None, summary=_summary,
+        now=datetime(2026, 10, 1, 9, 30, tzinfo=UTC) + timedelta(days=9 - _days)))
+
+
+@app.get("/audit", response_class=HTMLResponse)
+async def audit_page(request: Request):
+    if denied := _require_persona(request, MANAGE_PERMISSION):
+        return denied
+    query = request.query_params
+    filters = {name: (query.get(name) or "").strip()
+               for name in ("actor", "action", "on_or_before")}
+    before = None
+    try:
+        if filters["on_or_before"]:
+            day = date.fromisoformat(filters["on_or_before"]) + timedelta(days=1)
+            before = datetime.combine(day, datetime.min.time(), tzinfo=UTC)
+        if query.get("before"):
+            cursor = datetime.fromisoformat(query["before"])
+            before = min(before, cursor) if before else cursor
+    except ValueError:
+        pass
+    entries = await AUDIT_STORE.entries(actor=filters["actor"] or None,
+                                        action=filters["action"] or None,
+                                        before=before, limit=AUDIT_PAGE_SIZE)
+    next_url = None
+    if len(entries) == AUDIT_PAGE_SIZE:
+        kept = {k: v for k, v in filters.items() if v}
+        next_url = "/audit?" + urlencode({**kept, "before": entries[-1].at.isoformat()})
+    return templates.TemplateResponse(request, "audit_page.html", {
+        "page_title": "Audit log",
+        "page_subtitle": "gth-ui's audit_page.html over core's InMemoryAuditStore.",
+        "audit_url": "/audit", "audit_filters": filters, "audit_next_url": next_url,
+        "audit_entries": [{"at": e.at, "actor": e.actor, "action": e.action,
+                           "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
+                           "summary": e.summary} for e in entries],
+    })
 
 
 # ── Password reset and email verification ────────────────────────────────────
