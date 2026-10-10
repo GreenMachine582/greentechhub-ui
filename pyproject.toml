@@ -22,7 +22,7 @@ playground = [
     "python-multipart>=0.0.9",
     # the FastAPI half of the setup helpers (hx_response, ui_context, mount_static_dirs);
     # gth-ui itself never imports it — runtime deps stay jinja2 only
-    "greentechhub-fastapi @ git+https://github.com/GreenMachine582/greentechhub-fastapi.git@v0.15.1",
+    "greentechhub-fastapi @ git+https://github.com/GreenMachine582/greentechhub-fastapi.git@v0.16.0",
 ]
 e2e = ["pytest-playwright>=0.4"]
 # test-only, for tests/test_contract_django.py; pinned to match GreenTechHub's real Django version
