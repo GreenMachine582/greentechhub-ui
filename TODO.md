@@ -8,8 +8,31 @@
 
 ## 🗺️ Milestones
 
-Cross-repo order (with greentechhub-core and greentechhub-fastapi): Accounts (M1) → Notifications & email (M2) →
-consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.0.
+Cross-repo order (with greentechhub-core and greentechhub-fastapi): consumers live (M3) → ui breaking release (M4)
+→ PyFinBot ready (M6) → v1.0. M1, M2 and M5 shipped; see the CHANGELOG. The theme sections below are unscheduled
+component work.
+
+### M6 PyFinBot ready — ui's share
+What PyFinBot still needs from this package beyond v0.17. One PR each; PyFinBot's `todo.md` holds the adoption PR for
+each once it ships.
+
+- [ ] 1. `feat(components): gth_timeline`
+  - **Why:** PyFinBot's audit log item ends with an activity feed (sign-ins, role and settings changes, its sync runs
+    and imports), and the audit page (v0.17) is a filterable table, not a feed.
+  - **Scope:**
+    - `gth_timeline(entries, ...)` over the shape greentechhub-fastapi's `AuditViews` passes (`at`, `actor`,
+      `action`, `target`, `summary`);
+    - grouped by day, with an icon and tone per action prefix (`auth.`, `roles.`, `settings.`, or a service's own,
+      e.g. `sync.`), configurable;
+    - relative times inside `<time datetime>`, with "System" for no actor;
+    - an optional "Load older" through `gth_pagination`, and an empty state.
+  - **Done when:** it renders `AuditViews` rows, and the playground shows a feed from its `/audit` store.
+- [ ] 2. `docs: register_csp in the CSP contract` (after greentechhub-fastapi M6.1 ships `register_csp`)
+  - Replace the hand-written FastAPI recipe in docs/contract.md › Content-Security-Policy with `register_csp`, and
+    have the playground send its policy through it, so the e2e suite runs under the helper PyFinBot uses.
+- [ ] 3. `feat(playground): Admin nav group` (after greentechhub-fastapi M6.2 ships `register_admin`)
+  - Move the playground's Roles and Audit log links under `register_admin`'s group, showing what PyFinBot's nav
+    gets; the route test keeps every link reachable as the admin persona.
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
@@ -18,8 +41,6 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Sidebar: pinned/favourite items
 
 ### Display & charts
-- [ ] `gth_timeline` — activity feed (sync runs, audit entries) fed by core's audit log (`AuditStore`, core v0.10); pairs with the
-  notification centre
 - [ ] `gth_code` — a read-only code block for config snippets, API examples, JSON payloads and logs (a sync run's raw
   response)
   - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
@@ -57,8 +78,8 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
-- Templates for greentechhub-fastapi's planned admin views — an Admin nav group, users admin, a system status page
-  (a status badge per health check)
+- Templates for greentechhub-fastapi's admin view ideas — users admin, a system status page (a status badge per
+  health check). Its Admin nav group (M6.2) is plain nav items and needs none
 - First-run setup wizard on a new `gth_stepper` multi-step form — create the admin, name the site, pick a landing page
 - Customisable dashboard — users arrange and resize stat cards and widgets; the layout saved in settings
 - `gth_kanban` — columns by status, htmx drag between them, a keyboard move mode like the tree reorder
@@ -90,9 +111,16 @@ consumers live (M3) → ui breaking release (M4) → display & data (M5) → v1.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-Nothing open here: it pins v0.15 and uses `gth_select(id=)` on the report panes. Adopting v0.16's macros
-(`gth_result_panel`, `gth_filter_bar`, `gth_modal_form`, `gth_amount`, `|fy`, `gth_stat_grid`) and the templates
-still hand-building markup an existing macro covers is tracked in PyFinBot's `todo.md`.
+It pins v0.16, already mounts `static_dirs()` and calls `install()`, so ui's breaking CDN removal (M4) won't touch
+it. What's left is adoption, each a PR tracked in PyFinBot's `todo.md`:
+- v0.16's macros (`gth_result_panel`, `gth_filter_bar`, `gth_download_button`, `gth_form_actions` /
+  `gth_modal_form`, `gth_amount`, `|tone`, `|fy`) where its templates still hand-build the markup;
+- v0.17's charts: sparklines in the dashboard's stat tiles (`gth_stat_card(chart=)`), gains and dividends charts on
+  the reports, and `gth_embed_card` for the Grafana panel;
+- v0.17's CSRF shell, with greentechhub-fastapi's `register_csrf`, and the audit page, with `AuditViews`; then
+  `gth_timeline` once M6.1 above ships;
+- a strict CSP once greentechhub-fastapi ships `register_csp` (the shell is ready since v0.17);
+- optionally, htmx 2 through `shell_globals(htmx=2)` ahead of ui's breaking switch.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
