@@ -1396,8 +1396,12 @@ A group left with no children (and no url of its own) is dropped. Breadcrumbs ar
 ```jinja
 {# navbar.html #}
 gth_navbar(..., user_menu_items=None, logout_url=None, granted=None, notifications_url=None,
-           user_display_name=None)
+           user_display_name=None, csrf_token=None)
 ```
+
+With `csrf_token` (v0.17), the Log out form carries it as a hidden `csrf_token` field, for greentechhub-fastapi's
+`LoginViews.logout_csrf`. `app.html` passes it, and also puts it on `<body>` in `hx-headers` for every htmx request
+(see [docs/contract.md](contract.md)).
 
 With `current_user` set, the navbar ends with a user menu, in both layouts: the user's name, then
 `user_menu_items` (NavItems, permission-filtered the same way), then a divider and **Log out**, a button in a

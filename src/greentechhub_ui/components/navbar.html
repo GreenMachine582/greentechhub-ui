@@ -1,13 +1,15 @@
 {% from "theme_toggle.html" import gth_theme_toggle %}
 {% from "badge.html" import gth_nav_badge %}
 {% from "notifications.html" import gth_notification_bell %}
+{% from "form.html" import gth_csrf_field %}
 
-{% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None, display_name=None) %}
+{% macro _gth_user_menu(current_user, items=None, logout_url=None, granted=None, display_name=None, csrf_token=None) %}
 {#- The signed-in viewer's menu: their name, `items` (NavItems — e.g. Settings,
     permission-filtered like nav_items) and a Log out button that POSTs to
     logout_url. Nothing renders without a current_user. The name is
     display_name (v0.15: greentechhub-fastapi's profile), else the user ID,
-    else the email's local part; its initials make the avatar. -#}
+    else the email's local part; its initials make the avatar. With
+    csrf_token (v0.17) the logout form carries it as a hidden field. -#}
 {%- if current_user %}
 {%- set email_name = (current_user.email or "").split("@")[0] %}
 {%- set name = display_name or current_user.username or email_name or "Account" %}
@@ -32,6 +34,7 @@
     {%- endif %}
     <li>
       <form method="post" action="{{ logout_url }}">
+        {{- gth_csrf_field(csrf_token) }}
         <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Log out</button>
       </form>
     </li>
@@ -46,7 +49,7 @@
 {%- endif %}
 {%- endmacro %}
 
-{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None, user_display_name=None, notifications_badge_url=None, notifications_panel_url=None) %}
+{% macro gth_navbar(nav_items, brand, current_path=None, current_user=None, show_theme_toggle=False, navbar_theme=None, sidebar=False, show_search=False, user_menu_items=None, logout_url=None, granted=None, notifications_url=None, user_display_name=None, notifications_badge_url=None, notifications_panel_url=None, csrf_token=None) %}
 {# Follows the page's color mode (data-bs-theme on <html>) by default.
    navbar_theme="dark" pins it dark in both modes — Bootstrap 5.3's
    replacement for the old navbar-dark class. With brand.logo_light_url set
@@ -94,7 +97,7 @@
       {{ gth_notification_bell(notifications_url, badge_url=notifications_badge_url, panel_url=notifications_panel_url) }}
       {%- endif %}
       {%- if current_user %}
-      {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name) }}
+      {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name, csrf_token) }}
       {%- endif %}
     </div>
   </div>
@@ -163,7 +166,7 @@
         {%- endif %}
         {%- if current_user %}
         <li class="nav-item d-flex align-items-center ms-md-2">
-          {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name) }}
+          {{ _gth_user_menu(current_user, user_menu_items, logout_url, granted, user_display_name, csrf_token) }}
         </li>
         {%- endif %}
       </ul>

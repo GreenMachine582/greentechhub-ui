@@ -45,10 +45,18 @@
     if (window.htmx && window.htmx.ajax) {
       window.htmx.ajax("POST", url, { source: source, values: { theme: mode }, swap: "none" });
     } else if (window.fetch) {
+      var headers = { "Content-Type": "application/x-www-form-urlencoded" };
+      // The page's hx-headers too (e.g. its CSRF token), as htmx.ajax would send.
+      try {
+        var extra = JSON.parse(document.body.getAttribute("hx-headers") || "{}");
+        for (var name in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, name)) headers[name] = extra[name];
+        }
+      } catch (e) {}
       window.fetch(url, {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: headers,
         body: "theme=" + encodeURIComponent(mode),
       }).catch(function () {});
     }
