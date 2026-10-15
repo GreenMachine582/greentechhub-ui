@@ -4,7 +4,8 @@
     tabbed, so a "/settings#gth-settings-<id>" link lands on its section and
     a 422 is never hidden in a closed tab. greentechhub-fastapi's
     SettingsViews renders this by default; any framework can, with the same
-    context. -#}
+    context. A section with a `template` key is included through that
+    template instead (api_tokens_section.html, for the API tokens section). -#}
 {% extends "page.html" %}
 
 {% block page %}
@@ -12,6 +13,6 @@
 <p class="text-secondary small">{{ settings_intro }}</p>
 {%- endif %}
 {%- for section in settings_sections|default([]) %}
-{% include "settings_section.html" %}
+{% include section.template|default("settings_section.html") %}
 {%- endfor %}
 {% endblock %}

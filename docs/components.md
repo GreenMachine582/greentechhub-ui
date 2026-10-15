@@ -1261,6 +1261,25 @@ markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 |---|---|
 | `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
 | `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
+| `api_tokens_section.html` | `section`: the API tokens section (below), included by `settings_page.html` through the section's `template` |
+
+A section with a `template` key is included through that template instead of `settings_section.html`. That's how
+a section that isn't a form of settings fields joins the page.
+
+**API tokens section.** `api_tokens_section.html` is the settings page's "API tokens" section, for personal API
+tokens a person creates for their own scripts. greentechhub-fastapi's `ApiTokenViews` supplies its `section`:
+- `id`, `title`, `description`, `error` as any section, plus `template: "api_tokens_section.html"`.
+- `action`: the create form's POST, with the fields `name`, `scopes` (repeated) and `expires_in_days`.
+- `tokens`: `[{id, name, scopes, created_at, expires_at, last_used_at, expired, revoke_url}]`. Each row has a
+  Revoke button that opens a `gth_confirm_delete` modal sending `hx-delete` to `revoke_url`.
+- `scope_choices` (chips) and `expiry_choices` (a select of days, where `None` reads "Never") with
+  `default_expiry_days`. With no `scope_choices` the form says the token can only identify its owner.
+- `values` and `errors` re-fill the form after a 422.
+- `created` (`{name, token}`) shows the new token once, in a readonly field to copy. There's no copy-button script,
+  so it stays CSP-clean.
+
+The section is `gth-settings-<id>` and carries `hx-target`/`hx-swap="outerHTML"`, so a create or revoke response
+(the section alone) swaps it in place. The playground's /settings shows it.
 
 `login_page.html` (v0.14) is the same kind of page for local auth. It uses `app.html`'s `layout="auth"`, so a
 signed-out visitor sees no app navbar: the brand (logo, swapped per colour mode, or a shield mark without one)

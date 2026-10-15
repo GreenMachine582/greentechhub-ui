@@ -923,7 +923,7 @@ def test_profile_and_password_sections_as_settings_views_sends_them():
                                      cookies={"playground-user": "viewer"}) as client:
             page = (await client.get("/settings")).text
             assert re.findall(r'id="gth-settings-(\w+)"', page) == [
-                "profile", "preferences", "password"]
+                "profile", "preferences", "password", "api_tokens"]
             saved = await client.post("/settings-demo/profile",
                                       data={"display_name": " Vera Viewer ", "email": ""})
             assert saved.status_code == 200 and "Profile saved" in saved.headers["HX-Trigger"]
@@ -947,3 +947,37 @@ def test_profile_and_password_sections_as_settings_views_sends_them():
 
     _run(flow())
     assert playground_app.PROFILES["viewer"]["display_name"] == ""
+
+
+def test_settings_api_tokens_demo_creates_shows_once_and_revokes():
+    playground_app.API_TOKENS.clear()
+    page = _run(_as("admin", "GET", "/settings"))
+    assert 'id="gth-settings-api_tokens"' in page.text and "No API tokens yet." in page.text
+    assert page.text.index('id="gth-settings-password"') < page.text.index(
+        'id="gth-settings-api_tokens"')
+
+    created = _run(_as("admin", "POST", "/settings-demo/api-tokens",
+                       data={"name": "backup", "scopes": ["settings.manage"],
+                             "expires_in_days": "30"}))
+    assert created.status_code == 200
+    assert json.loads(created.headers["HX-Trigger"])["showToast"]["message"] == "Token created"
+    assert "gth-api-token-created" in created.text and "backup" in created.text
+    [token] = playground_app.API_TOKENS["admin"]
+    assert "gth-api-token-created" not in _run(_as("admin", "GET", "/settings")).text
+
+    url = f"/settings-demo/api-tokens/{token['id']}"
+    assert _run(_as("viewer", "DELETE", url)).status_code == 404
+    revoked = _run(_as("admin", "DELETE", url))
+    assert revoked.status_code == 200 and "No API tokens yet." in revoked.text
+
+
+def test_settings_api_tokens_demo_returns_422():
+    playground_app.API_TOKENS.clear()
+    for data in ({"name": "", "expires_in_days": "90"},
+                 {"name": "x", "scopes": ["settings.manage"], "expires_in_days": "90"},
+                 {"name": "x", "expires_in_days": "7"},
+                 {"name": "x", "expires_in_days": "soon"}):
+        response = _run(_as("viewer", "POST", "/settings-demo/api-tokens", data=data))
+        assert response.status_code == 422, data
+    assert "gth-api-tokens-no-scopes" in response.text  # the viewer holds no permissions
+    assert playground_app.API_TOKENS == {}
