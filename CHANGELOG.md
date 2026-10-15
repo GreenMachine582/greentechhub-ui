@@ -5,6 +5,13 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.18.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.17.0...v0.18.0) (2026-10-15)
+
+
+### Features
+
+* **settings:** API tokens section ([#112](https://github.com/GreenMachine582/greentechhub-ui/issues/112)) ([07a877e](https://github.com/GreenMachine582/greentechhub-ui/commit/07a877e3d813ffb429f58c349a7912ff4ad1450c))
+
 ## [0.17.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.16.0...v0.17.0) (2026-10-10)
 
 
