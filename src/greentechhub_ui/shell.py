@@ -16,6 +16,7 @@ The consumer still mounts the directories itself — this only knows the
 prefixes, it doesn't own the app.
 """
 
+import warnings
 from functools import partial
 
 from greentechhub_ui import navigation
@@ -33,7 +34,7 @@ def shell_globals(
     show_logo: bool = False,
     navbar_theme: str | None = None,
     layout: str = "navbar",
-    htmx: int = 1,
+    htmx: int = 2,
 ) -> dict:
     """Globals for app.html: brand, nav_items, and every asset URL.
 
@@ -41,9 +42,8 @@ def shell_globals(
     `theme_prefix` where `greentechhub_ui.theme_path` is. `navbar_theme="dark"`
     pins gth_navbar dark; by default it follows the color mode.
     `layout="sidebar"` moves nav_items into gth_sidebar (see app.html).
-    `htmx=2` (v0.17) loads the vendored htmx 2.x instead of 1.9.10 — the
-    opt-in half of the htmx 2 migration (docs/htmx2.md); the default stays 1
-    until that migration lands.
+    htmx 2 is the default since v0.19. `htmx=1` loads the vendored 1.9.10
+    instead, an opt-out kept for one release (it warns); see docs/htmx2.md.
 
     Also installs nav helpers as globals: `nav_breadcrumbs(path)` (the
     gth_page_header breadcrumbs derived from nav_items),
@@ -55,6 +55,12 @@ def shell_globals(
         raise ValueError(f"layout must be 'navbar' or 'sidebar', got {layout!r}")
     if htmx not in (1, 2):
         raise ValueError(f"htmx must be 1 or 2, got {htmx!r}")
+    if htmx == 1:
+        warnings.warn(
+            "shell_globals(htmx=1) loads htmx 1.9.10, kept for one release: the next one drops it. "
+            "See greentechhub-ui's docs/htmx2.md › Upgrading a service.",
+            DeprecationWarning, stacklevel=2,
+        )
     globals_ = {
         "brand": brand_context(
             service_name=service_name, show_logo=show_logo, static_url_prefix=assets_prefix
@@ -64,7 +70,7 @@ def shell_globals(
         "icons_css_url": f"{assets_prefix}/icons/bootstrap-icons.min.css",
         "bootstrap_css_url": f"{assets_prefix}/css/bootstrap.min.css",
         "bootstrap_js_url": f"{assets_prefix}/js/bootstrap.bundle.min.js",
-        "htmx_js_url": f"{assets_prefix}/js/{'htmx-2.min.js' if htmx == 2 else 'htmx.min.js'}",
+        "htmx_js_url": f"{assets_prefix}/js/{'htmx-1.min.js' if htmx == 1 else 'htmx.min.js'}",
         "htmx_setup_js_url": f"{assets_prefix}/js/htmx-setup.js",
         "prepaint_js_url": f"{assets_prefix}/js/prepaint.js",
         "toast_js_url": f"{assets_prefix}/js/toast.js",
