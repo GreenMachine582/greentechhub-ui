@@ -1,0 +1,130 @@
+
+
+
+
+
+
+
+<section class="gth-settings-section gth-api-tokens mb-4" id="gth-settings-api_tokens" aria-labelledby="gth-settings-api_tokens-title"
+  hx-target="#gth-settings-api_tokens" hx-swap="outerHTML">
+  <h2 class="h5 mb-1" id="gth-settings-api_tokens-title">API tokens</h2>
+  <p class="text-secondary small mb-3">Tokens for your scripts.</p>
+  <div class="alert alert-success gth-api-token-created" role="status">
+    <p class="mb-2"><strong>Copy your new token now.</strong> You won't see it again.</p>
+    <label class="form-label small" for="gth-settings-api_tokens-new-token">backup script</label>
+    <input type="text" class="form-control font-monospace" id="gth-settings-api_tokens-new-token" value="s3cr3t-token-value"
+      readonly autocomplete="off" spellcheck="false">
+    <p class="small mb-0 mt-2">Send it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+  </div>
+  <form method="post" action="/settings/api-tokens" hx-post="/settings/api-tokens"
+    class="gth-form gth-api-tokens-add mb-4" novalidate>
+    <h3 class="h6">New token</h3>
+    
+<div class="mb-3 gth-form-field">
+  <label class="form-label" for="gth-settings-api_tokens-name">Name</label>
+  <input type="text" id="gth-settings-api_tokens-name" name="name"
+    class="form-control"
+    value=""
+    
+    
+     maxlength="80"
+    
+    aria-describedby="gth-settings-api_tokens-name-help gth-settings-api_tokens-name-counter"
+    >
+  <div class="form-text gth-char-counter" id="gth-settings-api_tokens-name-counter" data-gth-counter-for="gth-settings-api_tokens-name">0 / 80</div>
+  <div class="form-text" id="gth-settings-api_tokens-name-help">What it's for, e.g. the script that uses it.</div>
+  
+</div>
+
+    
+
+
+<div class="mb-3 gth-form-field gth-chips">
+  <span class="form-label d-block" id="gth-settings-api_tokens-scopes-label">Scopes</span>
+  <div class="d-flex flex-wrap gap-2" role="group" aria-labelledby="gth-settings-api_tokens-scopes-label">
+    
+    <input type="checkbox" class="btn-check" name="scopes" value="stock.read"
+      id="gth-settings-api_tokens-scopes-1" autocomplete="off">
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-settings-api_tokens-scopes-1">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>stock.read</label>
+    
+    <input type="checkbox" class="btn-check" name="scopes" value="stock.write"
+      id="gth-settings-api_tokens-scopes-2" autocomplete="off">
+    <label class="btn btn-sm rounded-pill gth-chip" for="gth-settings-api_tokens-scopes-2">
+      <i class="bi bi-check-lg gth-chip-check" aria-hidden="true"></i>stock.write</label>
+    
+  </div>
+</div>
+
+    <div class="mb-3 gth-form-field gth-select">
+  <label class="form-label" for="gth-settings-api_tokens-expiry">Expires</label>
+  <select id="gth-settings-api_tokens-expiry" name="expires_in_days" class="form-select">
+    <option value="30">30 days</option>
+    <option value="90" selected>90 days</option>
+    <option value="365">365 days</option>
+    <option value="">Never</option>
+  </select>
+</div>
+
+    <button type="submit" class="btn btn-primary">Create token</button>
+  </form>
+  
+<div class="table-responsive gth-table-wrapper">
+<table class="table table-hover align-middle gth-table ">
+  <thead><tr><th scope="col">Name</th><th scope="col">Scopes</th><th scope="col">Created</th><th scope="col">Expires</th><th scope="col">Last used</th><th scope="col"></th></tr></thead>
+  <tbody>
+    
+  <tr>
+    <th scope="row" class="fw-normal">backup script</th>
+    <td>
+
+
+
+
+<span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle gth-badge ">stock.read</span>
+ 
+
+
+
+
+<span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle gth-badge ">stock.write</span>
+ </td>
+    <td>1 Oct 2026</td>
+    <td>1 Jan 2027</td>
+    <td>1 Oct 2026 09:30</td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+        data-bs-target="#gth-settings-api_tokens-revoke-1">Revoke</button>
+      
+
+
+<div class="modal fade gth-modal" id="gth-settings-api_tokens-revoke-1" tabindex="-1" aria-labelledby="gth-settings-api_tokens-revoke-1-label" aria-hidden="true"
+  data-bs-backdrop="static">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5 gth-modal-title" id="gth-settings-api_tokens-revoke-1-label">Delete the backup script token?</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body gth-modal-body">
+        
+<p class="gth-confirm-delete-message">This can't be undone.</p>
+<div class="d-flex justify-content-end gap-2 gth-form-actions">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+  <button type="button" class="btn btn-danger gth-confirm-delete-button" hx-delete="/settings/api-tokens/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" hx-target="#gth-settings-api_tokens" data-bs-dismiss="modal">Delete</button>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    </td>
+  </tr>
+  
+  </tbody>
+</table>
+</div>
+
+</section>

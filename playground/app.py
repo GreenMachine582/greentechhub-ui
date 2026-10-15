@@ -717,15 +717,90 @@ async def settings_demo_password(request: Request):
         "HX-Trigger": greentechhub_ui.toast("Password changed")})
 
 
+# API tokens: the section greentechhub-fastapi's ApiTokenViews adds, with its
+# own template (api_tokens_section.html, named in the section's `template`).
+# Per persona and in memory; the plaintext is shown once and never kept.
+API_TOKENS: dict[str, list[dict]] = {}
+API_TOKEN_EXPIRY_DAYS = [30, 90, 365, None]
+
+
+def _api_tokens_section(request: Request, *, created=None, errors=None, values=None) -> dict:
+    now = datetime.now(UTC)
+    tokens = sorted(API_TOKENS.get(_persona(request), []), key=lambda t: t["created_at"],
+                    reverse=True)
+    return {
+        "id": "api_tokens", "title": "API tokens", "template": "api_tokens_section.html",
+        "description": "Tokens let your scripts call the API as you. Each one can do only what "
+                       "its scopes allow, and stops working when you revoke it.",
+        "action": "/settings-demo/api-tokens",
+        "tokens": [t | {"expired": t["expires_at"] is not None and t["expires_at"] <= now,
+                        "revoke_url": f"/settings-demo/api-tokens/{t['id']}"} for t in tokens],
+        "scope_choices": sorted(user_context(request).get("granted", ())),
+        "expiry_choices": API_TOKEN_EXPIRY_DAYS, "default_expiry_days": 90,
+        "values": values or {}, "created": created, "errors": errors,
+    }
+
+
+def _render_tokens(request: Request, section: dict, **kwargs) -> HTMLResponse:
+    return templates.TemplateResponse(request, "api_tokens_section.html", {"section": section},
+                                      **kwargs)
+
+
+@app.post("/settings-demo/api-tokens", response_class=HTMLResponse)
+async def settings_demo_create_token(request: Request):
+    """ApiTokenViews' POST {url}/api-tokens: check the fields, cap the scopes by
+    the persona's permissions, then show the new token once."""
+    persona = _persona(request)
+    if PERSONAS[persona]["user"] is None:
+        return Response(status_code=401)
+    form = await request.form()
+    name = str(form.get("name") or "").strip()
+    scopes = sorted({str(s) for s in form.getlist("scopes") if s})
+    raw_expiry = str(form.get("expires_in_days") or "").strip()
+    errors: dict[str, list[str]] = {}
+    if not name:
+        errors["name"] = ["Give the token a name."]
+    elif len(name) > 80:
+        errors["name"] = ["At most 80 characters."]
+    if not_yours := [s for s in scopes if not _has(request, s)]:
+        errors["scopes"] = [f"You can't give a token {', '.join(not_yours)}."]
+    days = int(raw_expiry) if raw_expiry.isdigit() else None
+    if (days if raw_expiry else None) not in API_TOKEN_EXPIRY_DAYS or (raw_expiry and days is None):
+        errors["expires_in_days"] = ["Choose one of the offered expiries."]
+    if errors:
+        values = {"name": name, "scopes": scopes, "expires_in_days": raw_expiry}
+        return _render_tokens(request, _api_tokens_section(request, errors=errors, values=values),
+                              status_code=422)
+    now = datetime.now(UTC)
+    API_TOKENS.setdefault(persona, []).append({
+        "id": secrets.token_hex(16), "name": name, "scopes": scopes, "created_at": now,
+        "expires_at": now + timedelta(days=days) if days else None, "last_used_at": None})
+    created = {"name": name, "token": secrets.token_urlsafe(32)}
+    return _render_tokens(request, _api_tokens_section(request, created=created), headers={
+        "HX-Trigger": greentechhub_ui.toast("Token created")})
+
+
+@app.delete("/settings-demo/api-tokens/{token_id}", response_class=HTMLResponse)
+async def settings_demo_revoke_token(request: Request, token_id: str):
+    """ApiTokenViews' DELETE {url}/api-tokens/{id}: only the persona's own."""
+    tokens = API_TOKENS.get(_persona(request), [])
+    kept = [t for t in tokens if t["id"] != token_id]
+    if len(kept) == len(tokens):
+        return Response(status_code=404)
+    tokens[:] = kept
+    return _render_tokens(request, _api_tokens_section(request), headers={
+        "HX-Trigger": greentechhub_ui.toast("Token revoked")})
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
     sections = [_settings_section(request, s) for s in _visible_sections(request)]
     persona = _persona(request)
     if PERSONAS[persona]["user"] is not None:
-        # SettingsViews' order: Profile first, Password after Preferences.
+        # SettingsViews' order: Profile first, then Password and API tokens after Preferences.
         sections = [_profile_section(PROFILES[persona]), sections[0], _password_section(),
-                    *sections[1:]]
+                    _api_tokens_section(request), *sections[1:]]
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,
         "settings_intro": (
@@ -1427,6 +1502,7 @@ async def demo_reset():
     _reset_accounts()
     PROFILES.clear()
     PROFILES.update({k: dict(v) for k, v in PROFILES_INITIAL.items()})
+    API_TOKENS.clear()
     SETTINGS_VALUES.pop(SITE_BANNER_KEY, None)
     SETTINGS_VALUES.pop(SITE_BANNER_TONE_KEY, None)
     WATCHLIST_DEMO[:] = [dict(item) for item in _WATCHLIST_INITIAL]

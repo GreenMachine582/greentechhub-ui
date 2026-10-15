@@ -1,0 +1,102 @@
+{#- api_tokens_section.html — the settings page's "API tokens" section, as a
+    section htmx swaps whole (id "gth-settings-<id>"): settings_page.html
+    includes it when a section names it as its `template`, and every create
+    or revoke returns it alone. greentechhub-fastapi's ApiTokenViews supplies
+    the `section` mapping:
+      id, title, description?, error?   as any settings section
+      action            POST it to create a token (name, scopes, expires_in_days)
+      tokens            [{"id", "name", "scopes", "created_at", "expires_at",
+                          "last_used_at", "expired", "revoke_url"}] — DELETE
+                        revoke_url to revoke one
+      scope_choices     the permission strings the viewer may give a token
+      expiry_choices    days, with none for "never"; default_expiry_days?
+      values?           the submitted form after a 422 (name, scopes, expires_in_days)
+      created?          {"name", "token"}: shown once, right after a create
+      errors?           {field: [messages]}
+    hx-target/hx-swap sit on the section, so the form and each revoke modal's
+    hx-delete inherit them. No inline script: the new token sits in a
+    readonly field to copy. -#}
+{% from "form.html" import gth_form_field %}
+{% from "chips.html" import gth_chips %}
+{% from "select.html" import gth_select %}
+{% from "table.html" import gth_table %}
+{% from "badge.html" import gth_badge %}
+{% from "confirm_delete.html" import gth_confirm_delete %}
+{% from "empty_state.html" import gth_empty_state %}
+{%- set sid = "gth-settings-" ~ section.id|default("api_tokens") %}
+{%- set errors = section.errors|default(none) or {} %}
+{%- set form = section["values"] if section["values"] is mapping else {} %}
+{%- set scope_choices = section.scope_choices|default([]) %}
+{%- set expiry = form.expires_in_days if "expires_in_days" in form else section.default_expiry_days|default(none) %}
+{%- set expiry_options = [] %}
+{%- for days in section.expiry_choices|default([]) %}
+{%- set _ = expiry_options.append({"value": "" if days is none else days|string,
+    "label": "Never" if days is none else days ~ " days"}) %}
+{%- endfor %}
+{%- set created = section.created|default(none) %}
+<section class="gth-settings-section gth-api-tokens mb-4" id="{{ sid }}" aria-labelledby="{{ sid }}-title"
+  hx-target="#{{ sid }}" hx-swap="outerHTML">
+  <h2 class="h5 mb-1" id="{{ sid }}-title">{{ section.title|default("API tokens") }}</h2>
+  {%- if section.description|default(none) %}
+  <p class="text-secondary small mb-3">{{ section.description }}</p>
+  {%- endif %}
+  {%- if section.error|default(none) %}
+  <div class="alert alert-danger gth-form-error" role="alert">{{ section.error }}</div>
+  {%- endif %}
+  {%- if created %}
+  <div class="alert alert-success gth-api-token-created" role="status">
+    <p class="mb-2"><strong>Copy your new token now.</strong> You won't see it again.</p>
+    <label class="form-label small" for="{{ sid }}-new-token">{{ created.name }}</label>
+    <input type="text" class="form-control font-monospace" id="{{ sid }}-new-token" value="{{ created.token }}"
+      readonly autocomplete="off" spellcheck="false">
+    <p class="small mb-0 mt-2">Send it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+  </div>
+  {%- endif %}
+  <form method="post" action="{{ section.action }}" hx-post="{{ section.action }}"
+    class="gth-form gth-api-tokens-add mb-4" novalidate>
+    <h3 class="h6">New token</h3>
+    {{ gth_form_field("name", "Name", value=form.name|default(""), errors=errors.get("name"), maxlength=80,
+        help_text="What it's for, e.g. the script that uses it.", id=sid ~ "-name") }}
+    {%- if scope_choices %}
+    {%- set scope_options = [] %}
+    {%- for scope in scope_choices %}{% set _ = scope_options.append({"value": scope, "label": scope}) %}{% endfor %}
+    {{ gth_chips("scopes", scope_options, values=form.scopes|default([]), label="Scopes", id=sid ~ "-scopes") }}
+    {%- else %}
+    <p class="text-secondary small gth-api-tokens-no-scopes">Your roles grant no permissions to give a token, so it
+      can only identify you.</p>
+    {%- endif %}
+    {%- if errors.get("scopes") %}
+    <div class="text-danger small mb-3 gth-api-tokens-scopes-error">{{ errors["scopes"]|join(" ") }}</div>
+    {%- endif %}
+    {{ gth_select("expires_in_days", "Expires", expiry_options, value=expiry if expiry is not none else "",
+        errors=errors.get("expires_in_days"), id=sid ~ "-expiry") }}
+    <button type="submit" class="btn btn-primary">Create token</button>
+  </form>
+  {%- if section.tokens|default([]) %}
+  {% call gth_table(["Name", "Scopes", "Created", "Expires", "Last used", ""]) %}
+  {%- for token in section.tokens %}
+  <tr>
+    <th scope="row" class="fw-normal">{{ token.name }}</th>
+    <td>
+      {%- for scope in token.scopes %}{{ gth_badge(scope, tone="info") }} {% else %}<span class="text-secondary">No scopes</span>{% endfor -%}
+    </td>
+    <td>{{ token.created_at|date }}</td>
+    <td>
+      {%- if token.expired %}{{ gth_badge("Expired", tone="bad") }}
+      {%- elif token.expires_at %}{{ token.expires_at|date }}
+      {%- else %}<span class="text-secondary">Never</span>{% endif -%}
+    </td>
+    <td>{% if token.last_used_at %}{{ token.last_used_at|datetime }}{% else %}<span class="text-secondary">Never</span>{% endif %}</td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+        data-bs-target="#{{ sid }}-revoke-{{ loop.index }}">Revoke</button>
+      {{ gth_confirm_delete(sid ~ "-revoke-" ~ loop.index, token.revoke_url, "the " ~ token.name ~ " token",
+          hx_target="#" ~ sid) }}
+    </td>
+  </tr>
+  {%- endfor %}
+  {% endcall %}
+  {%- else %}
+  {{ gth_empty_state("No API tokens yet.") }}
+  {%- endif %}
+</section>

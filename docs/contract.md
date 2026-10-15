@@ -134,7 +134,9 @@ in [docs/components.md](components.md#audit-log-v017).
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in
-[docs/components.md](components.md#settings).
+[docs/components.md](components.md#settings). A section with a `template` key is included through that template.
+`api_tokens_section.html` is the one ui ships, for the "API tokens" section that greentechhub-fastapi's
+`ApiTokenViews` supplies (its next release).
 
 **Login page (v0.14)** — the context `login_page.html` takes, matching greentechhub-fastapi's `LoginViews`:
 `error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
