@@ -33,6 +33,16 @@ each once it ships.
 - [ ] 3. `feat(playground): Admin nav group` (after greentechhub-fastapi M6.2 ships `register_admin`)
   - Move the playground's Roles and Audit log links under `register_admin`'s group, showing what PyFinBot's nav
     gets; the route test keeps every link reachable as the admin persona.
+- [ ] 4. `feat(formatting): pluralise filter`
+  - **Why:** PyFinBot hand-rolls `_plural` for its import toast and pluralises inline in its email and dividend sync
+    toasts ("1 transaction" / "3 transactions").
+  - **Scope:** `{{ count|pluralise("transaction") }}` → "3 transactions", with an irregular plural
+    (`pluralise("entry", "entries")`) and a bare-noun form for when the number is shown elsewhere. Also exported as a
+    Python function for toasts built in route code.
+  - **Done when:** PyFinBot's `_plural` and inline plurals are gone.
+- [ ] 5. `docs: register_error_pages in the error pages section` (after greentechhub-fastapi M6.4 ships it)
+  - Replace the hand-written FastAPI recipe in docs/components.md › Error pages with `register_error_pages`, and have
+    the playground wire its pages through it.
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
