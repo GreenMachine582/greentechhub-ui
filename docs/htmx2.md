@@ -2,12 +2,29 @@
 
 # htmx 2 migration
 
-gth-ui ships htmx **1.9.10** (`static/js/htmx.min.js`). htmx **2.0.11** is vendored beside it
-(`static/js/htmx-2.min.js`, see [VENDORED.md](../src/greentechhub_ui/static/VENDORED.md)), and a service opts in
-with `shell_globals(htmx=2)`, which sets `htmx_js_url` to it. The default stays 1 until the switch below lands.
+**Since v0.19 (breaking), gth-ui ships htmx 2.0.11** as `static/js/htmx.min.js` (see
+[VENDORED.md](../src/greentechhub_ui/static/VENDORED.md)), and `shell_globals()` / `install()` load it by default.
 
-The playground runs on 2.x with `PLAYGROUND_HTMX=2`. CI's `e2e-htmx2` job runs the whole e2e suite that way on
-every PR, beside the usual `e2e` job on 1.9.10.
+htmx **1.9.10** stays for one release as an opt-out: `shell_globals(htmx=1)` (or `install(..., htmx=1)`) loads
+`static/js/htmx-1.min.js` and raises a `DeprecationWarning`. The release after v0.19 drops it. CI's `e2e` job runs
+the whole e2e suite on 2.x, and `e2e-htmx1` runs it on the opt-out (`PLAYGROUND_HTMX=1`).
+
+## Upgrading a service
+
+gth-ui's own components need nothing: the audit below covers every one of them, and the e2e suite passes on both
+versions. A service's **own** templates and scripts may, if they use any of these:
+
+- **`hx-delete` inside a form:** 2.x sends its values as query parameters, not a body. Read them from the query
+  string, send a CSRF token as a header (greentechhub-ui's shell already sends `X-CSRF-Token` through
+  `hx-headers`), or set `htmx.config.methodsThatUseUrlParams = ["get"]`.
+- **Cross-origin htmx requests** are refused (`selfRequestsOnly` is on). Keep htmx URLs on the service's own
+  origin.
+- **`hx-on="event: …"`** is gone. Use `hx-on:event` / `hx-on::event`, or better, no `hx-on` at all: the strict CSP
+  rules it out.
+- **Extensions** (`hx-ext`, `hx-ws`, `hx-sse`) are separate packages. Vendor the 2.x build of any you use.
+- **`scrollBehavior`** defaults to `instant` (was `smooth`) for `show:` / `scroll:` swap modifiers and `hx-boost`.
+
+If something breaks, pin `shell_globals(htmx=1)` for this release while you fix it.
 
 ## Status
 
@@ -43,12 +60,13 @@ htmx 1.9.10 shares one `requestCount` per element between the request-indicator 
 1.x and clears on 2.x. After the switch, `gth-busy-button` and `theme.css` could key on `.htmx-request` again, but
 `:disabled` keeps working, so that change is optional.
 
-## The switch (a breaking release)
+## The switch (a breaking release, v0.19: done)
 
-1. Make `htmx=2` the default: `js/htmx.min.js` becomes 2.0.x and `htmx-2.min.js` and its VENDORED.md row go.
-   Keep `htmx=1` for one release if a consumer needs it.
-2. Change the CDN default on `htmx_js_url` to the 2.x URL, or drop it with the planned "drop the CDN-URL
-   defaults" item, which is the better order.
-3. Release notes, as the `feat!:` PR's `BREAKING CHANGE:`: the service-side items above (`hx-delete` values in the
-   query string, same-origin-only requests, and their own `hx-on` / extensions), with this table.
-4. Drop the `e2e-htmx2` job once `e2e` itself runs on 2.x.
+1. ~~Make `htmx=2` the default~~: done. `js/htmx.min.js` is 2.0.11, and 1.9.10 moved to `js/htmx-1.min.js` for the
+   one-release `htmx=1` opt-out.
+2. ~~Change the CDN default on `htmx_js_url`~~: done. v0.19 drops the CDN-URL defaults, so `htmx_js_url` only
+   ever comes from `shell_globals()`.
+3. ~~Release notes~~: done. They're the `feat!:` PR's `BREAKING CHANGE:` and "Upgrading a service" above.
+4. ~~Drop the `e2e-htmx2` job~~: done. `e2e` runs on 2.x, and the job became `e2e-htmx1` for the opt-out.
+5. Next release: drop `htmx=1` and `js/htmx-1.min.js`, the `e2e-htmx1` job, and the 1.x half of
+   `test_busy_button_request_class_on_each_htmx`.

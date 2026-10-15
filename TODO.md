@@ -76,14 +76,9 @@ each once it ships.
     Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Resilience & security
-- [ ] **Breaking:** drop the CDN-URL defaults on `bootstrap_css_url`/`bootstrap_js_url`/`htmx_js_url` (overdue);
-  services must mount `greentechhub_ui.static_dirs()` for `app.html` to keep working. Also required for a strict
-  CSP. Blocked on BottleBot, which still loads Bootstrap/htmx from the CDN defaults — lands after its `install()`
-  migration below
-- [ ] **Breaking:** switch to htmx 2 by default. The audit is done and the full e2e suite passes on 2.0.11 behind
-  `shell_globals(htmx=2)`, with CI's `e2e-htmx2` job running it on every PR. What's left is the switch itself:
-  [docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release). Best after the CDN-defaults removal
-  above, so `htmx_js_url` loses its 1.9.10 CDN default at the same time
+- [ ] **Breaking (the release after v0.19):** drop the `shell_globals(htmx=1)` opt-out, `js/htmx-1.min.js`, CI's
+  `e2e-htmx1` job and the 1.x half of the busy-button e2e test
+  ([docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release-v019-done) step 5)
 
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
@@ -112,6 +107,8 @@ each once it ships.
 ## 🔄 Migration Tracking
 
 ### BottleBot
+It pins v0.6. From v0.19 `app.html` has no CDN fallback, so the `install()` / `static_dirs()` migration below has to
+land before it takes v0.19 or later.
 - [ ] Adopt `shell_globals()` in `web/templating.py` and `toast(..., events=)` where handlers set several HX-Trigger events
 - [ ] Adopt the setup helpers: `greentechhub_ui.install()` (replaces the hand-built `ChoiceLoader` + globals),
   `mount_static_dirs(app, greentechhub_ui.static_dirs())`, `Jinja2Templates(context_processors=[ui_context])` —
@@ -130,7 +127,8 @@ it. What's left is adoption, each a PR tracked in PyFinBot's `todo.md`:
 - v0.17's CSRF shell, with greentechhub-fastapi's `register_csrf`, and the audit page, with `AuditViews`; then
   `gth_timeline` once M6.1 above ships;
 - a strict CSP once greentechhub-fastapi ships `register_csp` (the shell is ready since v0.17);
-- optionally, htmx 2 through `shell_globals(htmx=2)` ahead of ui's breaking switch.
+- htmx 2 comes with v0.19 by default. Its templates use none of the 2.x changes ([docs/htmx2.md › Upgrading a
+  service](docs/htmx2.md#upgrading-a-service)).
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency

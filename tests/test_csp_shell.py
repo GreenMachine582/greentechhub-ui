@@ -56,7 +56,7 @@ def test_no_nonce_changes_nothing():
 
 
 def test_htmx_config_meta_under_a_nonce():
-    html = _shell(csp_nonce=NONCE)
+    html = _shell(csp_nonce=NONCE, htmx_js_url="/a/js/htmx.min.js")
     meta = re.search(r'<meta name="htmx-config" content=\'([^\']*)\'>', html).group(1)
     assert meta == '{"includeIndicatorStyles": false, "inlineScriptNonce": "r4nd0m-n0nce"}'
     assert html.index("htmx-config") < html.index("htmx.min.js")  # read when htmx loads
@@ -76,7 +76,7 @@ def test_prepaint_runs_from_its_static_file_when_set():
 
 def test_htmx_setup_replaces_the_inline_422_handler():
     assert "evt.detail.xhr.status === 422" in _shell()
-    html = _shell(htmx_setup_js_url="/a/js/htmx-setup.js")
+    html = _shell(htmx_setup_js_url="/a/js/htmx-setup.js", htmx_js_url="/a/js/htmx.min.js")
     assert "evt.detail.xhr.status === 422" not in html
     assert html.index("htmx.min.js") < html.index("/a/js/htmx-setup.js")
 

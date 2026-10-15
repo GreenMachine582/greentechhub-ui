@@ -2760,7 +2760,7 @@ def test_busy_button_request_class_on_each_htmx(page, playground_url):
     """htmx 1.9.10 shares one requestCount between the request-indicator
     class and hx-disabled-elt, so .htmx-request sticks on an element that is
     both (why gth-busy-button keys on :disabled); htmx 2 clears it. Run on
-    both by CI (PLAYGROUND_HTMX=2 in the e2e-htmx2 job)."""
+    both by CI (PLAYGROUND_HTMX=1 in the e2e-htmx1 job)."""
     page.goto(f"{playground_url}/forms")
     button = page.locator("#busy-button .gth-busy-button[type=button]")
     button.click()
