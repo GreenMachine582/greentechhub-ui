@@ -1,5 +1,6 @@
 from . import formatting, htmx, navigation, theme
 from ._paths import components_path, static_path, templates_path, theme_path
+from .formatting import pluralise
 from .setup import install, render_macro, static_dirs, template_dirs
 from .shell import shell_globals
 from .table import TableState
@@ -20,5 +21,6 @@ __all__ = [
     "htmx",
     "theme",
     "toast",
+    "pluralise",
     "navigation",
 ]
