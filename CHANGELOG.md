@@ -5,6 +5,19 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.19.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.18.0...v0.19.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **shell:** pages using gth-ui's shell run on htmx 2. gth-ui's own components need nothing, but a service's own templates and scripts might: hx-delete inside a form sends its values as query parameters, not a body; cross-origin htmx requests are refused (selfRequestsOnly); hx-on="event: ..." is gone (use hx-on:event); extensions are separate packages; scrollBehavior defaults to instant. Pin shell_globals(htmx=1) / install(..., htmx=1) for this release while fixing them; the next release drops it.
+* **shell:** a service that relied on the CDN defaults must serve the vendored assets: mount greentechhub_ui.static_dirs() (greentechhub-fastapi's mount_static_dirs) and set the shell globals with install(env, service_name=..., nav_items=...) or shell_globals(). Services already on install()/shell_globals() need no change.
+
+### Features
+
+* **shell:** drop the CDN-URL defaults ([#115](https://github.com/GreenMachine582/greentechhub-ui/issues/115)) ([cf97ebb](https://github.com/GreenMachine582/greentechhub-ui/commit/cf97ebb6bfd263fb2bbd9ecf483e730e75970556))
+* **shell:** htmx 2 by default ([#116](https://github.com/GreenMachine582/greentechhub-ui/issues/116)) ([c6477cc](https://github.com/GreenMachine582/greentechhub-ui/commit/c6477cc193079fdb8027a4f11fd997896315c155))
+
 ## [0.18.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.17.0...v0.18.0) (2026-10-15)
 
 
