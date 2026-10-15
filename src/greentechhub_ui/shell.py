@@ -5,7 +5,7 @@ setting the same ~10 `templates.env.globals[...]` lines by hand: brand,
 nav_items, and one URL per vendored asset. This builds them from the two
 mount prefixes a consumer already chose when mounting `static_path` and
 `theme_path` (see docs/contract.md), pointing every asset at the vendored
-copy rather than app.html's CDN fallbacks:
+copy (app.html has no CDN fallback since v0.19):
 
     templates.env.globals.update(greentechhub_ui.shell_globals(
         service_name="PyFinBot",

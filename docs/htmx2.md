@@ -47,8 +47,8 @@ htmx 1.9.10 shares one `requestCount` per element between the request-indicator 
 
 1. Make `htmx=2` the default: `js/htmx.min.js` becomes 2.0.x and `htmx-2.min.js` and its VENDORED.md row go.
    Keep `htmx=1` for one release if a consumer needs it.
-2. Change the CDN default on `htmx_js_url` to the 2.x URL, or drop it with the planned "drop the CDN-URL
-   defaults" item, which is the better order.
+2. ~~Change the CDN default on `htmx_js_url`~~: done. v0.19 drops the CDN-URL defaults, so `htmx_js_url` only
+   ever comes from `shell_globals()`.
 3. Release notes, as the `feat!:` PR's `BREAKING CHANGE:`: the service-side items above (`hx-delete` values in the
    query string, same-origin-only requests, and their own `hx-on` / extensions), with this table.
 4. Drop the `e2e-htmx2` job once `e2e` itself runs on 2.x.
