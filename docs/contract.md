@@ -75,9 +75,9 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `icons_css_url` | none (no stylesheet rendered) |
 | `toast_js_url` | none (no script rendered) |
 | `theme_toggle_js_url` | none (no script rendered) |
-| `bootstrap_css_url` | the upstream Bootstrap 5.3.3 CDN URL |
-| `bootstrap_js_url` | the upstream Bootstrap 5.3.3 CDN URL |
-| `htmx_js_url` | the upstream HTMX 1.9.10 CDN URL |
+| `bootstrap_css_url` | none — no stylesheet, and an HTML comment naming the global (v0.19; required in practice) |
+| `bootstrap_js_url` | none — no script, and an HTML comment naming the global (v0.19; required in practice) |
+| `htmx_js_url` | none — no script, and an HTML comment naming the global (v0.19; required in practice) |
 | `htmx_setup_js_url` | none — `app.html` inlines the same htmx setup (422 swaps, the table filter's search `change`) (v0.17) |
 | `prepaint_js_url` | none — `app.html` inlines the sidebar-rail and dismissed-banner pre-paint steps instead (v0.17) |
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
@@ -96,9 +96,21 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `sidebar_js_url` | none — rendered only in `layout="sidebar"`, needed by `gth-sidebar` (v0.8) |
 | `command_palette_js_url` | none — with it set, `gth-command-palette` is included in `layout="sidebar"`, or in the default layout when `show_command_palette` is true (v0.8) |
 
-The last three default to a public CDN today (so no existing consumer's rendered output changes) rather than a
-vendored path — see [static/VENDORED.md](../src/greentechhub_ui/static/VENDORED.md) and [TODO.md](../TODO.md)'s
-v0.5/v0.6 entries for why, and when those defaults go away.
+**No CDN fallback (v0.19, breaking).** Before v0.19, `bootstrap_css_url`, `bootstrap_js_url` and `htmx_js_url`
+fell back to public CDN URLs (jsdelivr and unpkg). They don't any more. An unset one renders no tag, so the shell
+still renders with an empty context (error pages, Django's default 500 handler), but without Bootstrap or htmx. An
+HTML comment says which global is missing. `install(env, service_name=..., nav_items=...)` and `shell_globals()`
+set all three to the vendored copies ([static/VENDORED.md](../src/greentechhub_ui/static/VENDORED.md)), so a
+service on those needs nothing new.
+
+**Upgrading to v0.19 from the CDN defaults:** serve the vendored files, and point the shell at them:
+
+```python
+mount_static_dirs(app, greentechhub_ui.static_dirs())   # greentechhub-fastapi; Django: STATICFILES_DIRS
+greentechhub_ui.install(templates.env, service_name="…", nav_items=[...])  # or env.globals.update(shell_globals(...))
+```
+
+Every asset is then same-origin, which a strict Content-Security-Policy needs anyway.
 
 `navbar_theme` (optional, default none) is passed straight to `gth_navbar`: unset, the navbar follows the color
 mode; `"dark"` pins it dark.
@@ -259,8 +271,8 @@ base-uri 'self'; form-action 'self'; object-src 'none'
   widths). Those are style attributes, not scripts.
 - **`img-src data:`:** Bootstrap's CSS draws its form-control icons (select arrows, validation marks) as `data:` SVGs.
 - **`frame-src`:** add your Grafana origin for `gth_embed_card`.
-- **The CDN defaults:** mount `static_dirs()` and use `shell_globals()`. The CDN defaults (`bootstrap_*_url`,
-  `htmx_js_url`) are off-origin, so `'self'` alone won't allow them.
+- **Assets:** mount `static_dirs()` and use `shell_globals()` (since v0.19 there's no CDN fallback). Every asset is
+  then same-origin, so `'self'` allows it.
 
 **FastAPI** — a middleware that makes a nonce per request, plus a context processor that hands it to templates:
 
