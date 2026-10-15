@@ -28,12 +28,12 @@ jobs:
       - run: playwright install --with-deps chromium
       - run: pytest tests/e2e/
 
-  # The same e2e suite with the playground on the vendored htmx 2.x
-  # (shell_globals(htmx=2)) — the htmx 2 migration's safety net, docs/htmx2.md.
-  e2e-htmx2:
+  # The same e2e suite on the htmx=1 opt-out (1.9.10), for the one release
+  # it's kept after htmx 2 became the default — docs/htmx2.md.
+  e2e-htmx1:
     runs-on: ubuntu-latest
     env:
-      PLAYGROUND_HTMX: "2"
+      PLAYGROUND_HTMX: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

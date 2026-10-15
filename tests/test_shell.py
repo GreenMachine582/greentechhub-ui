@@ -70,13 +70,18 @@ def test_layout_and_nav_helpers():
         shell_globals(service_name="Svc", nav_items=nav, layout="grid")
 
 
-def test_htmx_2_opt_in():
+def test_htmx_2_by_default_and_1_as_a_warned_opt_out():
     import pytest
 
+    js = Path(greentechhub_ui.static_path) / "js"
     default = shell_globals(service_name="Svc", nav_items=NAV)
     assert default["htmx_js_url"] == "/gth-assets/js/htmx.min.js"
-    g = shell_globals(service_name="Svc", nav_items=NAV, htmx=2)
-    assert g["htmx_js_url"] == "/gth-assets/js/htmx-2.min.js"
-    assert (Path(greentechhub_ui.static_path) / "js" / "htmx-2.min.js").is_file()
+    explicit = shell_globals(service_name="Svc", nav_items=NAV, htmx=2)
+    assert explicit["htmx_js_url"] == default["htmx_js_url"]
+    assert 'version:"2.0.11"' in (js / "htmx.min.js").read_text(encoding="utf-8")
+    with pytest.warns(DeprecationWarning, match="htmx 1.9.10, kept for one release"):
+        g = shell_globals(service_name="Svc", nav_items=NAV, htmx=1)
+    assert g["htmx_js_url"] == "/gth-assets/js/htmx-1.min.js"
+    assert 'version:"1.9.10"' in (js / "htmx-1.min.js").read_text(encoding="utf-8")
     with pytest.raises(ValueError, match="htmx must be 1 or 2"):
         shell_globals(service_name="Svc", nav_items=NAV, htmx=3)

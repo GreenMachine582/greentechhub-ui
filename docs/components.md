@@ -239,7 +239,7 @@ gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outl
 {# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
    busy_label + spinner while the request runs; start_toast pops at once
    (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
-   .htmx-request — see theme.css for the htmx 1.9.10 bug that forces it.
+   .htmx-request — see theme.css for the htmx 1.9.10 bug (only the htmx=1 opt-out has it now).
    Still guard the action server-side: this only stops double-clicks in one tab.
    submit=True (v0.14): a form's submit button. The form sends the request, so
    the form disables the button — give it hx-disabled-elt="find button[type=submit]";
