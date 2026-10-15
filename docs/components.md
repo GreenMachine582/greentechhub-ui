@@ -1501,43 +1501,26 @@ optional, so each renders with nothing but `install()`'s globals.
 Another status: `{% extends "error_page.html" %}` and set `error_code`, `error_title`, `error_message` (and
 `error_detail`) at the top, or override `{% block error_actions %}`.
 
-**FastAPI** — answer browser page requests with the pages, and leave API and htmx requests to the defaults (JSON,
-and htmx's own error handling; an htmx swap of a whole page into a fragment target is never wanted):
+**FastAPI** — greentechhub-fastapi's `register_error_pages` (v0.17) answers browser page requests with the pages,
+and leaves API and htmx requests to the defaults: JSON, and htmx's own error handling. An htmx swap of a whole page
+into a fragment target is never wanted.
 
 ```python
-from fastapi import Request
-from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import PlainTextResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from greentechhub_fastapi import register_error_pages
 
-ERROR_PAGES = {403: "403.html", 404: "404.html"}
-
-
-def wants_error_page(request: Request) -> bool:
-    return ("text/html" in request.headers.get("accept", "")
-            and "hx-request" not in request.headers
-            and not request.url.path.startswith("/api"))
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_error_page(request: Request, exc: StarletteHTTPException):
-    if exc.status_code in ERROR_PAGES and wants_error_page(request):
-        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
-                                          status_code=exc.status_code)
-    return await http_exception_handler(request, exc)
-
-
-@app.exception_handler(Exception)  # Starlette's ServerErrorMiddleware: still logged and re-raised
-async def server_error_page(request: Request, exc: Exception):
-    if not wants_error_page(request):
-        return PlainTextResponse("Internal Server Error", status_code=500)
-    return templates.TemplateResponse(request, "500.html",
-                                      {"error_reference": request.headers.get("x-request-id")},
-                                      status_code=500)
+register_exception_handlers(app)
+register_api_error_handlers(app)          # /api keeps the {code, message, details} envelope
+register_error_pages(app, settings, templates=templates, api_prefix="/api")
 ```
 
-Keep the 500 context small and failure-proof: it renders after something already went wrong. The playground wires
-exactly this (`/feedback#error-pages` links to each page).
+- **Which requests get a page:** one that accepts `text/html`, isn't htmx and isn't under `api_prefix`.
+- **403 and 404:** an `HTTPException` or a core `ApplicationError` with status 403 or 404 renders `403.html` /
+  `404.html`, with the error's own message as `error_message` when it has one, plus `home_url` and `login_url`.
+- **500:** any other exception renders `500.html` from a minimal, failure-proof context: `error_reference` (the
+  request id), `current_path`, `home_url` and `csp_nonce`. No context processors run, since they may need the
+  database that just failed. If even that fails, the response is a plain-text 500. The exception is still logged.
+
+The playground wires exactly this (`/feedback#error-pages` links to each page).
 
 **Django** — nothing to wire: `django.views.defaults` renders `404.html`, `403.html` and `500.html` (when
 `DEBUG = False`) through the configured template engine, so with gth-ui's template directories in the Jinja2

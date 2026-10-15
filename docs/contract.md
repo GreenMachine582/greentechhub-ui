@@ -274,29 +274,17 @@ base-uri 'self'; form-action 'self'; object-src 'none'
 - **Assets:** mount `static_dirs()` and use `shell_globals()` (since v0.19 there's no CDN fallback). Every asset is
   then same-origin, so `'self'` allows it.
 
-**FastAPI** — a middleware that makes a nonce per request, plus a context processor that hands it to templates:
+**FastAPI** — greentechhub-fastapi's `register_csp` (v0.17) makes the nonce per request and sends this policy.
+Its `ui_context` hands the nonce to templates as `csp_nonce`:
 
 ```python
-import secrets
+from greentechhub_fastapi import register_csp
 
-CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; "
-       "base-uri 'self'; form-action 'self'; object-src 'none'")
-
-
-@app.middleware("http")
-async def content_security_policy(request, call_next):
-    request.state.csp_nonce = secrets.token_urlsafe(16)
-    response = await call_next(request)
-    response.headers.setdefault("Content-Security-Policy", CSP.format(nonce=request.state.csp_nonce))
-    return response
-
-
-def csp_context(request):
-    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
-
-templates = Jinja2Templates(directory="templates", context_processors=[ui_context, csp_context])
+register_csp(app, frame_src=[settings.GRAFANA_ORIGIN])  # frame_src= / connect_src= add origins; policy= replaces it
+templates = Jinja2Templates(directory="templates", context_processors=[ui_context])
 ```
+
+A route that sends its own `Content-Security-Policy` keeps it. The playground sends its policy this way.
 
 **Django 6+** — the built-in support uses the same name:
 
