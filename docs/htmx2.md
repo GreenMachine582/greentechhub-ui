@@ -5,14 +5,13 @@
 **Since v0.19 (breaking), gth-ui ships htmx 2.0.11** as `static/js/htmx.min.js` (see
 [VENDORED.md](../src/greentechhub_ui/static/VENDORED.md)), and `shell_globals()` / `install()` load it by default.
 
-htmx **1.9.10** stays for one release as an opt-out: `shell_globals(htmx=1)` (or `install(..., htmx=1)`) loads
-`static/js/htmx-1.min.js` and raises a `DeprecationWarning`. The release after v0.19 drops it. CI's `e2e` job runs
-the whole e2e suite on 2.x, and `e2e-htmx1` runs it on the opt-out (`PLAYGROUND_HTMX=1`).
+v0.19 kept htmx **1.9.10** for one release as an opt-out (`shell_globals(htmx=1)`). **v0.20 removed it**
+(breaking): `htmx=1` now raises a `ValueError`, and `static/js/htmx-1.min.js` is gone. CI's `e2e` job runs the whole
+e2e suite on 2.x.
 
 ## Upgrading a service
 
-gth-ui's own components need nothing: the audit below covers every one of them, and the e2e suite passes on both
-versions. A service's **own** templates and scripts may, if they use any of these:
+gth-ui's own components need nothing: the audit below covers every one of them, and the e2e suite passes on 2.x. A service's **own** templates and scripts may, if they use any of these:
 
 - **`hx-delete` inside a form:** 2.x sends its values as query parameters, not a body. Read them from the query
   string, send a CSRF token as a header (greentechhub-ui's shell already sends `X-CSRF-Token` through
@@ -24,7 +23,8 @@ versions. A service's **own** templates and scripts may, if they use any of thes
 - **Extensions** (`hx-ext`, `hx-ws`, `hx-sse`) are separate packages. Vendor the 2.x build of any you use.
 - **`scrollBehavior`** defaults to `instant` (was `smooth`) for `show:` / `scroll:` swap modifiers and `hx-boost`.
 
-If something breaks, pin `shell_globals(htmx=1)` for this release while you fix it.
+There's no opt-out any more (v0.20). A service that needs more time stays on greentechhub-ui v0.19, where
+`shell_globals(htmx=1)` still works.
 
 ## Status
 
@@ -56,9 +56,9 @@ from a search of every component, template and script here.
 
 htmx 1.9.10 shares one `requestCount` per element between the request-indicator class and `hx-disabled-elt`, so
 `.htmx-request` sticks on an element that is both. That's why `gth-busy-button` keys its busy styling on
-`:disabled`. **2.0.11 fixes it.** `test_busy_button_request_class_on_each_htmx` (e2e) asserts the class sticks on
-1.x and clears on 2.x. After the switch, `gth-busy-button` and `theme.css` could key on `.htmx-request` again, but
-`:disabled` keeps working, so that change is optional.
+`:disabled`. **2.0.11 fixes it.** `test_busy_button_request_class_clears` (e2e) asserts the class clears on 2.x.
+`gth-busy-button` and `theme.css` could key on `.htmx-request` again now, but `:disabled` keeps working, so that
+change is optional.
 
 ## The switch (a breaking release, v0.19: done)
 
@@ -68,5 +68,5 @@ htmx 1.9.10 shares one `requestCount` per element between the request-indicator 
    ever comes from `shell_globals()`.
 3. ~~Release notes~~: done. They're the `feat!:` PR's `BREAKING CHANGE:` and "Upgrading a service" above.
 4. ~~Drop the `e2e-htmx2` job~~: done. `e2e` runs on 2.x, and the job became `e2e-htmx1` for the opt-out.
-5. Next release: drop `htmx=1` and `js/htmx-1.min.js`, the `e2e-htmx1` job, and the 1.x half of
-   `test_busy_button_request_class_on_each_htmx`.
+5. ~~Drop the `htmx=1` opt-out~~: done in v0.20. `htmx=1` raises, and `js/htmx-1.min.js`, the `e2e-htmx1` job
+   and the 1.x half of the busy-button e2e test are gone.
