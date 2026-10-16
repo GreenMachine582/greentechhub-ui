@@ -12,22 +12,6 @@ Cross-repo order (with greentechhub-core and greentechhub-fastapi): consumers li
 → PyFinBot ready (M6) → v1.0. M1, M2 and M5 shipped; see the CHANGELOG. The theme sections below are unscheduled
 component work.
 
-### M6 PyFinBot ready — ui's share
-What PyFinBot still needs from this package beyond v0.17. One PR each; PyFinBot's `todo.md` holds the adoption PR for
-each once it ships.
-
-- [ ] 1. `feat(components): gth_timeline`
-  - **Why:** PyFinBot's audit log item ends with an activity feed (sign-ins, role and settings changes, its sync runs
-    and imports), and the audit page (v0.17) is a filterable table, not a feed.
-  - **Scope:**
-    - `gth_timeline(entries, ...)` over the shape greentechhub-fastapi's `AuditViews` passes (`at`, `actor`,
-      `action`, `target`, `summary`);
-    - grouped by day, with an icon and tone per action prefix (`auth.`, `roles.`, `settings.`, or a service's own,
-      e.g. `sync.`), configurable;
-    - relative times inside `<time datetime>`, with "System" for no actor;
-    - an optional "Load older" through `gth_pagination`, and an empty state.
-  - **Done when:** it renders `AuditViews` rows, and the playground shows a feed from its `/audit` store.
-
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)

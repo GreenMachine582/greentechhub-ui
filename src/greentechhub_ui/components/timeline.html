@@ -1,0 +1,93 @@
+{% from "pagination.html" import gth_pagination %}
+{% from "empty_state.html" import gth_empty_state %}
+
+{#- gth_timeline (v0.20): an activity feed, newest first and grouped by day,
+    over the rows greentechhub-fastapi's AuditViews passes (or any list of
+    the same shape): an entry is a mapping of
+      at       a datetime (UTC is fine: the day and time follow the
+               viewer's locale through the date / relative_time filters)
+      actor    who did it, or none for the system ("System")
+      action   the dotted action, e.g. "auth.signed_in"; its first word
+               picks the icon and tone
+      target   optional "type:id" text
+      summary  the line to show (the action when it's empty)
+    kinds maps an action's first word to (icon, tone), merged over the
+    defaults for auth / roles / settings; tones are gth_badge's (good, bad,
+    warn, info, neutral, brand). With next_url, a "Load older" button
+    (gth_pagination) fetches the next page: answer it with
+    gth_timeline_page(entries, next_url, kinds), which brings its own
+    button. No script: relative times are rendered on the server, with the
+    exact time in <time datetime> and its title. -#}
+
+{%- set _TIMELINE_KINDS = {"auth": ("box-arrow-in-right", "info"), "roles": ("people", "brand"),
+                           "settings": ("sliders", "neutral")} %}
+{%- set _TIMELINE_TONES = {"good": "success", "bad": "danger", "warn": "warning", "info": "info",
+                           "neutral": "secondary", "brand": "primary"} %}
+
+{% macro _timeline_entry(entry, kinds) %}
+{%- set kind = kinds.get((entry.action|default("") or "").split(".")[0], ("dot", "neutral")) %}
+{%- set tone = _TIMELINE_TONES.get(kind[1], "secondary") %}
+{%- set at = entry.at|default(none) %}
+<li class="gth-timeline-item">
+  <span class="gth-timeline-icon bg-{{ tone }}-subtle text-{{ tone }}-emphasis" aria-hidden="true"><i class="bi bi-{{ kind[0] }}"></i></span>
+  <div class="gth-timeline-body">
+    <div class="gth-timeline-summary">{{ entry.summary|default("", true) or entry.action|default("") }}</div>
+    <div class="gth-timeline-meta">
+      {%- if entry.actor|default(none) %}<span class="gth-timeline-actor">{{ entry.actor }}</span>
+      {%- else %}<span class="gth-timeline-actor text-secondary">System</span>{% endif %}
+      {%- if at %}
+      <span aria-hidden="true">·</span>
+      {%- if at.isoformat is defined %}
+      <time datetime="{{ at.isoformat()|e }}" title="{{ at|datetime if "datetime" is filter else at }}">
+        {{- at|relative_time if "relative_time" is filter else at }}</time>
+      {%- else %}<span>{{ at }}</span>{% endif %}
+      {%- endif %}
+      {%- if entry.target|default(none) %}
+      <span aria-hidden="true">·</span> <span class="gth-timeline-target">{{ entry.target }}</span>
+      {%- endif %}
+      <span aria-hidden="true">·</span> <code class="gth-timeline-action">{{ entry.action|default("") }}</code>
+    </div>
+  </div>
+</li>
+{% endmacro %}
+
+{% macro gth_timeline_page(entries, next_url=None, kinds=None) %}
+{#- One page of a timeline: its day groups, then "Load older" when there's
+    more. gth_timeline renders the first page; a "Load older" response is
+    this alone. -#}
+{%- set merged = dict(_TIMELINE_KINDS) %}
+{%- set _ = merged.update(kinds or {}) %}
+{%- set ns = namespace(days=[], current=none) %}
+{%- for entry in entries %}
+{%- set at = entry.at|default(none) %}
+{%- set day = (at|date if "date" is filter else (at.date() if at.date is defined else at)) if at else "" %}
+{%- if ns.current is none or ns.current[0] != day %}
+{%- set ns.current = (day, []) %}
+{%- set ns.days = ns.days + [ns.current] %}
+{%- endif %}
+{%- set _ = ns.current[1].append(entry) %}
+{%- endfor %}
+<div class="gth-timeline-page">
+  {%- for day, day_entries in ns.days %}
+  <section class="gth-timeline-day">
+    <h3 class="gth-timeline-day-heading">{{ day }}</h3>
+    <ol class="gth-timeline-list">
+      {%- for entry in day_entries %}
+      {{ _timeline_entry(entry, merged) }}
+      {%- endfor %}
+    </ol>
+  </section>
+  {%- endfor %}
+</div>
+{{ gth_pagination(next_url, "Load older") }}
+{% endmacro %}
+
+{% macro gth_timeline(entries, next_url=None, kinds=None, empty_message="No activity yet.", timeline_class="") %}
+<div class="gth-timeline {{ timeline_class }}">
+  {%- if entries %}
+  {{ gth_timeline_page(entries, next_url, kinds) }}
+  {%- else %}
+  {{ gth_empty_state(empty_message, icon="clock-history") }}
+  {%- endif %}
+</div>
+{% endmacro %}

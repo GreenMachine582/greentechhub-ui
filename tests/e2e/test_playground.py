@@ -2836,3 +2836,15 @@ def test_loading_bar_waits_for_every_request(page, playground_url):
     expect(page.locator("#loading-bar-result")).to_have_text("Answered after 600 ms.")
     expect(bar).to_have_class("gth-loading-bar is-active")  # the 1.8 s one is still running
     expect(bar).not_to_have_class("gth-loading-bar is-active", timeout=3000)
+
+
+# ── gth-timeline (v0.20) ───────────────────────────────────────────────────
+
+def test_timeline_loads_older_entries(page, playground_url):
+    page.goto(f"{playground_url}/data#timeline")
+    items = page.locator("#timeline .gth-timeline-item")
+    expect(items).to_have_count(4)
+    page.locator("#timeline .gth-pagination-more").click()
+    expect(items).to_have_count(8)
+    first_time = page.locator("#timeline time").first
+    expect(first_time).to_have_attribute("datetime", re.compile(r"^\d{4}-\d\d-\d\d"))
