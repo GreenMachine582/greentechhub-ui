@@ -46,7 +46,7 @@ def install(env: Environment, **shell_kwargs: Any) -> Environment:
     """Make gth-ui's templates loadable from `env` — after the env's own
     loader, so an app template of the same name wins — and, given
     shell_globals() keyword arguments (service_name, nav_items, layout, …),
-    install those globals too. Also registers the money / number / date
+    install those globals too. Also registers the money / number / date / pluralise
     filters (greentechhub_ui.formatting), leaving any filter of the same name
     the app already registered in place. Safe to call twice (the loader is
     added once). Returns env, for Django's `environment` callable:

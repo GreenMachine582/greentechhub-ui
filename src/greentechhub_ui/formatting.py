@@ -22,6 +22,7 @@ exactly as before — and so do the plain functions, e.g. for CSV.
 from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from jinja2 import pass_context
@@ -230,5 +231,34 @@ def fiscal_year_label(fy, start_month: int = 7) -> str:
     return f"{year}–{(year + 1) % 100:02d}"
 
 
+def pluralise(
+    count: Any, singular: str, plural: str | None = None, *, show_count: bool = True
+) -> str:
+    """`count` with the right form of a noun: 1 → "1 transaction", 3 →
+    "3 transactions", 1234 → "1,234 transactions". `plural` for an irregular
+    one ("entry", "entries"); `show_count=False` for the noun alone, when the
+    number is shown elsewhere. A count of exactly ±1 is singular, everything
+    else (0 too) plural. Empty in, empty out: None or "" gives "", and a
+    count that isn't a whole number is shown as-is with the plural.
+
+        {{ created|pluralise("transaction") }}       {# "3 transactions" #}
+        pluralise(n, "entry", "entries", show_count=False)
+    """
+    if count is None or count == "":
+        return ""
+    plural = plural if plural is not None else f"{singular}s"
+    try:
+        whole = int(Decimal(str(count)))
+        exact = Decimal(str(count)) == whole
+    except (InvalidOperation, ValueError, OverflowError):
+        whole, exact = 0, False
+    noun = singular if exact and abs(whole) == 1 else plural
+    if not show_count:
+        return noun
+    shown = f"{whole:,}" if exact else str(count)
+    return f"{shown} {noun}"
+
+
 FILTERS = {"money": money_filter, "number": number_filter, "date": date_filter,
-           "datetime": datetime_filter, "tone": tone, "fy": fiscal_year_label}
+           "datetime": datetime_filter, "tone": tone, "fy": fiscal_year_label,
+           "pluralise": pluralise}
