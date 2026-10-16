@@ -27,15 +27,9 @@ each once it ships.
     - relative times inside `<time datetime>`, with "System" for no actor;
     - an optional "Load older" through `gth_pagination`, and an empty state.
   - **Done when:** it renders `AuditViews` rows, and the playground shows a feed from its `/audit` store.
-- [ ] 2. `docs: register_csp in the CSP contract` (after greentechhub-fastapi M6.1 ships `register_csp`)
-  - Replace the hand-written FastAPI recipe in docs/contract.md › Content-Security-Policy with `register_csp`, and
-    have the playground send its policy through it, so the e2e suite runs under the helper PyFinBot uses.
 - [ ] 3. `feat(playground): Admin nav group` (after greentechhub-fastapi M6.2 ships `register_admin`)
   - Move the playground's Roles and Audit log links under `register_admin`'s group, showing what PyFinBot's nav
     gets; the route test keeps every link reachable as the admin persona.
-- [ ] 5. `docs: register_error_pages in the error pages section` (after greentechhub-fastapi M6.4 ships it)
-  - Replace the hand-written FastAPI recipe in docs/components.md › Error pages with `register_error_pages`, and have
-    the playground wire its pages through it.
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy

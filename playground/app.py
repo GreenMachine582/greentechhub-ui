@@ -21,11 +21,9 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
-    PlainTextResponse,
     RedirectResponse,
     Response,
 )
@@ -39,7 +37,7 @@ from greentechhub_core.settings.builtins import (
     SITE_BANNER_TONE_KEY,
     site_banner_settings,
 )
-from greentechhub_fastapi import register_email
+from greentechhub_fastapi import register_csp, register_email, register_error_pages
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
 from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.email import email_looks_valid
@@ -47,7 +45,6 @@ from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
 from starlette.datastructures import UploadFile
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import greentechhub_ui
 from greentechhub_ui.formatting import fiscal_year_label
@@ -165,12 +162,6 @@ EXTRA_HEAD_DEMO = '<meta name="gth-extra-head-demo" content="works">'
 # and nav_breadcrumbs need it.
 THEME_COOKIE = "playground-theme"
 THEME_MODES = ("light", "dark", "system")
-
-
-def csp_context(request: Request) -> dict:
-    """csp_nonce for app.html (and the playground's own inline script): the
-    per-request nonce content_security_policy put in the CSP header."""
-    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
 
 
 def theme_context(request: Request) -> dict:
@@ -302,7 +293,7 @@ def site_banners_context(request: Request) -> dict:
 
 
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, csp_context, theme_context,
+                            context_processors=[ui_context, theme_context,
                                                 user_context, settings_values_context,
                                                 site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
@@ -421,49 +412,16 @@ app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 mount_static_dirs(app, greentechhub_ui.static_dirs())
 
 # The recommended Content-Security-Policy (docs/contract.md ›
-# Content-Security-Policy) on every response, with a fresh nonce per request
-# that csp_context hands app.html as csp_nonce — so the e2e suite (no console
-# errors, every page) proves the shell and every component run under it.
-CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; "
-       "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'")
+# Content-Security-Policy) on every response through greentechhub-fastapi's
+# register_csp, with a fresh nonce per request that ui_context hands app.html
+# as csp_nonce — so the e2e suite (no console errors, every page) proves the
+# shell and every component run under it.
+register_csp(app)
 
-
-@app.middleware("http")
-async def content_security_policy(request: Request, call_next):
-    request.state.csp_nonce = secrets.token_urlsafe(16)
-    response = await call_next(request)
-    response.headers.setdefault("Content-Security-Policy",
-                                CSP.format(nonce=request.state.csp_nonce))
-    return response
-  
-# Error pages (docs/components.md › Error pages): 403.html / 404.html /
-# 500.html for a browser's page request; JSON and htmx requests keep the
-# defaults.
-ERROR_PAGES = {403: "403.html", 404: "404.html"}
-
-
-def wants_error_page(request: Request) -> bool:
-    return ("text/html" in request.headers.get("accept", "")
-            and "hx-request" not in request.headers
-            and not request.url.path.startswith("/api"))
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_error_page(request: Request, exc: StarletteHTTPException):
-    if exc.status_code in ERROR_PAGES and wants_error_page(request):
-        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
-                                          status_code=exc.status_code)
-    return await http_exception_handler(request, exc)
-
-
-@app.exception_handler(Exception)
-async def server_error_page(request: Request, exc: Exception):
-    if not wants_error_page(request):
-        return PlainTextResponse("Internal Server Error", status_code=500)
-    return templates.TemplateResponse(request, "500.html",
-                                      {"error_reference": request.headers.get("x-request-id")},
-                                      status_code=500)
+# Error pages (docs/components.md › Error pages): greentechhub-fastapi's
+# register_error_pages answers a browser's page request with 403.html /
+# 404.html / 500.html; JSON and htmx requests keep the defaults.
+register_error_pages(app, templates=templates, api_prefix="/api")
 
 
 @app.get("/demo/error-page/{code}")
