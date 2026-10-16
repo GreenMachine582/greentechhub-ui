@@ -18,6 +18,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -38,6 +39,7 @@ from greentechhub_core.settings.builtins import (
     site_banner_settings,
 )
 from greentechhub_fastapi import register_csp, register_email, register_error_pages
+from greentechhub_fastapi.admin import admin_nav_item
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
 from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.email import email_looks_valid
@@ -49,6 +51,7 @@ from starlette.datastructures import UploadFile
 import greentechhub_ui
 from greentechhub_ui.formatting import fiscal_year_label
 from greentechhub_ui.htmx import trigger, wants_fragment
+from greentechhub_ui.navigation import filter_by_scope
 
 _here = Path(__file__).parent
 
@@ -361,11 +364,16 @@ PLAYGROUND_NAV = [
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
     {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
-    # Only the demo admin (sign in on /extensibility) sees this.
-    {"label": "Roles", "url": "/roles", "icon": "people",
-     "required_permission": "settings.manage"},
-    {"label": "Audit log", "url": "/audit", "icon": "journal-text",
-     "required_permission": "settings.manage"},
+    # greentechhub-fastapi's "Admin" group (admin_nav_item, what register_admin
+    # returns): one entry per admin page with its permission, so only the demo
+    # admin (sign in on /extensibility) sees it, and nobody sees an empty group.
+    # The playground's pages are its own demo routes, so plain objects stand in
+    # for fastapi's RoleAdminViews / AuditViews (admin_nav_item reads only these).
+    admin_nav_item([
+        SimpleNamespace(url="/roles", title="Roles", icon="people", permission=MANAGE_PERMISSION),
+        SimpleNamespace(url="/audit", title="Audit log", icon="journal-text",
+                        permission=MANAGE_PERMISSION),
+    ]),
 ]
 
 # Title and subtitle per category page.
@@ -839,7 +847,12 @@ async def demo_theme(theme: str = Form(...)):
 
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
-    return _page(request, "overview", categories=PLAYGROUND_NAV)
+    # What this persona may open, as the sidebar shows it (the Admin group only
+    # for the admin).
+    context = user_context(request)
+    categories = filter_by_scope(PLAYGROUND_NAV, context.get("current_user"),
+                                 context.get("granted"))
+    return _page(request, "overview", categories=categories)
 
 
 @app.get("/layout", response_class=HTMLResponse)

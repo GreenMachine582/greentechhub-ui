@@ -84,8 +84,9 @@ def test_every_demo_section_is_in_the_sidebar():
     linked = {entry["url"] for entry in flatten(PLAYGROUND_NAV)}
     pages = Path(playground_app.__file__).parent / "templates" / "pages"
     for category in PLAYGROUND_NAV:
-        if not category.get("children"):
-            continue  # a single-page entry (Extensibility, Personas) links the page itself
+        if not category.get("children") or not category.get("url"):
+            # A single-page entry (Extensibility, Personas), or a group of other pages (Admin).
+            continue
         page = pages / (category["url"].lstrip("/") + ".html")
         if not page.exists():
             continue  # e.g. /settings renders a shipped template
@@ -981,3 +982,18 @@ def test_settings_api_tokens_demo_returns_422():
         assert response.status_code == 422, data
     assert "gth-api-tokens-no-scopes" in response.text  # the viewer holds no permissions
     assert playground_app.API_TOKENS == {}
+
+
+def test_the_admin_group_shows_only_for_the_admin_persona():
+    from playground.app import PLAYGROUND_NAV
+
+    [group] = [c for c in PLAYGROUND_NAV if c["label"] == "Admin"]
+    assert "url" not in group
+    assert [(c["url"], c["required_permission"]) for c in group["children"]] == [
+        ("/roles", "settings.manage"), ("/audit", "settings.manage")]
+    admin = _run(_as("admin", "GET", "/"))
+    viewer = _run(_as("viewer", "GET", "/"))
+    for page in (admin, viewer):
+        assert page.status_code == 200
+    assert 'href="/roles"' in admin.text and 'href="/audit"' in admin.text
+    assert 'href="/roles"' not in viewer.text and 'href="/audit"' not in viewer.text
