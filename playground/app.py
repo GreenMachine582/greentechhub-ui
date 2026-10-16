@@ -393,9 +393,6 @@ greentechhub_ui.install(
     service_name="Playground",
     show_logo=True,
     layout="sidebar",
-    # htmx 2 by default; PLAYGROUND_HTMX=1 runs the whole playground (and so
-    # the e2e suite) on the htmx=1 opt-out — docs/htmx2.md, CI's e2e-htmx1 job.
-    htmx=int(os.environ.get("PLAYGROUND_HTMX", "2")),
     nav_items=greentechhub_ui.navigation.build_nav_items(
         custom_items=PLAYGROUND_NAV,
         # Demonstrates the built-in + consumer-registered merge docs/components.md

@@ -62,11 +62,6 @@ each once it ships.
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
 
-### Resilience & security
-- [ ] **Breaking (the release after v0.19):** drop the `shell_globals(htmx=1)` opt-out, `js/htmx-1.min.js`, CI's
-  `e2e-htmx1` job and the 1.x half of the busy-button e2e test
-  ([docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release-v019-done) step 5)
-
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in

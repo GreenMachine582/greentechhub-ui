@@ -239,7 +239,7 @@ gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outl
 {# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
    busy_label + spinner while the request runs; start_toast pops at once
    (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
-   .htmx-request — see theme.css for the htmx 1.9.10 bug (only the htmx=1 opt-out has it now).
+   .htmx-request — see theme.css for the htmx 1.9.10 bug that forced it (htmx 2 fixed it).
    Still guard the action server-side: this only stops double-clicks in one tab.
    submit=True (v0.14): a form's submit button. The form sends the request, so
    the form disables the button — give it hx-disabled-elt="find button[type=submit]";
@@ -926,8 +926,8 @@ gth_file_drop(name, label, accept=None, max_size=None, multiple=False, errors=No
 ```
 
 The enclosing form sends the upload, so give it `hx-encoding="multipart/form-data"` (or `enctype`). While
-that request runs, the progress bar follows `htmx:xhr:progress`. htmx 1.9 fires that event for the response
-download as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
+that request runs, the progress bar follows `htmx:xhr:progress`. htmx fires that event for the response download
+as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
 stays there until `htmx:afterRequest`.
 
 **The server still has to check type and size**, because the client check is only a convenience. When
