@@ -20,7 +20,9 @@
       {% else %}
       <p class="text-secondary small">{{ cat.label }} demos on one page.</p>
       {% endif %}
+      {%- if cat.url %}
       <a class="btn btn-sm btn-outline-secondary" href="{{ cat.url }}">Open {{ cat.label }}</a>
+      {%- endif %}
     {% endcall %}
   </div>
   {% endfor %}

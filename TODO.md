@@ -12,10 +12,6 @@ Cross-repo order (with greentechhub-core and greentechhub-fastapi): consumers li
 → PyFinBot ready (M6) → v1.0. M1, M2 and M5 shipped; see the CHANGELOG. The theme sections below are unscheduled
 component work.
 
-### M6 PyFinBot ready — ui's share shipped
-The API tokens section (v0.18), `pluralise`, `gth_timeline` and `relative_time` (v0.20), and the playground's
-`register_csp` / `register_error_pages` / Admin nav. PyFinBot's `todo.md` holds the adoption PRs.
-
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
 - [ ] Drag-and-drop tree reordering (keyboard-accessible: a "move" mode with arrow keys, not drag-only)
@@ -46,11 +42,6 @@ The API tokens section (v0.18), `pluralise`, `gth_timeline` and `relative_time` 
     `filter_params` allow-list). The table re-request keeps it in the URL, so a filtered view is shareable.
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
-
-### Resilience & security
-- [ ] **Breaking (the release after v0.19):** drop the `shell_globals(htmx=1)` opt-out, `js/htmx-1.min.js`, CI's
-  `e2e-htmx1` job and the 1.x half of the busy-button e2e test
-  ([docs/htmx2.md › The switch](docs/htmx2.md#the-switch-a-breaking-release-v019-done) step 5)
 
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in

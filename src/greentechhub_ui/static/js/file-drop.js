@@ -4,7 +4,7 @@
 // data-accept / data-max-size in the capture phase — before an enclosing
 // hx-trigger="change" form sees it — and rejected files are removed from
 // the input and listed, one error each. The upload progress bar follows the
-// enclosing form's htmx:xhr:progress; htmx 1.9 fires that event for the
+// enclosing form's htmx:xhr:progress; htmx fires that event for the
 // download too, so once the upload reaches 100% the bar switches to an
 // indeterminate "Processing…" and ignores the rest until the response.
 (function () {

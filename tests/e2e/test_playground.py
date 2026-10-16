@@ -248,6 +248,7 @@ def test_gated_page_redirects_to_personas_and_back(page, playground_url):
 
 def test_roles_page_assign_change_remove(page, playground_url):
     _impersonate(page, playground_url, "admin")
+    page.click("#gth-sidebar [data-gth-sidebar-group='Admin']")  # Roles sits in the Admin group
     page.click("#gth-sidebar a[href='/roles']")
     expect(page).to_have_url(re.compile(r"/roles$"))
     roles = page.locator("#gth-roles")
@@ -2756,11 +2757,10 @@ def test_embed_card_placeholder(page, playground_url):
 
 # ── htmx 2 migration (docs/htmx2.md) ───────────────────────────────────────
 
-def test_busy_button_request_class_on_each_htmx(page, playground_url):
-    """htmx 1.9.10 shares one requestCount between the request-indicator
-    class and hx-disabled-elt, so .htmx-request sticks on an element that is
-    both (why gth-busy-button keys on :disabled); htmx 2 clears it. Run on
-    both by CI (PLAYGROUND_HTMX=1 in the e2e-htmx1 job)."""
+def test_busy_button_request_class_clears(page, playground_url):
+    """htmx 1.9.10 shared one requestCount between the request-indicator
+    class and hx-disabled-elt, so .htmx-request stuck on an element that is
+    both (why gth-busy-button keys on :disabled); htmx 2 clears it."""
     page.goto(f"{playground_url}/forms")
     button = page.locator("#busy-button .gth-busy-button[type=button]")
     button.click()
@@ -2768,7 +2768,7 @@ def test_busy_button_request_class_on_each_htmx(page, playground_url):
     expect(button).to_be_enabled(timeout=5000)
     page.wait_for_timeout(100)
     sticks = "htmx-request" in (button.get_attribute("class") or "")
-    assert sticks is page.evaluate("htmx.version").startswith("1.")
+    assert page.evaluate("htmx.version").startswith("2.") and not sticks
     
 # ── CSP-ready shell (v0.17) ────────────────────────────────────────────────
 

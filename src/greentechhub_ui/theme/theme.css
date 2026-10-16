@@ -442,7 +442,7 @@
 
 /* gth-busy-button: swap to the busy label while the request is in flight.
    Keyed on :disabled (set by hx-disabled-elt="this"), NOT .htmx-request:
-   in htmx 1.9.10 (the htmx=1 opt-out) the request-indicator class and
+   in htmx 1.9.10 (before v0.19's htmx 2) the request-indicator class and
    hx-disabled-elt share one requestCount per element, so on an element
    that is both, .htmx-request is never removed after the request ends
    (disabled is, correctly). */
