@@ -248,6 +248,7 @@ def test_gated_page_redirects_to_personas_and_back(page, playground_url):
 
 def test_roles_page_assign_change_remove(page, playground_url):
     _impersonate(page, playground_url, "admin")
+    page.click("#gth-sidebar [data-gth-sidebar-group='Admin']")  # Roles sits in the Admin group
     page.click("#gth-sidebar a[href='/roles']")
     expect(page).to_have_url(re.compile(r"/roles$"))
     roles = page.locator("#gth-roles")

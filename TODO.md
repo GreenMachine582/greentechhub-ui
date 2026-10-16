@@ -27,9 +27,6 @@ each once it ships.
     - relative times inside `<time datetime>`, with "System" for no actor;
     - an optional "Load older" through `gth_pagination`, and an empty state.
   - **Done when:** it renders `AuditViews` rows, and the playground shows a feed from its `/audit` store.
-- [ ] 3. `feat(playground): Admin nav group` (after greentechhub-fastapi M6.2 ships `register_admin`)
-  - Move the playground's Roles and Audit log links under `register_admin`'s group, showing what PyFinBot's nav
-    gets; the route test keeps every link reachable as the admin persona.
 
 ### Navigation
 - [ ] Tree-select form field — a `gth_tree` inside the record picker's panel, for picking from a hierarchy
