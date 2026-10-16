@@ -1120,7 +1120,7 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers six filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers seven filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
@@ -1130,6 +1130,8 @@ that the app already registered**, so an app's own `money` wins.
 {{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
 {{ value|tone(places=None) }}             {# 12.5 → text-success · -3 → text-danger · 0 → "" (v0.16) #}
 {{ fy|fy(start_month=7) }}                {# 2024 → 2024–25 · 1999 → 1999–00 · start_month=1 → 2024 (v0.16) #}
+{{ n|pluralise("transaction") }}          {# 1 → 1 transaction · 3 → 3 transactions · 1234 → 1,234 transactions #}
+{{ n|pluralise("entry", "entries") }}     {# an irregular plural · show_count=False → the noun alone #}
 ```
 
 ```jinja
@@ -1149,6 +1151,9 @@ gth_amount(value, kind="money", places=None, amount_class="")
 - **`tone` and `fy` (v0.16):** `tone` is the colour class for a gain or loss (`gth_amount` wraps it). `fy` is
   greentechhub-core's `dates.fiscal_year_label`, copied because this package doesn't import core at runtime; a test
   keeps the two in step.
+- **`pluralise`:** exactly ±1 is singular, everything else (0 too) plural, and the plural defaults to the noun plus
+  "s". It's also `greentechhub_ui.pluralise(n, "transaction")` for a toast built in route code.
+  `show_count=False` gives the noun alone, for when the number is shown elsewhere.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
 - **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
