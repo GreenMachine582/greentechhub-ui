@@ -6,6 +6,7 @@
 {% from "description_list.html" import gth_description_list %}
 {% from "progress.html" import gth_progress %}
 {% from "skeleton.html" import gth_skeleton %}
+{% from "timeline.html" import gth_timeline %}
 
 {% block page %}
 <section class="mb-5" id="table">
@@ -120,6 +121,13 @@
   {% call gth_table(headers=["Widget"], tbody_id="widgets-tbody") %}
     {% include "_widget_rows.html" %}
   {% endcall %}
+</section>
+
+<section class="mb-5" id="timeline">
+  <h2 class="h4">gth-timeline</h2>
+  <p class="text-secondary small">The audit store's entries (greentechhub-fastapi's AuditViews rows) as a feed: grouped
+    by day, an icon and tone per action prefix, relative times, and "Load older" a page at a time.</p>
+  {{ gth_timeline(timeline_entries, next_url=timeline_next_url, kinds={"sync": ("arrow-repeat", "good")}) }}
 </section>
 
 <section class="mb-5" id="formatting">

@@ -318,6 +318,7 @@ PLAYGROUND_NAV = [
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
+        {"label": "Timeline", "url": "/data#timeline"},
         {"label": "Filter bar + report", "url": "/data#report"},
         {"label": "Data tables", "url": "/tables", "icon": "grid-3x3"},
         {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
@@ -849,7 +850,8 @@ async def layout_page(request: Request):
 
 @app.get("/data", response_class=HTMLResponse)
 async def data_page(request: Request):
-    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
+    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1),
+                 **await _timeline_page())
 
 
 # gth_embed_card demo: a stand-in for a Grafana panel that shows the theme
@@ -1116,6 +1118,32 @@ for _days, _action, _actor, _target, _summary in [
     AUDIT_STORE.record_sync(new_entry(
         _action, actor=_actor, target=("user", _target) if _target else None, summary=_summary,
         now=datetime(2026, 10, 1, 9, 30, tzinfo=UTC) + timedelta(days=9 - _days)))
+
+
+# gth_timeline over the same store: AuditViews' row shape, newest first, a
+# page at a time; "Load older" fetches the next page as a fragment.
+TIMELINE_PAGE_SIZE = 4
+
+
+async def _timeline_page(before: datetime | None = None) -> dict:
+    entries = await AUDIT_STORE.entries(before=before, limit=TIMELINE_PAGE_SIZE)
+    next_url = None
+    if len(entries) == TIMELINE_PAGE_SIZE:
+        next_url = "/timeline-demo/feed?" + urlencode({"before": entries[-1].at.isoformat()})
+    rows = [{"at": e.at, "actor": e.actor, "action": e.action,
+             "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
+             "summary": e.summary} for e in entries]
+    return {"timeline_entries": rows, "timeline_next_url": next_url}
+
+
+@app.get("/timeline-demo/feed", response_class=HTMLResponse)
+async def timeline_feed(request: Request, before: str = ""):
+    """The next page of the Data page's timeline: gth_timeline_page alone."""
+    try:
+        cursor = datetime.fromisoformat(before) if before else None
+    except ValueError:
+        cursor = None
+    return templates.TemplateResponse(request, "_timeline_page.html", await _timeline_page(cursor))
 
 
 @app.get("/audit", response_class=HTMLResponse)

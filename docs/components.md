@@ -1120,7 +1120,7 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers seven filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers eight filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
@@ -1132,6 +1132,7 @@ that the app already registered**, so an app's own `money` wins.
 {{ fy|fy(start_month=7) }}                {# 2024 → 2024–25 · 1999 → 1999–00 · start_month=1 → 2024 (v0.16) #}
 {{ n|pluralise("transaction") }}          {# 1 → 1 transaction · 3 → 3 transactions · 1234 → 1,234 transactions #}
 {{ n|pluralise("entry", "entries") }}     {# an irregular plural · show_count=False → the noun alone #}
+{{ at|relative_time }}                    {# just now · 5 minutes ago · yesterday · in 3 days · a week+ → the date (v0.20) #}
 ```
 
 ```jinja
@@ -1488,6 +1489,36 @@ as a plain GET form, a table of entries newest first, and an "Older entries" lin
 - Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
 
 The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
+
+### Timeline (v0.20)
+
+`gth_timeline` is an activity feed: newest first, grouped by day, with an icon and tone per kind of action. It takes
+the rows greentechhub-fastapi's `AuditViews` passes, or any list of the same shape.
+
+```jinja
+{% from "timeline.html" import gth_timeline, gth_timeline_page %}
+{{ gth_timeline(entries, next_url=next_url, kinds={"sync": ("arrow-repeat", "good")}, empty_message="No activity yet.") }}
+{# a "Load older" response: the next page alone, with its own button #}
+{{ gth_timeline_page(entries, next_url=next_url, kinds=kinds) }}
+```
+
+| Entry key | |
+|---|---|
+| `at` | a datetime; the day heading and the time follow the viewer's `locale.*` settings |
+| `actor` | who did it, or none for the system, shown as "System" |
+| `action` | the dotted action (`auth.signed_in`); its first word picks the icon and tone |
+| `target` | optional `"type:id"` text |
+| `summary` | the line to show; the action when it's empty |
+
+- `kinds` maps an action's first word to `(icon, tone)`, merged over the defaults: `auth` (sign-in icon, info),
+  `roles` (people, brand) and `settings` (sliders, neutral). Anything else gets a neutral dot. Tones are `gth_badge`'s.
+- Each time is `|relative_time` ("5 minutes ago") inside `<time datetime>`, with the full date and time as its title.
+  It's rendered on the server, with no script, so it's CSP-clean. It renders without `install()` too, showing the raw
+  values.
+- With `next_url`, a "Load older" button (`gth_pagination`) fetches the next page. Answer it with `gth_timeline_page`,
+  which brings its own button for the page after. `AuditViews` gives a full page at `audit_next_url`, so a service
+  serving a feed answers "Load older" from a route of its own. The playground's `/data#timeline` does this.
+- With no entries, `gth_empty_state(empty_message)`.
 
 ### Error pages (v0.17)
 
