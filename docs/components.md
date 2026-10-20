@@ -1220,7 +1220,7 @@ value, so a checked switch reads as its own `value`.
 
 Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
 The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
-`choices`, `min`, `max`, `group`, `secret`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+`choices`, `min`, `max`, `group`, `secret`, and for a `str` field `input_type` and `readonly`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
 core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
 
 ```jinja
@@ -1236,7 +1236,7 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 | `choice` with `segmented_max` (4) or fewer options | `gth_segmented` |
 | `choice` with more | `gth_select` |
 | `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
-| `str` | `gth_form_field` |
+| `str` | `gth_form_field`; `input_type` sets the `<input type>` (`"email"`), and `readonly` locks the field (a profile field an identity provider owns, which greentechhub-fastapi's `SettingsViews` marks for IdP sign-ins with "Managed by …" as its help) |
 | `str` with `secret` | `gth_form_field(type="password")`, always empty, `autocomplete="new-password"`; when a value is saved, "Saved. Leave blank to keep it." and a `<key>.__clear` checkbox |
 
 - `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
