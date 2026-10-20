@@ -6,7 +6,8 @@
 {#- Rendering for greentechhub-core's settings (core docs/settings.md). Duck-typed:
     a setting is anything with key, type ("bool" | "int" | "str" | "choice"), label,
     default, and optionally help_text, choices ((value, label) pairs), min, max,
-    group, secret — core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
+    group, secret, and for a str field input_type (e.g. "email") and readonly —
+    core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
     imports core. Field names are the setting keys ("ui.theme"), which is what
     core's registry.coerce(key, raw) expects back. -#}
 
@@ -18,7 +19,9 @@
       choice, ≤ segmented_max opts  → gth_segmented
       choice, more                  → gth_select
       int                           → number gth_form_field with min/max, step 1
-      str                           → text gth_form_field
+      str                           → text gth_form_field (input_type sets the
+                                      <input type>; readonly locks it, e.g. a
+                                      profile field an identity provider owns)
       secret (a str setting)        → write-only password gth_form_field
     value: the current (effective) value; None falls back to setting.default.
     errors: this field's messages. name: defaults to setting.key.
@@ -64,7 +67,9 @@
 {{ gth_form_field(name, setting.label, value=value, type="number", step=1, min=setting.min, max=setting.max,
                   help_text=help, errors=errors, field_class=field_class) }}
 {%- else -%}
-{{ gth_form_field(name, setting.label, value=value, help_text=help, errors=errors, field_class=field_class) }}
+{%- set attrs = {"readonly": "readonly"} if setting.readonly else none -%}
+{{ gth_form_field(name, setting.label, value=value, type=setting.input_type or "text", help_text=help,
+                  errors=errors, field_class=field_class, input_attrs=attrs) }}
 {%- endif -%}
 {%- endif -%}
 {% endmacro %}
