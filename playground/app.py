@@ -193,6 +193,10 @@ PERSONAS = {
               "granted": frozenset({"settings.manage"}), "icon": "person-gear",
               "description": "Holds settings.manage: Settings \u203a App and the Roles page "
                              "appear in the sidebar."},
+    "authentik": {"user": {"username": "sso-sam", "email": "sam@example.com"},
+                  "granted": frozenset(), "icon": "shield-lock",
+                  "description": "Signed in through Authentik: the Profile's name and email are "
+                                 "Authentik's, shown read-only."},
 }
 
 
@@ -604,20 +608,32 @@ def _visible_sections(request: Request) -> list[str]:
 # templates of their own: plain str fields and write-only secret fields
 # through settings_section.html. Per persona, restored by the demo reset.
 PROFILES_INITIAL = {"viewer": {"display_name": "", "email": "viewer@example.com"},
-                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"}}
+                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"},
+                    "authentik": {"display_name": "Sam Single-Sign-On", "email": "sam@example.com"}}
 PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
+# The profile fields an identity provider owns, per persona: what
+# greentechhub-fastapi's account_profile locks for someone signed in through
+# Authentik (readonly, "Managed by Authentik."; a save keeps their value).
+LOCKED = {"authentik": frozenset({"display_name", "email"})}
 DEMO_CURRENT_PASSWORD = "password"
 
 
-def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
+def _field(key: str, label: str, help_text: str = "", secret: bool = False, **extra) -> dict:
     return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
-            "secret": secret}
+            "secret": secret, **extra}
 
 
-def _profile_section(values: dict, errors=None) -> dict:
+def _profile_field(key: str, label: str, help_text: str, locked: frozenset[str], **extra) -> dict:
+    if key in locked:
+        return _field(key, label, "Managed by Authentik.", readonly=True, **extra)
+    return _field(key, label, help_text, **extra)
+
+
+def _profile_section(values: dict, errors=None, locked: frozenset[str] = frozenset()) -> dict:
     return {"id": "profile", "title": "Profile", "description": "How you appear to others.",
-            "settings": [_field("display_name", "Display name", "Shown instead of your user ID."),
-                         _field("email", "Email")],
+            "settings": [_profile_field("display_name", "Display name",
+                                        "Shown instead of your user ID.", locked),
+                         _profile_field("email", "Email", "", locked, input_type="email")],
             "values": values, "errors": errors, "action": "/settings-demo/profile",
             "submit_label": "Save profile"}
 
@@ -641,17 +657,19 @@ async def settings_demo_profile(request: Request):
     if PERSONAS[persona]["user"] is None:
         return Response(status_code=401)
     form = await request.form()
-    values = {"display_name": str(form.get("display_name") or "").strip(),
-              "email": str(form.get("email") or "").strip()}
+    locked = LOCKED.get(persona, frozenset())
+    # A locked field keeps its stored value whatever the form sent.
+    values = {key: PROFILES[persona][key] if key in locked else str(form.get(key) or "").strip()
+              for key in ("display_name", "email")}
     errors: dict[str, list[str]] = {}
     if len(values["display_name"]) > 80:
         errors["display_name"] = ["Use at most 80 characters."]
     if values["email"] and not email_looks_valid(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
-        return _render_section(request, _profile_section(values, errors), status_code=422)
+        return _render_section(request, _profile_section(values, errors, locked), status_code=422)
     PROFILES[persona] = values
-    return _render_section(request, _profile_section(values), headers={
+    return _render_section(request, _profile_section(values, locked=locked), headers={
         "HX-Trigger": greentechhub_ui.toast("Profile saved")})
 
 
@@ -763,7 +781,8 @@ async def settings_page(request: Request):
     persona = _persona(request)
     if PERSONAS[persona]["user"] is not None:
         # SettingsViews' order: Profile first, then Password and API tokens after Preferences.
-        sections = [_profile_section(PROFILES[persona]), sections[0], _password_section(),
+        sections = [_profile_section(PROFILES[persona], locked=LOCKED.get(persona, frozenset())),
+                    sections[0], _password_section(),
                     _api_tokens_section(request), *sections[1:]]
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,

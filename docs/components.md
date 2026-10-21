@@ -1440,7 +1440,8 @@ The name (v0.15) is `user_display_name` when it's set (greentechhub-fastapi v0.1
 letters of the first and last words, so "Ada Lovelace" is AL and "admin" is A. It's on the brand accent and hidden
 from screen readers, which read the name itself. A user with no name at all shows "Account" with the person icon.
 
-The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
+The playground has no real sign-in: impersonate a persona (anonymous, viewer, admin or authentik) on `/personas` to see both;
+the authentik persona's Settings › Profile shows read-only, IdP-managed fields.
 A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.
 
 ### Role assignments

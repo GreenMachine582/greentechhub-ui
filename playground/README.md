@@ -24,8 +24,9 @@ Open **http://127.0.0.1:8500/**.
 
 The playground itself runs in `app.html`'s `layout="sidebar"`: one page per category (Layout, Data, Forms,
 Feedback, Overlays, Navigation, Extensibility), each demo an anchor the sidebar links to. There's no real sign-in:
-impersonate a persona (anonymous, viewer or admin) on **Personas** to see the user menu, permission-filtered nav and
-the admin-only Roles page; a gated page sends you there and back. Press
+impersonate a persona (anonymous, viewer, admin or authentik) on **Personas** to see the user menu, permission-filtered
+nav, the admin-only Roles page, and a Profile an identity provider manages (read-only, "Managed by Authentik."); a
+gated page sends you there and back. Press
 <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘K</kbd>) to jump to any of them, collapse the sidebar to an icon rail with the
 button at its bottom, or narrow the window below 992px for the drawer.
 
