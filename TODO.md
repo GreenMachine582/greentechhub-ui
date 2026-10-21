@@ -46,7 +46,8 @@ component work.
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
-- Templates for greentechhub-fastapi's admin view ideas — users admin, a system status page (a status badge per
+- Templates for greentechhub-fastapi's admin view ideas — users admin (on `register_users` and core's `UserStore`:
+  list and search accounts, sign-in source and last login, deactivate), a system status page (a status badge per
   health check). Its Admin nav group (M6.2) is plain nav items and needs none
 - First-run setup wizard on a new `gth_stepper` multi-step form — create the admin, name the site, pick a landing page
 - Customisable dashboard — users arrange and resize stat cards and widgets; the layout saved in settings
@@ -81,17 +82,15 @@ land before it takes v0.19 or later.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-It pins v0.16, already mounts `static_dirs()` and calls `install()`, so ui's breaking CDN removal (M4) won't touch
-it. What's left is adoption, each a PR tracked in PyFinBot's `todo.md`:
-- v0.16's macros (`gth_result_panel`, `gth_filter_bar`, `gth_download_button`, `gth_form_actions` /
-  `gth_modal_form`, `gth_amount`, `|tone`, `|fy`) where its templates still hand-build the markup;
-- v0.17's charts: sparklines in the dashboard's stat tiles (`gth_stat_card(chart=)`), gains and dividends charts on
-  the reports, and `gth_embed_card` for the Grafana panel;
-- v0.17's CSRF shell, with greentechhub-fastapi's `register_csrf`, and the audit page, with `AuditViews`; then
-  `gth_timeline` once M6.1 above ships;
-- a strict CSP once greentechhub-fastapi ships `register_csp` (the shell is ready since v0.17);
-- htmx 2 comes with v0.19 by default. Its templates use none of the 2.x changes ([docs/htmx2.md › Upgrading a
+It pins v0.19 and already mounts `static_dirs()` and calls `install()`. It moves to this release (core v0.16,
+fastapi v0.18) in its user-accounts PR (PyFinBot #114). That brings:
+- htmx 2 only. Its templates use none of the 2.x changes ([docs/htmx2.md › Upgrading a
   service](docs/htmx2.md#upgrading-a-service)).
+- `pluralise` for its `_plural` helpers.
+- The read-only, typed profile fields for Authentik sign-ins.
+
+What's left after that is adoption, each a PR tracked in PyFinBot's `todo.md`. `gth_timeline` is one example, for
+an audit activity feed.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
