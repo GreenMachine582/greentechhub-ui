@@ -23,9 +23,9 @@ component work.
   response)
   - `gth_code(code, language=None, filename=None, copy=True, line_numbers=False, highlight=(), max_height=None,
     wrap=False)`, plus an inline `gth_code_inline(text, copy=False)`.
-  - A header strip with the filename and/or language and a Copy button (clipboard, a "Copied" tick, a toast as the
-    fallback); the body an escaped `<pre><code>` with an optional line-number gutter (CSS counters, so copying skips
-    them), highlighted lines and a `max_height` scroll box.
+  - A header strip with the filename and/or language and a Copy button (`gth_copy_button`, under Settings & layout);
+    the body an escaped `<pre><code>` with an optional line-number gutter (CSS counters, so copying skips them),
+    highlighted lines and a `max_height` scroll box.
   - Syntax colours from server-side Pygments when an optional `[highlight]` extra is installed, else plain text;
     token colours from theme variables so light and dark both work.
 
@@ -42,6 +42,36 @@ component work.
     `filter_params` allow-list). The table re-request keeps it in the URL, so a filtered view is shareable.
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
+
+### Settings & layout
+The playground `/settings` page is stacked bare forms: each section is a `<section>` with a hand-written `h2.h5`,
+setting groups are only an `h3.h6` subheading (`components/settings.html`), and `api_tokens_section.html` hand-rolls
+its own headers.
+- [ ] `gth_settings_section` as a card — reuse `gth_card`: a header with the title and description, the fields in the
+  body, the save actions (`gth_form_actions`) in the footer, so sections read as separate blocks
+- [ ] `gth_field_group` — a `<fieldset>`/`<legend>` wrapper that replaces the `h3.h6` group subheading
+  - `gth_field_group(title, description=None, group_class="")` as a `{% call %}` block; a divider between groups.
+  - Real grouping for screen readers, and usable on any form, not only settings.
+- [ ] `gth_setting_row` — a two-column row: label and help text on the left, the control on the right; stacks on
+  narrow screens
+  - Used by `gth_setting_field` for switch, segmented, select and text, so labels and controls line up across
+    sections.
+  - `gth_settings_section(layout="rows"|"stacked")` keeps today's stacked form available.
+- [ ] Settings page nav — an optional in-page section list (sticky on the side on wide screens, jump links on top on
+  narrow) built from `settings_sections`, linking the existing `#gth-settings-<id>` anchors
+- [ ] `api_tokens_section.html` — use the shared section card header and `gth_field_group` for the "New token" form
+  instead of the hand-written `h2.h5` / `h3.h6`, so it matches the other sections
+- [ ] `gth_copy_button` — a shared copy-to-clipboard button
+  - `gth_copy_button(target=None, text=None, label="Copy", icon="clipboard", copied_icon="check2", size="sm",
+    button_class="")`: copies a target element's value or text (`target` selector) or a literal `text`.
+  - Behaviour in a new `static/js/copy.js` (no inline script: CSP), exposed as `copy_js_url` in `shell.py`;
+    `navigator.clipboard`, a "Copied" tick swap, a toast as the fallback, an `aria-live` announcement.
+  - Fits `gth_form_field(suffix=...)` as an input-group add-on, for a "readonly field + Copy" pattern; a
+    `copy=True` option on `gth_form_field` as sugar. Shared with `gth_code`'s header button.
+- [ ] New API token: a Copy button on the readonly token field in `api_tokens_section.html`'s "created" alert (and
+  drop the header comment saying there's no copy button); also for read-only `str` settings
+- [ ] Playground: restructure `SETTINGS_DEMO` and `/settings` to show groups, rows, nav and the copy button; refresh
+  `tests/test_settings_templates.py`, `tests/test_api_tokens_templates.py` and the e2e playground tests
 
 ### Ideas — not scheduled
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
