@@ -113,8 +113,9 @@ gth_table_body(rows, empty_message="Nothing here yet.", colspan=1)  {# tbody row
 {# empty_state.html — optional {% call %} action-slot (e.g. a retry button) #}
 gth_empty_state(message, icon=None, empty_class="")
 
-{# pagination.html — matches an HTMX "load more" pattern: hx-target="this",
-   hx-swap="outerHTML" are fixed, not parameterized #}
+{# pagination.html — matches an HTMX "load more" pattern: hx-target="closest .gth-pagination",
+   hx-swap="outerHTML" are fixed, not parameterized. The response replaces the whole wrapper,
+   so the next page lands beside the earlier ones rather than inside the centred div #}
 gth_pagination(next_url, label="Load more", wrapper_class="text-center py-2")
 ```
 
