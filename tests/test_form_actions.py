@@ -42,7 +42,7 @@ def test_modal_form():
           {{ gth_form_field("name", "Name") }}
         {% endcall %}""")
     assert_snapshot(rendered, "modal_form")
-    assert 'class="modal fade gth-modal text-start" id="stock-modal"' in rendered
+    assert 'class="modal fade gth-modal" id="stock-modal"' in rendered
     assert 'hx-post="/stocks" hx-target="this" hx-swap="outerHTML"' in rendered
     assert rendered.index('name="name"') < rendered.index("gth-form-actions")
     assert "hx-disabled-elt" not in rendered
