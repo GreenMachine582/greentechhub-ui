@@ -54,11 +54,16 @@
     <td class="text-end">
       <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
         data-bs-target="#gth-roles-remove-{{ loop.index }}">Remove</button>
-      {{ gth_confirm_delete("gth-roles-remove-" ~ loop.index, row_url, row.subject ~ "'s roles", hx_target="#gth-roles") }}
     </td>
   </tr>
   {%- endfor %}
   {% endcall %}
+  {#- The remove modals sit after the table, not in their row's text-end cell,
+      whose alignment they would inherit. #}
+  {%- for row in roles_assignments %}
+  {%- set row_url = url ~ "/" ~ row.subject|urlencode|replace("/", "%2F") %}
+  {{ gth_confirm_delete("gth-roles-remove-" ~ loop.index, row_url, row.subject ~ "'s roles", hx_target="#gth-roles") }}
+  {%- endfor %}
   {%- else %}
   {{ gth_empty_state("No roles assigned here yet.") }}
   {%- endif %}
