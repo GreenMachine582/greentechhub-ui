@@ -2846,5 +2846,7 @@ def test_timeline_loads_older_entries(page, playground_url):
     expect(items).to_have_count(4)
     page.locator("#timeline .gth-pagination-more").click()
     expect(items).to_have_count(8)
+    # the next page replaces the centred wrapper rather than landing inside it
+    expect(page.locator("#timeline .gth-pagination .gth-timeline-page")).to_have_count(0)
     first_time = page.locator("#timeline time").first
     expect(first_time).to_have_attribute("datetime", re.compile(r"^\d{4}-\d\d-\d\d"))
