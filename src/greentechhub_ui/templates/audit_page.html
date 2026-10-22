@@ -1,8 +1,10 @@
 {#- audit_page.html — a ready-made audit log page: page.html's header, a filter
     row (user, action, on or before a date) as a plain GET form, the entries
-    newest first, and an "Older entries" link. greentechhub-fastapi's
-    AuditViews renders this by default; any framework can, with the same
-    context:
+    newest first, and an "Older entries" button that loads the next page's
+    rows into the table (htmx; hx-select picks them out of the full page, so
+    the server just renders the older page — a plain link without JS).
+    greentechhub-fastapi's AuditViews renders this by default; any framework
+    can, with the same context:
       audit_url        the page's own url, the filter form's action
       audit_filters    {"actor", "action", "on_or_before"} as submitted ("" when unset)
       audit_entries    [{"at" (a datetime), "actor" (None for the system), "action",
@@ -46,7 +48,8 @@
   </form>
 
   {%- if entries %}
-  {% call gth_table(["When", "User", "Action", "Target", "Summary"], table_class="table-sm gth-audit-table") %}
+  {% call gth_table(["When", "User", "Action", "Target", "Summary"], table_class="table-sm gth-audit-table",
+      tbody_id="gth-audit-rows") %}
   {%- for entry in entries %}
     <tr>
       <td class="text-nowrap">
@@ -59,15 +62,18 @@
       <td>{{ entry.summary|default("", true)|e }}</td>
     </tr>
   {%- endfor %}
+  {%- if audit_next_url|default(none) %}
+    <tr class="gth-audit-more">
+      <td colspan="5" class="text-center py-2">
+        <a class="btn btn-sm btn-outline-secondary gth-audit-older" href="{{ audit_next_url|e }}"
+          hx-get="{{ audit_next_url|e }}" hx-target="closest tr" hx-swap="outerHTML"
+          hx-select="#gth-audit-rows > tr">Older entries</a>
+      </td>
+    </tr>
+  {%- endif %}
   {% endcall %}
   {%- else %}
   {{ gth_empty_state("No entries match these filters." if filtered else "Nothing has been recorded yet.") }}
-  {%- endif %}
-
-  {%- if audit_next_url|default(none) %}
-  <nav class="text-center py-2" aria-label="Audit log pages">
-    <a class="btn btn-sm btn-outline-secondary gth-audit-older" href="{{ audit_next_url|e }}">Older entries</a>
-  </nav>
   {%- endif %}
 </section>
 {% endblock %}

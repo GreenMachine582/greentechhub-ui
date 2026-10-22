@@ -1477,7 +1477,7 @@ runs this flow over an in-memory stand-in for a
 
 `audit_page.html` renders an audit log from data, over greentechhub-core's `AuditStore`. greentechhub-fastapi's
 `AuditViews` renders it by default. It extends `page.html` (`page_title`, `page_subtitle`), then shows a filter row
-as a plain GET form, a table of entries newest first, and an "Older entries" link.
+as a plain GET form, a table of entries newest first, and an "Older entries" button.
 
 | Context | |
 |---|---|
@@ -1489,6 +1489,9 @@ as a plain GET form, a table of entries newest first, and an "Older entries" lin
 
 - `at` shows through the `datetime` filter inside a `<time datetime>`. A missing actor shows as "System".
 - Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
+- "Older entries" is the table's last row. It fetches `audit_next_url` with htmx and swaps itself for that page's
+  rows (`hx-select="#gth-audit-rows > tr"`), which end with their own "Older entries" row, so older entries pile up
+  under the first page. The server renders the older page in full as before. Without JS it's a plain link.
 
 The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
 
