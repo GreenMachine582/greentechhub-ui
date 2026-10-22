@@ -75,6 +75,14 @@ def test_a_token_row_shows_its_details_and_a_revoke_modal():
     assert "Delete the backup script token?" in html
 
 
+def test_revoke_modals_sit_outside_the_table():
+    # inside the row's text-end cell they'd inherit its right alignment
+    html = _render()
+    table = html.split("<table", 1)[1].split("</table>", 1)[0]
+    assert "gth-modal" not in table
+    assert 'id="gth-settings-api_tokens-revoke-1"' in html.split("</table>", 1)[1]
+
+
 def test_expired_never_and_unused_tokens():
     html = _render(tokens=[TOKEN | {"expired": True},
                            TOKEN | {"name": "forever", "expires_at": None, "last_used_at": None,

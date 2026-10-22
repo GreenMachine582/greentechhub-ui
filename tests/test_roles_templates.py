@@ -52,6 +52,16 @@ def test_subjects_are_urlencoded_including_slashes():
     assert 'hx-delete="/admin/roles/bob%2Fops"' in html
 
 
+def test_remove_modals_sit_outside_the_table():
+    # inside the row's text-end cell they'd inherit its right alignment
+    html = _section()
+    table = html.split("<table", 1)[1].split("</table>", 1)[0]
+    assert "gth-modal" not in table
+    after = html.split("</table>", 1)[1]
+    assert 'id="gth-roles-remove-1"' in after and 'id="gth-roles-remove-2"' in after
+    assert after.index('id="gth-roles-remove-1"') < after.index("</section>")
+
+
 def test_element_ids_are_unique_across_rows():
     ids = Counter(re.findall(r'\bid="([^"]+)"', _section()))
     assert [i for i, n in ids.items() if n > 1] == []
