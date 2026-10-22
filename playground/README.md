@@ -20,6 +20,21 @@ python playground/app.py
 
 Open **http://127.0.0.1:8500/**.
 
+## Container
+
+`playground/Dockerfile` builds the playground with greentechhub-ui installed as a wheel, the way a consumer gets
+it. From the repo root:
+
+```
+docker build -f playground/Dockerfile -t gth-playground .
+docker run --rm -p 8500:8500 gth-playground
+```
+
+`.github/workflows/playground-image.yml` publishes it for amd64 and arm64 as
+`ghcr.io/greenmachine582/greentechhub-ui-playground`: `dev` and `sha-<short>` on every push to `dev`, and `X.Y.Z`,
+`X.Y` and `latest` for each release tag. Pull requests only build it and smoke-test it. The homelab cluster runs it
+at `playground.home.green-tech-hub.com`.
+
 ## What to try
 
 The playground itself runs in `app.html`'s `layout="sidebar"`: one page per category (Layout, Data, Forms,
