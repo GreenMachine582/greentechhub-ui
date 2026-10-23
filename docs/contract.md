@@ -89,6 +89,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `table_view_js_url` | none (no script rendered) — the View menu of `gth-data-table(view_options=True)`: hidden columns and density (v0.11) |
 | `char_counter_js_url` | none — `gth_form_field(maxlength=...)`'s counter then shows the server-rendered starting count only (v0.11) |
 | `embed_card_js_url` | none — `gth_embed_card` frames then load `src` unthemed through `<noscript>`, with no loading or error state (v0.17) |
+| `copy_js_url` | none — `gth_copy_button` (and `gth_form_field(copy=True)`'s button) then render nothing (v0.20) |
 | `alert_banner_js_url` | none — `gth_alert_banner`s render without a close button, and `app.html` skips the pre-paint hide (v0.13) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
 | `loading_bar_js_url` | none — with it set, `app.html` renders `gth-loading-bar` and its script (v0.17); `loading_bar_delay` (default 300 ms) is how long a request runs before the bar shows |

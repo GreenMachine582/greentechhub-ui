@@ -1,5 +1,6 @@
 {% from "busy_button.html" import gth_busy_button %}
 {% from "modal.html" import gth_modal %}
+{% from "copy_button.html" import gth_copy_button with context %}
 
 {% macro gth_form(action, method="post", error=None, error_heading="Please fix the errors below", form_class="", form_attrs=None) %}
 <form method="{{ method }}" action="{{ action }}" class="gth-form {{ form_class }}" novalidate
@@ -16,17 +17,21 @@
 
 {% macro gth_form_field(name, label, value=None, type="text", step=None, min=None, max=None,
                          errors=None, help_text=None, field_class="mb-3", input_attrs=None,
-                         prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None) %}
+                         prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None, copy=False) %}
 {#- prefix / suffix: input-group add-ons ("$", "%", "AUD"), announced with the
     field (aria-describedby). maxlength: the native limit; counter (default: on
     when maxlength is set) shows "N / max", kept live by static/js/char-counter.js
     (char_counter_js_url). type="textarea": a <textarea rows=rows> instead of an
     <input> (step/min/max don't apply). id: the element-id prefix (default
-    "gth-field-<name>") — set it when two fields on one page share a name (v0.15). -#}
+    "gth-field-<name>") — set it when two fields on one page share a name (v0.15).
+    copy (v0.20): a gth_copy_button for the field's value at the end of its
+    input-group — e.g. a readonly key or URL. Like the button itself, it needs
+    copy_js_url; without it the field renders as a plain one. -#}
 {%- set is_textarea = type == "textarea" -%}
-{%- set affixed = prefix or suffix -%}
 {%- set show_counter = maxlength and counter is not false -%}
 {%- set field_id = id or "gth-field-" ~ name -%}
+{%- set copy_button = gth_copy_button(target="#" ~ field_id, size=None) if copy else "" -%}
+{%- set affixed = prefix or suffix or copy_button|trim -%}
 {%- set extra_ids = [] -%}
 {%- if prefix %}{% set _ = extra_ids.append(field_id ~ "-prefix") %}{% endif -%}
 {%- if suffix %}{% set _ = extra_ids.append(field_id ~ "-suffix") %}{% endif -%}
@@ -49,6 +54,7 @@
   {%- if is_textarea %}{{ (value if value is not none else '')|e }}</textarea>{% endif %}
   {%- if affixed %}
   {%- if suffix %}<span class="input-group-text" id="{{ field_id }}-suffix">{{ suffix }}</span>{% endif %}
+  {%- if copy_button|trim %}{{ copy_button }}{% endif %}
   </div>
   {%- endif %}
   {%- if show_counter %}

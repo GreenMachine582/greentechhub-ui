@@ -21,6 +21,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
+| `gth-copy-button` | Copy-to-clipboard button for a field's value, an element's text or a literal string, with a "Copied" tick and a Ctrl+C fallback; `gth_form_field(copy=True)` (v0.20) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14); an `id` prefix for two same-named fields on a page (v0.15) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
@@ -1101,7 +1102,7 @@ For a report or summary under a plain `gth_table`, where there's no `TableState`
 ```jinja
 {# form.html — the counter's behaviour in static/js/char-counter.js (char_counter_js_url) #}
 gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors=None, input_attrs=None,
-               prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None)
+               prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None, copy=False)
 {# prefix / suffix: Bootstrap input-group add-ons — "$", "%", "AUD", "kg". They're in the
    field's aria-describedby, so they're read with it; errors stay below the group.
    maxlength: the native limit. With it, counter defaults on: an "N / max" line under the
@@ -1110,12 +1111,25 @@ gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors
    type="textarea": a <textarea rows=rows> with the same label, ids, help, errors and
    counter; step/min/max don't apply.
    id (v0.15): the element-id prefix (default "gth-field-<name>") for the input, its label
-   and its help/error/prefix/suffix/counter ids. #}
+   and its help/error/prefix/suffix/counter ids.
+   copy (v0.20): a gth_copy_button for the field's value at the end of its input-group. #}
+
+{# copy_button.html (v0.20) — the behaviour in static/js/copy.js (copy_js_url) #}
+gth_copy_button(target=None, text=None, label="Copy", copied_label="Copied", icon="clipboard",
+                icon_only=False, button_class="btn-outline-secondary", size="sm")
+{# Copies the `target` element's text (a CSS selector: a field's value, otherwise its
+   textContent) or a literal `text`. On success the label shows `copied_label` with a
+   tick for 2 s, announced politely. Without the clipboard (an insecure origin, a denied
+   permission) it selects the target field's text and a warning toast says to press
+   Ctrl+C. Renders nothing without copy_js_url. icon_only hides the label visually (it
+   stays the accessible name); size=None inside an input-group. #}
 ```
 
 ```jinja
 {{ gth_form_field("budget", "Budget", value=budget, type="number", step="0.01", prefix="$", suffix="AUD") }}
 {{ gth_form_field("notes", "Notes", value=notes, type="textarea", maxlength=140, help_text="Optional.") }}
+{{ gth_form_field("webhook", "Webhook URL", value=webhook_url, input_attrs={"readonly": "readonly"}, copy=True) }}
+{{ gth_copy_button(text=invite_link, label="Copy invite link") }}
 ```
 
 A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must

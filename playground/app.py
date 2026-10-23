@@ -332,6 +332,7 @@ PLAYGROUND_NAV = [
     ]},
     {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
         {"label": "Form + validation", "url": "/forms#form"},
+        {"label": "Copy button", "url": "/forms#copy"},
         {"label": "Chips + switch", "url": "/forms#chips"},
         {"label": "Date range", "url": "/forms#date-range"},
         {"label": "File drop", "url": "/forms#file-drop"},

@@ -195,6 +195,31 @@ def _impersonate(page, playground_url, persona):
     expect(page.locator(f"[data-persona={persona}] .badge")).to_have_text("Current")
 
 
+def test_copy_button_copies_the_new_api_token(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/settings")
+    tokens = page.locator("#gth-settings-api_tokens")
+    tokens.locator("[name=name]").fill("e2e copy")
+    tokens.locator(".gth-api-tokens-add button[type=submit]").click()
+    field = tokens.locator("#gth-settings-api_tokens-new-token")
+    expect(field).to_be_visible()
+    button = tokens.locator(".gth-api-token-created .gth-copy-button")
+    button.click()
+    expect(button).to_contain_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == field.input_value()
+    expect(button).to_contain_text("Copy", timeout=5000)  # back after a moment
+    expect(button).not_to_contain_text("Copied")
+
+
+def test_copy_button_copies_literal_text(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.goto(f"{playground_url}/forms#copy")
+    page.locator("#copy .gth-copy-button", has_text="Copy invite code").click()
+    expect(page.locator("#gth-copy-status")).to_have_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == "gth-invite-7Q4M"
+
+
 def test_user_menu_and_permissioned_nav(page, playground_url):
     app_link = "#gth-sidebar a[href='/settings#gth-settings-app']"
     page.goto(f"{playground_url}/extensibility")
