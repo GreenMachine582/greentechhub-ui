@@ -428,6 +428,16 @@
   white-space: pre-wrap;
 }
 
+/* ── gth-field-group (v0.20) — a fieldset of form fields ─────────────────
+   Bootstrap's reboot already strips the fieldset's border, padding and margin
+   and floats the legend full-width; the legend's h6 class sets its size.
+   Consecutive groups get a divider. */
+.gth-field-group + .gth-field-group {
+  border-top: 1px solid var(--bs-border-color);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
 /* gth-theme-toggle — icon shown reflects which mode clicking switches TO
    (sun visible in dark mode invites switching to light, and vice versa).
    Pure CSS, driven entirely by the data-bs-theme attribute the toggle's JS
