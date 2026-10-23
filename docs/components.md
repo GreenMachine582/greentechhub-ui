@@ -1258,6 +1258,9 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 - With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
+- The section is a card (`gth_card`'s classes): the title and description in the header, the fields in the body,
+  and, with `action`, the submit button right-aligned in the footer. The form wraps the body and the footer.
+  `api_tokens_section.html` uses the same shell.
 
 **Profile and password sections.** greentechhub-fastapi's `SettingsViews` adds a Profile section (display name and
 email, with its profile hooks) and a Password section (with `change_password`). They need no templates of their own:

@@ -1,10 +1,13 @@
 
-<section class="gth-settings-section mb-4" id="gth-settings-preferences" aria-labelledby="gth-settings-preferences-title">
-  <h2 class="h5 mb-1" id="gth-settings-preferences-title">Preferences</h2>
-  <p class="text-secondary small mb-3">Only you see these.</p>
+<section class="card gth-card gth-settings-section mb-4" id="gth-settings-preferences" aria-labelledby="gth-settings-preferences-title">
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="gth-settings-preferences-title">Preferences</h2>
+    <p class="text-secondary small mb-0 mt-1">Only you see these.</p>
+  </div>
   <form method="post" action="/settings/preferences" class="gth-form" novalidate hx-post="/settings/preferences" hx-target="#gth-settings-preferences" hx-swap="outerHTML">
-  <h3 class="h6 text-secondary mt-3 mb-2">Appearance</h3>
-  
+  <div class="card-body gth-card-body">
+    <h3 class="h6 text-secondary mb-2">Appearance</h3>
+    
 
 
 <div class="mb-3 gth-form-field gth-segmented">
@@ -26,9 +29,9 @@
   </div>
 </div>
 
-  <h3 class="h6 text-secondary mt-3 mb-2">Tables</h3>
-  
-<div class="mb-3 gth-form-field">
+    <h3 class="h6 text-secondary mt-3 mb-2">Tables</h3>
+    
+<div class="mb-0 gth-form-field">
   <label class="form-label" for="gth-field-ui.page_size">Rows per page</label>
   <input type="number" id="gth-field-ui.page_size" name="ui.page_size"
     class="form-control"
@@ -43,6 +46,9 @@
   
 </div>
 
-  <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+  <div class="card-footer gth-card-footer gth-settings-section-footer d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
   </form>
 </section>
