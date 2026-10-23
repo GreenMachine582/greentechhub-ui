@@ -15,8 +15,8 @@
       errors?           {field: [messages]}
     The same card shell as gth_settings_section (header, then a body holding
     the rest). hx-target/hx-swap sit on the section, so the form and each revoke modal's
-    hx-delete inherit them. No inline script: the new token sits in a
-    readonly field to copy. -#}
+    hx-delete inherit them. The new token sits in a readonly field with a
+    gth_copy_button (static/js/copy.js, copy_js_url; no inline script). -#}
 {% from "form.html" import gth_form_field %}
 {% from "chips.html" import gth_chips %}
 {% from "select.html" import gth_select %}
@@ -24,6 +24,7 @@
 {% from "badge.html" import gth_badge %}
 {% from "confirm_delete.html" import gth_confirm_delete %}
 {% from "empty_state.html" import gth_empty_state %}
+{% from "copy_button.html" import gth_copy_button with context %}
 {%- set sid = "gth-settings-" ~ section.id|default("api_tokens") %}
 {%- set errors = section.errors|default(none) or {} %}
 {%- set form = section["values"] if section["values"] is mapping else {} %}
@@ -51,8 +52,11 @@
   <div class="alert alert-success gth-api-token-created" role="status">
     <p class="mb-2"><strong>Copy your new token now.</strong> You won't see it again.</p>
     <label class="form-label small" for="{{ sid }}-new-token">{{ created.name }}</label>
-    <input type="text" class="form-control font-monospace" id="{{ sid }}-new-token" value="{{ created.token }}"
-      readonly autocomplete="off" spellcheck="false">
+    <div class="input-group">
+      <input type="text" class="form-control font-monospace" id="{{ sid }}-new-token" value="{{ created.token }}"
+        readonly autocomplete="off" spellcheck="false">
+      {{- gth_copy_button(target="#" ~ sid ~ "-new-token", size=None) }}
+    </div>
     <p class="small mb-0 mt-2">Send it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
   </div>
   {%- endif %}

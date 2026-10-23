@@ -5,6 +5,7 @@
 
 
 
+
 <section class="card gth-card gth-settings-section gth-api-tokens mb-4" id="gth-settings-api_tokens" aria-labelledby="gth-settings-api_tokens-title"
   hx-target="#gth-settings-api_tokens" hx-swap="outerHTML">
   <div class="card-header gth-card-header gth-settings-section-header">
@@ -15,8 +16,15 @@
   <div class="alert alert-success gth-api-token-created" role="status">
     <p class="mb-2"><strong>Copy your new token now.</strong> You won't see it again.</p>
     <label class="form-label small" for="gth-settings-api_tokens-new-token">backup script</label>
-    <input type="text" class="form-control font-monospace" id="gth-settings-api_tokens-new-token" value="s3cr3t-token-value"
-      readonly autocomplete="off" spellcheck="false">
+    <div class="input-group">
+      <input type="text" class="form-control font-monospace" id="gth-settings-api_tokens-new-token" value="s3cr3t-token-value"
+        readonly autocomplete="off" spellcheck="false">
+<button type="button" class="btn btn-outline-secondary gth-copy-button" data-gth-copy data-gth-copy-target="#gth-settings-api_tokens-new-token"
+  data-gth-copied-label="Copied">
+  <i class="bi bi-clipboard" aria-hidden="true"></i>
+  <span class="gth-copy-label">Copy</span>
+</button>
+    </div>
     <p class="small mb-0 mt-2">Send it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
   </div>
   <form method="post" action="/settings/api-tokens" hx-post="/settings/api-tokens"

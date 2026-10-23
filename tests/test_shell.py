@@ -26,6 +26,7 @@ def test_every_asset_points_at_the_vendored_copies():
     assert g["htmx_setup_js_url"] == "/gth-assets/js/htmx-setup.js"
     assert g["loading_bar_js_url"] == "/gth-assets/js/loading-bar.js"
     assert g["embed_card_js_url"] == "/gth-assets/js/embed-card.js"
+    assert g["copy_js_url"] == "/gth-assets/js/copy.js"
 
 
 def test_every_asset_url_exists_in_the_package():
