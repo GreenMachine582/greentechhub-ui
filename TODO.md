@@ -42,6 +42,11 @@ component work.
     `filter_params` allow-list). The table re-request keeps it in the URL, so a filtered view is shareable.
   - A collapsible panel under `gth_table_filter`, summarised as chips when collapsed ("Stock < 50 · Category in
     Sensor, Motor"). Later: saved filters per user (core settings).
+- [ ] `TableState` cursor paging — keyset "load more" for append-only logs (the audit log), beside page/offset
+  - e.g. `TableState.from_query(..., cursor_param="before")` and `with_result(next_cursor=...)`: `next_url` carries the
+    cursor and `partial=rows`; `offset` and `page_links` don't apply (load_more and infinite modes only).
+  - Then greentechhub-fastapi's `AuditViews` builds the state and answers `partial=rows`, and `audit_page.html` moves
+    onto `gth_data_table`, dropping its `gth_table_load_more(select=...)` row. Release order: ui, then fastapi.
 
 ### Settings & layout
 The playground `/settings` page is stacked bare forms: each section is a `<section>` with a hand-written `h2.h5`,
