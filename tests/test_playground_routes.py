@@ -84,8 +84,9 @@ def test_every_demo_section_is_in_the_sidebar():
     linked = {entry["url"] for entry in flatten(PLAYGROUND_NAV)}
     pages = Path(playground_app.__file__).parent / "templates" / "pages"
     for category in PLAYGROUND_NAV:
-        if not category.get("children"):
-            continue  # a single-page entry (Extensibility, Personas) links the page itself
+        if not category.get("children") or not category.get("url"):
+            # A single-page entry (Extensibility, Personas), or a group of other pages (Admin).
+            continue
         page = pages / (category["url"].lstrip("/") + ".html")
         if not page.exists():
             continue  # e.g. /settings renders a shipped template
@@ -481,6 +482,40 @@ def test_settings_page_renders_each_widget():
     for marker in ('id="gth-settings-preferences"', 'id="gth-settings-app"', "gth-segmented",
                    "gth-select", 'type="number"', 'role="switch"'):
         assert marker in page.text, marker
+
+
+def test_settings_page_shows_the_layout_features():
+    page = _run(_as("admin", "GET", "/settings")).text
+    nav = page.split('class="gth-settings-nav"', 1)[1].split("</nav>", 1)[0]
+    assert re.findall(r'href="#gth-settings-(\w+)">([^<]+)<', nav) == [
+        ("profile", "Profile"), ("preferences", "Preferences"), ("password", "Password"),
+        ("api_tokens", "API tokens"), ("app", "App"), ("data", "Your data")]
+
+    def section(sid):
+        return re.search(rf'<section class="([^"]+)" id="gth-settings-{sid}"', page).group(1)
+
+    assert "gth-settings-rows" in section("preferences")
+    assert "gth-settings-rows" not in section("password")  # layout="stacked"
+    data = page.split('id="gth-settings-data"', 1)[1].split("</section>", 1)[0]
+    assert data.count(" gth-form-field gth-setting-row\"") == 2
+    assert 'href="/settings-demo/export" download' in data
+    assert 'for="gth-settings-data-export">Export settings</label>' in data
+
+
+def test_settings_export_downloads_the_saved_settings_as_json():
+    response = _run(_get("/settings-demo/export"))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == 'attachment; filename="settings.json"'
+    assert isinstance(response.json(), dict)
+
+
+def test_forms_page_shows_a_described_field_group():
+    page = _run(_get("/forms")).text
+    group = page.split('id="field-group"', 1)[1].split("</section>", 1)[0]
+    assert ('<fieldset class="gth-field-group" id="field-group-delivery"'
+            ' aria-describedby="field-group-delivery-description">') in group
+    assert ">Delivery</legend>" in group and ">Format</legend>" in group
 
 
 def test_settings_demo_saves_and_toasts():
@@ -923,7 +958,7 @@ def test_profile_and_password_sections_as_settings_views_sends_them():
                                      cookies={"playground-user": "viewer"}) as client:
             page = (await client.get("/settings")).text
             assert re.findall(r'id="gth-settings-(\w+)"', page) == [
-                "profile", "preferences", "password", "api_tokens"]
+                "profile", "preferences", "password", "api_tokens", "data"]
             saved = await client.post("/settings-demo/profile",
                                       data={"display_name": " Vera Viewer ", "email": ""})
             assert saved.status_code == 200 and "Profile saved" in saved.headers["HX-Trigger"]
@@ -981,3 +1016,18 @@ def test_settings_api_tokens_demo_returns_422():
         assert response.status_code == 422, data
     assert "gth-api-tokens-no-scopes" in response.text  # the viewer holds no permissions
     assert playground_app.API_TOKENS == {}
+
+
+def test_the_admin_group_shows_only_for_the_admin_persona():
+    from playground.app import PLAYGROUND_NAV
+
+    [group] = [c for c in PLAYGROUND_NAV if c["label"] == "Admin"]
+    assert "url" not in group
+    assert [(c["url"], c["required_permission"]) for c in group["children"]] == [
+        ("/roles", "settings.manage"), ("/audit", "settings.manage")]
+    admin = _run(_as("admin", "GET", "/"))
+    viewer = _run(_as("viewer", "GET", "/"))
+    for page in (admin, viewer):
+        assert page.status_code == 200
+    assert 'href="/roles"' in admin.text and 'href="/audit"' in admin.text
+    assert 'href="/roles"' not in viewer.text and 'href="/audit"' not in viewer.text

@@ -20,8 +20,9 @@ exactly as before — and so do the plain functions, e.g. for CSV.
 """
 
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from jinja2 import pass_context
@@ -230,5 +231,92 @@ def fiscal_year_label(fy, start_month: int = 7) -> str:
     return f"{year}–{(year + 1) % 100:02d}"
 
 
+def pluralise(
+    count: Any, singular: str, plural: str | None = None, *, show_count: bool = True
+) -> str:
+    """`count` with the right form of a noun: 1 → "1 transaction", 3 →
+    "3 transactions", 1234 → "1,234 transactions". `plural` for an irregular
+    one ("entry", "entries"); `show_count=False` for the noun alone, when the
+    number is shown elsewhere. A count of exactly ±1 is singular, everything
+    else (0 too) plural. Empty in, empty out: None or "" gives "", and a
+    count that isn't a whole number is shown as-is with the plural.
+
+        {{ created|pluralise("transaction") }}       {# "3 transactions" #}
+        pluralise(n, "entry", "entries", show_count=False)
+    """
+    if count is None or count == "":
+        return ""
+    plural = plural if plural is not None else f"{singular}s"
+    try:
+        whole = int(Decimal(str(count)))
+        exact = Decimal(str(count)) == whole
+    except (InvalidOperation, ValueError, OverflowError):
+        whole, exact = 0, False
+    noun = singular if exact and abs(whole) == 1 else plural
+    if not show_count:
+        return noun
+    shown = f"{whole:,}" if exact else str(count)
+    return f"{shown} {noun}"
+
+
+def relative_time(value, now: datetime | None = None, *, date_format: str | None = None,
+                  tz: str | None = None) -> str:
+    """How long ago (or until) `value` is, from `now` (default: the current
+    time): "just now", "5 minutes ago", "3 hours ago", "yesterday", "4 days
+    ago", or "in 5 minutes" / "tomorrow" for a future time. A week or more
+    away it's the date itself, through format_date (date_format, tz).
+
+    A naive datetime counts as UTC. A plain date is compared by day: "today",
+    "yesterday", "3 days ago". Empty in, empty out; something that isn't a
+    date comes back as it is.
+    """
+    if value is None or value == "":
+        return ""
+    d = _parse(value)
+    if d is None:
+        return value if isinstance(value, str) else str(value)
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    if not isinstance(d, datetime):
+        days = (_in_zone(now, tz).date() - d).days
+        if days == 0:
+            return "today"
+        if abs(days) == 1:
+            return "yesterday" if days > 0 else "tomorrow"
+        if abs(days) < 7:
+            n = pluralise(abs(days), "day")
+            return f"{n} ago" if days > 0 else f"in {n}"
+        return format_date(d, date_format=date_format, tz=tz)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    seconds = (now - d).total_seconds()
+    ago = seconds >= 0
+    seconds = abs(seconds)
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        n = pluralise(int(seconds // 60), "minute")
+    elif seconds < 86400:
+        n = pluralise(int(seconds // 3600), "hour")
+    elif seconds < 2 * 86400:
+        return "yesterday" if ago else "tomorrow"
+    elif seconds < 7 * 86400:
+        n = pluralise(int(seconds // 86400), "day")
+    else:
+        return format_date(d, date_format=date_format, tz=tz)
+    return f"{n} ago" if ago else f"in {n}"
+
+
+@pass_context
+def relative_time_filter(context, value, now: datetime | None = None) -> str:
+    """{{ value|relative_time }}: relative_time, with a date a week or more
+    away in the viewer's locale.date_format / locale.timezone."""
+    prefs = _preferences(context)
+    return relative_time(value, now, date_format=prefs.get("locale.date_format"),
+                         tz=prefs.get("locale.timezone"))
+
+
 FILTERS = {"money": money_filter, "number": number_filter, "date": date_filter,
-           "datetime": datetime_filter, "tone": tone, "fy": fiscal_year_label}
+           "datetime": datetime_filter, "tone": tone, "fy": fiscal_year_label,
+           "pluralise": pluralise, "relative_time": relative_time_filter}

@@ -21,8 +21,10 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-busy-button` | Button for long-running requests: disabled + spinner while in flight, optional "started" toast (v0.7); or a form's submit button (v0.14) |
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
+| `gth-copy-button` | Copy-to-clipboard button for a field's value, an element's text or a literal string, with a "Copied" tick and a Ctrl+C fallback; `gth_form_field(copy=True)` (v0.20) |
+| `gth-field-group` | A `<fieldset>` of form fields with its title as the `<legend>` and an optional description; a divider between consecutive groups (v0.20) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14); an `id` prefix for two same-named fields on a page (v0.15) |
-| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
+| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12); two-column rows, `gth_setting_row` (v0.20) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
@@ -113,8 +115,9 @@ gth_table_body(rows, empty_message="Nothing here yet.", colspan=1)  {# tbody row
 {# empty_state.html — optional {% call %} action-slot (e.g. a retry button) #}
 gth_empty_state(message, icon=None, empty_class="")
 
-{# pagination.html — matches an HTMX "load more" pattern: hx-target="this",
-   hx-swap="outerHTML" are fixed, not parameterized #}
+{# pagination.html — matches an HTMX "load more" pattern: hx-target="closest .gth-pagination",
+   hx-swap="outerHTML" are fixed, not parameterized. The response replaces the whole wrapper,
+   so the next page lands beside the earlier ones rather than inside the centred div #}
 gth_pagination(next_url, label="Load more", wrapper_class="text-center py-2")
 ```
 
@@ -239,7 +242,7 @@ gth_busy_button(label, busy_label, hx_attrs=None, icon=None, btn_class="btn-outl
 {# hx_attrs: dict of hx-* attributes. Disabled (hx-disabled-elt="this") with
    busy_label + spinner while the request runs; start_toast pops at once
    (toast.js, data-gth-start-toast). Busy styling keys on :disabled, not
-   .htmx-request — see theme.css for the htmx 1.9.10 bug (only the htmx=1 opt-out has it now).
+   .htmx-request — see theme.css for the htmx 1.9.10 bug that forced it (htmx 2 fixed it).
    Still guard the action server-side: this only stops double-clicks in one tab.
    submit=True (v0.14): a form's submit button. The form sends the request, so
    the form disables the button — give it hx-disabled-elt="find button[type=submit]";
@@ -357,9 +360,12 @@ gth_table_filter(state, placeholder="Search…", search_param="q", label="Search
    {% call %} slot — e.g. gth_segmented, gth_chips — re-requests the table from
    page 1. Slot controls' names must be listed in filter_params. #}
 
-gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None)
+gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None, select=None)
 {# Low-level trailing row (gth_data_table uses it). infinite=True: fetches on
-   intersect, observed within the `root` selector's scroll box if given. #}
+   intersect, observed within the `root` selector's scroll box if given.
+   select: an hx-select when next_url returns a full page, not a rows partial
+   — it picks that page's rows (ending with their own trailing row), e.g.
+   "#my-tbody > tr". audit_page.html uses it. #}
 
 {# skeleton.html #}
 gth_skeleton(lines=3, skeleton_class="")     {# placeholder-glow lines, aria-hidden #}
@@ -926,8 +932,8 @@ gth_file_drop(name, label, accept=None, max_size=None, multiple=False, errors=No
 ```
 
 The enclosing form sends the upload, so give it `hx-encoding="multipart/form-data"` (or `enctype`). While
-that request runs, the progress bar follows `htmx:xhr:progress`. htmx 1.9 fires that event for the response
-download as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
+that request runs, the progress bar follows `htmx:xhr:progress`. htmx fires that event for the response download
+as well, so once the upload reaches 100% the bar switches to an indeterminate "Processing…" and
 stays there until `htmx:afterRequest`.
 
 **The server still has to check type and size**, because the client check is only a convenience. When
@@ -1097,7 +1103,7 @@ For a report or summary under a plain `gth_table`, where there's no `TableState`
 ```jinja
 {# form.html — the counter's behaviour in static/js/char-counter.js (char_counter_js_url) #}
 gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors=None, input_attrs=None,
-               prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None)
+               prefix=None, suffix=None, maxlength=None, counter=None, rows=3, id=None, copy=False)
 {# prefix / suffix: Bootstrap input-group add-ons — "$", "%", "AUD", "kg". They're in the
    field's aria-describedby, so they're read with it; errors stay below the group.
    maxlength: the native limit. With it, counter defaults on: an "N / max" line under the
@@ -1106,12 +1112,34 @@ gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors
    type="textarea": a <textarea rows=rows> with the same label, ids, help, errors and
    counter; step/min/max don't apply.
    id (v0.15): the element-id prefix (default "gth-field-<name>") for the input, its label
-   and its help/error/prefix/suffix/counter ids. #}
+   and its help/error/prefix/suffix/counter ids.
+   copy (v0.20): a gth_copy_button for the field's value at the end of its input-group. #}
+
+{# field_group.html (v0.20) — a {% call %} block #}
+gth_field_group(title=None, description=None, id=None, group_class="")
+{# A <fieldset class="gth-field-group"> with `title` as its <legend>, so screen readers
+   announce the group with each field. description: a hint under the legend, the
+   fieldset's aria-describedby when an `id` is given. Consecutive groups get a divider. #}
+
+{# copy_button.html (v0.20) — the behaviour in static/js/copy.js (copy_js_url) #}
+gth_copy_button(target=None, text=None, label="Copy", copied_label="Copied", icon="clipboard",
+                icon_only=False, button_class="btn-outline-secondary", size="sm")
+{# Copies the `target` element's text (a CSS selector: a field's value, otherwise its
+   textContent) or a literal `text`. On success the label shows `copied_label` with a
+   tick for 2 s, announced politely. Without the clipboard (an insecure origin, a denied
+   permission) it selects the target field's text and a warning toast says to press
+   Ctrl+C. Renders nothing without copy_js_url. icon_only hides the label visually (it
+   stays the accessible name); size=None inside an input-group. #}
 ```
 
 ```jinja
 {{ gth_form_field("budget", "Budget", value=budget, type="number", step="0.01", prefix="$", suffix="AUD") }}
 {{ gth_form_field("notes", "Notes", value=notes, type="textarea", maxlength=140, help_text="Optional.") }}
+{{ gth_form_field("webhook", "Webhook URL", value=webhook_url, input_attrs={"readonly": "readonly"}, copy=True) }}
+{{ gth_copy_button(text=invite_link, label="Copy invite link") }}
+{% call gth_field_group("Delivery", description="Where the report is sent.", id="report-delivery") %}
+  {{ gth_form_field("email", "Email", type="email", value=email) }}
+{% endcall %}
 ```
 
 A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must
@@ -1120,7 +1148,7 @@ so an emoji counts as 2, the same as `maxlength` does.
 
 ### Formatting filters
 
-`install()` registers six filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
+`install()` registers eight filters from `greentechhub_ui.formatting`. **It never replaces a filter of the same name
 that the app already registered**, so an app's own `money` wins.
 
 ```jinja
@@ -1130,6 +1158,9 @@ that the app already registered**, so an app's own `money` wins.
 {{ value|datetime(fmt=None) }}            {# → 5 Feb 2025 13:45 (v0.12); a plain date has no time #}
 {{ value|tone(places=None) }}             {# 12.5 → text-success · -3 → text-danger · 0 → "" (v0.16) #}
 {{ fy|fy(start_month=7) }}                {# 2024 → 2024–25 · 1999 → 1999–00 · start_month=1 → 2024 (v0.16) #}
+{{ n|pluralise("transaction") }}          {# 1 → 1 transaction · 3 → 3 transactions · 1234 → 1,234 transactions #}
+{{ n|pluralise("entry", "entries") }}     {# an irregular plural · show_count=False → the noun alone #}
+{{ at|relative_time }}                    {# just now · 5 minutes ago · yesterday · in 3 days · a week+ → the date (v0.20) #}
 ```
 
 ```jinja
@@ -1149,6 +1180,9 @@ gth_amount(value, kind="money", places=None, amount_class="")
 - **`tone` and `fy` (v0.16):** `tone` is the colour class for a gain or loss (`gth_amount` wraps it). `fy` is
   greentechhub-core's `dates.fiscal_year_label`, copied because this package doesn't import core at runtime; a test
   keeps the two in step.
+- **`pluralise`:** exactly ±1 is singular, everything else (0 too) plural, and the plural defaults to the noun plus
+  "s". It's also `greentechhub_ui.pluralise(n, "transaction")` for a toast built in route code.
+  `show_count=False` gives the noun alone, for when the number is shown elsewhere.
 - **`date`:** the default `5 Feb 2025` reads the same to AU and US readers. Use `fmt` for anything else. It
   avoids `%-d`, which Windows doesn't support.
 - **The viewer's preferences (v0.12):** with `user_settings` in the template context (greentechhub-fastapi's
@@ -1214,14 +1248,15 @@ value, so a checked switch reads as its own `value`.
 
 Rendering for [greentechhub-core's settings](https://github.com/GreenMachine582/greentechhub-core/blob/dev/docs/settings.md).
 The macros duck-type: a setting is anything with `key`, `type`, `label`, `default` and optionally `help_text`,
-`choices`, `min`, `max`, `group`, `secret`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
+`choices`, `min`, `max`, `group`, `secret`, and for a `str` field `input_type` and `readonly`. Core's `Setting` works as-is, and so does a plain dict. gth-ui doesn't import
 core. Field names are the setting keys (`ui.theme`), which is what core's `registry.coerce(key, raw)` takes back.
 
 ```jinja
 {# settings.html #}
 gth_setting_field(setting, value=None, errors=None, name=None, field_class="mb-3", segmented_max=4)
 gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
-                     error=None, submit_label="Save", form_attrs=None)
+                     error=None, submit_label="Save", form_attrs=None, layout="rows")
+gth_setting_row(label, help_text=None, for_id=None, row_class="mb-3")   {# a {% call %} block #}
 ```
 
 | `setting.type` | Widget |
@@ -1230,7 +1265,8 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 | `choice` with `segmented_max` (4) or fewer options | `gth_segmented` |
 | `choice` with more | `gth_select` |
 | `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
-| `str` | `gth_form_field` |
+| `str` | `gth_form_field`; `input_type` sets the `<input type>` (`"email"`), and `readonly` locks the field (a profile field an identity provider owns, which greentechhub-fastapi's `SettingsViews` marks for IdP sign-ins with "Managed by …" as its help) |
+| `str` with `copyable` (v0.20) | the same field with a `gth_copy_button` at the end of its input-group (`gth_form_field(copy=True)`), for a key, URL or ID; usually with `readonly`. Needs `copy_js_url`; ignored on a secret |
 | `str` with `secret` | `gth_form_field(type="password")`, always empty, `autocomplete="new-password"`; when a value is saved, "Saved. Leave blank to keep it." and a `<key>.__clear` checkbox |
 
 - `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a
@@ -1242,12 +1278,21 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
   - a blank field keeps the stored value;
   - `<key>.__clear=true` resets it (`reset_user`/`reset_app`);
   - anything else is the new value (`set_user`/`set_app`, which encrypt it).
-- `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
-  settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
+- `gth_settings_section` groups fields into a `gth_field_group` (a fieldset, the group as its legend) per
+  `setting.group`, in first-seen order, with ungrouped settings first, outside any group. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
   `error` is a banner.
+- `layout="rows"` (v0.20, the default) puts each setting's label and help on the left and its control on the right
+  once the card is at least 34rem wide (a container query, so a narrow column stacks too), and stacks below that.
+  It's CSS grid over each widget's own markup, so ids, aria and the submitted fields don't change.
+  `layout="stacked"` keeps every label above its control. `gth_setting_row` lays out a custom control (a button,
+  a read-only value) the same way: the label (`for_id` makes it a `<label for>`) and help on the left, the
+  `{% call %}` body on the right.
 - With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
+- The section is a card (`gth_card`'s classes): the title and description in the header, the fields in the body,
+  and, with `action`, the submit button right-aligned in the footer. The form wraps the body and the footer.
+  `api_tokens_section.html` uses the same shell.
 
 **Profile and password sections.** greentechhub-fastapi's `SettingsViews` adds a Profile section (display name and
 email, with its profile hooks) and a Password section (with `change_password`). They need no templates of their own:
@@ -1259,7 +1304,7 @@ markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 
 | Template | Context |
 |---|---|
-| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
+| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text; `settings_nav` (v0.20, default on): the section nav, shown with 2+ sections |
 | `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
 | `api_tokens_section.html` | `section`: the API tokens section (below), included by `settings_page.html` through the section's `template` |
 
@@ -1326,10 +1371,15 @@ are in the [contract](contract.md).
 level, then fill `{% block content %}` (`.gth-auth` centres it).
 
 A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
-optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no
+optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`, `layout`. With an `action` and no
 `form_attrs`, the form posts over htmx and swaps the section in place (`hx-post` = action, `hx-target` =
 `#gth-settings-<id>`, `hx-swap="outerHTML"`). Sections are stacked rather than tabbed, so a
 `/settings#gth-settings-<id>` link lands on its section and a 422 is never hidden in a closed tab.
+
+With two or more sections, `settings_page.html` lists them in a nav (v0.20): plain links to each section's anchor,
+named by its `title` (or its `id`, humanised), sticky beside the sections from 992px and a sideways-scrolling row of
+pills above them below that. No script, so the links keep working across a section's htmx swap. Pass
+`settings_nav=False` to hide it.
 
 ```python
 templates.TemplateResponse(request, "settings_page.html", {
@@ -1434,7 +1484,8 @@ The name (v0.15) is `user_display_name` when it's set (greentechhub-fastapi v0.1
 letters of the first and last words, so "Ada Lovelace" is AL and "admin" is A. It's on the brand accent and hidden
 from screen readers, which read the name itself. A user with no name at all shows "Account" with the person icon.
 
-The playground has no real sign-in: impersonate a persona (anonymous, viewer or admin) on `/personas` to see both.
+The playground has no real sign-in: impersonate a persona (anonymous, viewer, admin or authentik) on `/personas` to see both;
+the authentik persona's Settings › Profile shows read-only, IdP-managed fields.
 A permission-gated page sends you there with `?next=`, and the user menu's "Switch persona" leads back.
 
 ### Role assignments
@@ -1469,7 +1520,7 @@ runs this flow over an in-memory stand-in for a
 
 `audit_page.html` renders an audit log from data, over greentechhub-core's `AuditStore`. greentechhub-fastapi's
 `AuditViews` renders it by default. It extends `page.html` (`page_title`, `page_subtitle`), then shows a filter row
-as a plain GET form, a table of entries newest first, and an "Older entries" link.
+as a plain GET form, a table of entries newest first, and an "Older entries" button.
 
 | Context | |
 |---|---|
@@ -1481,8 +1532,41 @@ as a plain GET form, a table of entries newest first, and an "Older entries" lin
 
 - `at` shows through the `datetime` filter inside a `<time datetime>`. A missing actor shows as "System".
 - Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
+- "Older entries" is a `gth_table_load_more` row (`select="#gth-audit-rows > tr"`): it fetches `audit_next_url` and
+  swaps itself for that page's rows, which end with their own "Older entries" row, so older entries pile up under
+  the first page. The server renders the older page in full as before.
 
 The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
+
+### Timeline (v0.20)
+
+`gth_timeline` is an activity feed: newest first, grouped by day, with an icon and tone per kind of action. It takes
+the rows greentechhub-fastapi's `AuditViews` passes, or any list of the same shape.
+
+```jinja
+{% from "timeline.html" import gth_timeline, gth_timeline_page %}
+{{ gth_timeline(entries, next_url=next_url, kinds={"sync": ("arrow-repeat", "good")}, empty_message="No activity yet.") }}
+{# a "Load older" response: the next page alone, with its own button #}
+{{ gth_timeline_page(entries, next_url=next_url, kinds=kinds) }}
+```
+
+| Entry key | |
+|---|---|
+| `at` | a datetime; the day heading and the time follow the viewer's `locale.*` settings |
+| `actor` | who did it, or none for the system, shown as "System" |
+| `action` | the dotted action (`auth.signed_in`); its first word picks the icon and tone |
+| `target` | optional `"type:id"` text |
+| `summary` | the line to show; the action when it's empty |
+
+- `kinds` maps an action's first word to `(icon, tone)`, merged over the defaults: `auth` (sign-in icon, info),
+  `roles` (people, brand) and `settings` (sliders, neutral). Anything else gets a neutral dot. Tones are `gth_badge`'s.
+- Each time is `|relative_time` ("5 minutes ago") inside `<time datetime>`, with the full date and time as its title.
+  It's rendered on the server, with no script, so it's CSP-clean. It renders without `install()` too, showing the raw
+  values.
+- With `next_url`, a "Load older" button (`gth_pagination`) fetches the next page. Answer it with `gth_timeline_page`,
+  which brings its own button for the page after. `AuditViews` gives a full page at `audit_next_url`, so a service
+  serving a feed answers "Load older" from a route of its own. The playground's `/data#timeline` does this.
+- With no entries, `gth_empty_state(empty_message)`.
 
 ### Error pages (v0.17)
 
@@ -1501,43 +1585,26 @@ optional, so each renders with nothing but `install()`'s globals.
 Another status: `{% extends "error_page.html" %}` and set `error_code`, `error_title`, `error_message` (and
 `error_detail`) at the top, or override `{% block error_actions %}`.
 
-**FastAPI** — answer browser page requests with the pages, and leave API and htmx requests to the defaults (JSON,
-and htmx's own error handling; an htmx swap of a whole page into a fragment target is never wanted):
+**FastAPI** — greentechhub-fastapi's `register_error_pages` (v0.17) answers browser page requests with the pages,
+and leaves API and htmx requests to the defaults: JSON, and htmx's own error handling. An htmx swap of a whole page
+into a fragment target is never wanted.
 
 ```python
-from fastapi import Request
-from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import PlainTextResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from greentechhub_fastapi import register_error_pages
 
-ERROR_PAGES = {403: "403.html", 404: "404.html"}
-
-
-def wants_error_page(request: Request) -> bool:
-    return ("text/html" in request.headers.get("accept", "")
-            and "hx-request" not in request.headers
-            and not request.url.path.startswith("/api"))
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_error_page(request: Request, exc: StarletteHTTPException):
-    if exc.status_code in ERROR_PAGES and wants_error_page(request):
-        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
-                                          status_code=exc.status_code)
-    return await http_exception_handler(request, exc)
-
-
-@app.exception_handler(Exception)  # Starlette's ServerErrorMiddleware: still logged and re-raised
-async def server_error_page(request: Request, exc: Exception):
-    if not wants_error_page(request):
-        return PlainTextResponse("Internal Server Error", status_code=500)
-    return templates.TemplateResponse(request, "500.html",
-                                      {"error_reference": request.headers.get("x-request-id")},
-                                      status_code=500)
+register_exception_handlers(app)
+register_api_error_handlers(app)          # /api keeps the {code, message, details} envelope
+register_error_pages(app, settings, templates=templates, api_prefix="/api")
 ```
 
-Keep the 500 context small and failure-proof: it renders after something already went wrong. The playground wires
-exactly this (`/feedback#error-pages` links to each page).
+- **Which requests get a page:** one that accepts `text/html`, isn't htmx and isn't under `api_prefix`.
+- **403 and 404:** an `HTTPException` or a core `ApplicationError` with status 403 or 404 renders `403.html` /
+  `404.html`, with the error's own message as `error_message` when it has one, plus `home_url` and `login_url`.
+- **500:** any other exception renders `500.html` from a minimal, failure-proof context: `error_reference` (the
+  request id), `current_path`, `home_url` and `csp_nonce`. No context processors run, since they may need the
+  database that just failed. If even that fails, the response is a plain-text 500. The exception is still logged.
+
+The playground wires exactly this (`/feedback#error-pages` links to each page).
 
 **Django** — nothing to wire: `django.views.defaults` renders `404.html`, `403.html` and `500.html` (when
 `DEBUG = False`) through the configured template engine, so with gth-ui's template directories in the Jinja2

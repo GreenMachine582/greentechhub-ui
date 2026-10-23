@@ -1,4 +1,5 @@
 {% from "chips.html" import gth_switch %}
+{% from "field_group.html" import gth_field_group %}
 {% from "form.html" import gth_form_field %}
 {% from "segmented.html" import gth_segmented %}
 {% from "select.html" import gth_select %}
@@ -6,7 +7,9 @@
 {#- Rendering for greentechhub-core's settings (core docs/settings.md). Duck-typed:
     a setting is anything with key, type ("bool" | "int" | "str" | "choice"), label,
     default, and optionally help_text, choices ((value, label) pairs), min, max,
-    group, secret — core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
+    group, secret, and for a str field input_type (e.g. "email"), readonly and
+    copyable (v0.20) —
+    core's Setting as-is, or a plain dict/namespace in tests. gth-ui never
     imports core. Field names are the setting keys ("ui.theme"), which is what
     core's registry.coerce(key, raw) expects back. -#}
 
@@ -18,7 +21,11 @@
       choice, ≤ segmented_max opts  → gth_segmented
       choice, more                  → gth_select
       int                           → number gth_form_field with min/max, step 1
-      str                           → text gth_form_field
+      str                           → text gth_form_field (input_type sets the
+                                      <input type>; readonly locks it, e.g. a
+                                      profile field an identity provider owns;
+                                      copyable adds a gth_copy_button, given
+                                      copy_js_url — for a key, URL or ID)
       secret (a str setting)        → write-only password gth_form_field
     value: the current (effective) value; None falls back to setting.default.
     errors: this field's messages. name: defaults to setting.key.
@@ -64,47 +71,95 @@
 {{ gth_form_field(name, setting.label, value=value, type="number", step=1, min=setting.min, max=setting.max,
                   help_text=help, errors=errors, field_class=field_class) }}
 {%- else -%}
-{{ gth_form_field(name, setting.label, value=value, help_text=help, errors=errors, field_class=field_class) }}
+{%- set attrs = {"readonly": "readonly"} if setting.readonly else none -%}
+{#- `copyable is sameas true`: never a dict's .copy method or other truthy oddity. -#}
+{{ gth_form_field(name, setting.label, value=value, type=setting.input_type or "text", help_text=help,
+                  errors=errors, field_class=field_class, input_attrs=attrs,
+                  copy=setting.copyable is sameas true) }}
 {%- endif -%}
 {%- endif -%}
 {% endmacro %}
 
+{% macro _setting_fields(settings, group, values, errors, last_group) %}
+{#- One group's fields; the very last field of the section sits flush with the
+    card body's padding (mb-0). -#}
+{%- for s in settings if (s.group or "") == group %}
+{{ gth_setting_field(s, values.get(s.key), errors.get(s.key), field_class="mb-0" if loop.last and last_group else "mb-3") }}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro gth_setting_row(label, help_text=None, for_id=None, row_class="mb-3") %}
+{#- A custom control laid out like a setting (v0.20), as a {% call %} block:
+    the label (a <label for=for_id>, or a plain label text without for_id) and
+    help on the left, the caller's control on the right, in a "rows" settings
+    section; stacked elsewhere. -#}
+<div class="{{ row_class }} gth-form-field gth-setting-row">
+  {%- if for_id %}
+  <label class="form-label" for="{{ for_id|e }}">{{ label }}</label>
+  {%- else %}
+  <span class="form-label d-block">{{ label }}</span>
+  {%- endif %}
+  <div class="gth-setting-row-control">{{ caller() }}</div>
+  {%- if help_text %}
+  <div class="form-text">{{ help_text }}</div>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
 {% macro gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
-                              error=None, submit_label="Save", form_attrs=None) %}
-{#- A titled block of settings fields, grouped under subheadings by setting.group
-    (first-seen order; ungrouped settings come first, without a heading).
+                              error=None, submit_label="Save", form_attrs=None, layout="rows") %}
+{#- A titled block of settings fields, grouped by setting.group into a
+    gth_field_group (a fieldset with the group as its legend) each, in first-seen
+    order; ungrouped settings come first, outside any group.
     values: key → current value (e.g. core's Settings.effective()); a missing key
     falls back to the default. errors: key → [messages]. error: a banner message.
     action: when set, the fields sit in a <form method="post" action=action> with a
     submit button (form_attrs adds e.g. hx-post/hx-target/hx-swap); without it the
     caller supplies the form. The section's id is "gth-settings-<id>", the natural
-    hx-target for re-rendering it with a 422 response. -#}
+    hx-target for re-rendering it with a 422 response.
+    It renders as a card (gth_card's classes; the form has to wrap both the body
+    and the footer, so not gth_card itself): the title and description in the
+    header, the fields in the body, and with an action the submit button in the
+    footer.
+    layout (v0.20): "rows" (the default) puts each setting's label and help on
+    the left and its control on the right once the card is wide enough (a
+    container query in theme.css), stacking below that; "stacked" keeps every
+    label above its control. Same markup either way, so ids and aria don't
+    change. -#}
 {%- set values = values or {} -%}
 {%- set errors = errors or {} -%}
 {%- set ns = namespace(groups=[]) -%}
 {%- for s in settings %}{% if (s.group or "") not in ns.groups %}{% set ns.groups = ns.groups + [s.group or ""] %}{% endif %}{% endfor -%}
-<section class="gth-settings-section mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
-  <h2 class="h5 mb-1" id="gth-settings-{{ id }}-title">{{ title }}</h2>
-  {%- if description %}
-  <p class="text-secondary small mb-3">{{ description }}</p>
-  {%- endif %}
+<section class="card gth-card gth-settings-section{% if layout == 'rows' %} gth-settings-rows{% endif %} mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="gth-settings-{{ id }}-title">{{ title }}</h2>
+    {%- if description %}
+    <p class="text-secondary small mb-0 mt-1">{{ description }}</p>
+    {%- endif %}
+  </div>
   {%- if action %}
   <form method="post" action="{{ action }}" class="gth-form" novalidate
     {%- for k, v in (form_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
   {%- endif %}
-  {%- if error %}
-  <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
-  {%- endif %}
-  {%- for group in ns.groups %}
-  {%- if group %}
-  <h3 class="h6 text-secondary mt-3 mb-2">{{ group }}</h3>
-  {%- endif %}
-  {%- for s in settings if (s.group or "") == group %}
-  {{ gth_setting_field(s, values.get(s.key), errors.get(s.key)) }}
-  {%- endfor %}
-  {%- endfor %}
+  <div class="card-body gth-card-body">
+    {%- if error %}
+    <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
+    {%- endif %}
+    {%- for group in ns.groups %}
+    {%- set last_group = loop.last %}
+    {%- if group %}
+    {% call gth_field_group(group, id="gth-settings-" ~ id ~ "-group-" ~ loop.index) %}
+    {{- _setting_fields(settings, group, values, errors, last_group) }}
+    {% endcall %}
+    {%- else %}
+    {{ _setting_fields(settings, group, values, errors, last_group) }}
+    {%- endif %}
+    {%- endfor %}
+  </div>
   {%- if action %}
-  <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+  <div class="card-footer gth-card-footer gth-settings-section-footer d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+  </div>
   </form>
   {%- endif %}
 </section>

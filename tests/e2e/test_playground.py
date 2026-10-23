@@ -195,6 +195,41 @@ def _impersonate(page, playground_url, persona):
     expect(page.locator(f"[data-persona={persona}] .badge")).to_have_text("Current")
 
 
+def test_copy_button_copies_the_new_api_token(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/settings")
+    tokens = page.locator("#gth-settings-api_tokens")
+    tokens.locator("[name=name]").fill("e2e copy")
+    tokens.locator(".gth-api-tokens-add button[type=submit]").click()
+    field = tokens.locator("#gth-settings-api_tokens-new-token")
+    expect(field).to_be_visible()
+    button = tokens.locator(".gth-api-token-created .gth-copy-button")
+    button.click()
+    expect(button).to_contain_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == field.input_value()
+    expect(button).to_contain_text("Copy", timeout=5000)  # back after a moment
+    expect(button).not_to_contain_text("Copied")
+
+
+def test_copyable_setting_copies_the_user_id(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/settings")
+    profile = page.locator("#gth-settings-profile")
+    profile.locator(".gth-copy-button").click()
+    expect(profile.locator(".gth-copy-button")).to_contain_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == "admin"
+
+
+def test_copy_button_copies_literal_text(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.goto(f"{playground_url}/forms#copy")
+    page.locator("#copy .gth-copy-button", has_text="Copy invite code").click()
+    expect(page.locator("#gth-copy-status")).to_have_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == "gth-invite-7Q4M"
+
+
 def test_user_menu_and_permissioned_nav(page, playground_url):
     app_link = "#gth-sidebar a[href='/settings#gth-settings-app']"
     page.goto(f"{playground_url}/extensibility")
@@ -248,6 +283,7 @@ def test_gated_page_redirects_to_personas_and_back(page, playground_url):
 
 def test_roles_page_assign_change_remove(page, playground_url):
     _impersonate(page, playground_url, "admin")
+    page.click("#gth-sidebar [data-gth-sidebar-group='Admin']")  # Roles sits in the Admin group
     page.click("#gth-sidebar a[href='/roles']")
     expect(page).to_have_url(re.compile(r"/roles$"))
     roles = page.locator("#gth-roles")
@@ -276,6 +312,24 @@ def test_roles_page_assign_change_remove(page, playground_url):
     expect(roles.locator("tr", has_text=subject)).to_have_count(0)
     expect(page.locator(".modal-backdrop")).to_have_count(0)
     expect(page.locator("body")).not_to_have_class(re.compile("modal-open"))
+
+
+def test_audit_older_entries_append_to_the_table(page, playground_url):
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/audit")
+    entries = page.locator("#gth-audit-rows tr:not(.gth-table-load-more)")
+    expect(entries).to_have_count(5)
+    newest = entries.first.inner_text()
+    page.click("#gth-audit-rows .gth-pagination-more")
+    # the older page's rows land under the first five; no navigation
+    expect(entries.nth(5)).to_be_visible()
+    expect(entries.first).to_have_text(newest)
+    expect(page).to_have_url(re.compile(r"/audit$"))
+    # the clicked row swapped itself out: only the older page's own "Older entries" row may
+    # remain, and only as the last row
+    more = page.locator("#gth-audit-rows tr.gth-table-load-more")
+    expect(page.locator("#gth-audit-rows tr.gth-table-load-more:not(:last-child)")).to_have_count(0)
+    expect(more).to_have_count(1 if entries.count() >= 10 else 0)
 
 
 def test_density_and_motion_preferences(page, playground_url):
@@ -379,6 +433,60 @@ def test_choice_buttons_show_hover(page, playground_url):
     resting = background(chip)
     chip.hover()
     expect(chip).not_to_have_css("background-color", resting)
+
+
+def _box(page, selector):
+    return page.locator(selector).bounding_box()
+
+
+def test_settings_rows_put_labels_beside_controls_and_stack_when_narrow(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # the App section (a switch) needs settings.manage
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    label = _box(page, "label[for='gth-field-locale.timezone']")
+    select = _box(page, "[id='gth-field-locale.timezone']")
+    assert label["x"] + label["width"] <= select["x"]  # the label is left of the select
+    assert abs(label["y"] - select["y"]) < 12  # on the same row
+    help_text = _box(page, "[id='gth-field-locale.timezone-help']")
+    # the help sits under the label
+    assert help_text["x"] < select["x"] and help_text["y"] > label["y"]
+
+    toggle = _box(page, "[id='gth-field-site.maintenance']")
+    toggle_label = _box(page, "label[for='gth-field-site.maintenance']")
+    assert toggle_label["x"] + toggle_label["width"] <= toggle["x"]
+
+    # Password opts out with layout="stacked": its label stays above the field
+    pw_label = _box(page, "label[for='gth-field-new_password']")
+    pw_input = _box(page, "[id='gth-field-new_password']")
+    assert pw_label["y"] + pw_label["height"] <= pw_input["y"] + 1
+
+    page.set_viewport_size({"width": 375, "height": 800})
+    label = _box(page, "label[for='gth-field-locale.timezone']")
+    select = _box(page, "[id='gth-field-locale.timezone']")
+    assert label["y"] + label["height"] <= select["y"] + 1  # stacked: the label above
+    assert abs(label["x"] - select["x"]) < 2
+
+
+def test_settings_nav_jumps_to_sections_and_stays_in_view(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # six sections, App then Your data
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    nav = page.locator(".gth-settings-nav")
+    expect(nav.locator(".nav-link")).to_have_text(
+        ["Profile", "Preferences", "Password", "API tokens", "App", "Your data"])
+    first = _box(page, "#gth-settings-profile")
+    nav_box = nav.bounding_box()
+    assert nav_box["x"] + nav_box["width"] <= first["x"]  # beside the sections
+
+    nav.get_by_role("link", name="App").click()
+    expect(page).to_have_url(re.compile(r"/settings#gth-settings-app$"))
+    expect(page.locator("#gth-settings-app")).to_be_in_viewport()
+    expect(nav).to_be_in_viewport()  # sticky, so still there after the jump
+
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    nav_box = page.locator(".gth-settings-nav").bounding_box()
+    assert nav_box["y"] + nav_box["height"] <= _box(page, "#gth-settings-profile")["y"]  # above
 
 
 def test_segmented_track_style(page, playground_url):
@@ -2756,11 +2864,10 @@ def test_embed_card_placeholder(page, playground_url):
 
 # ── htmx 2 migration (docs/htmx2.md) ───────────────────────────────────────
 
-def test_busy_button_request_class_on_each_htmx(page, playground_url):
-    """htmx 1.9.10 shares one requestCount between the request-indicator
-    class and hx-disabled-elt, so .htmx-request sticks on an element that is
-    both (why gth-busy-button keys on :disabled); htmx 2 clears it. Run on
-    both by CI (PLAYGROUND_HTMX=1 in the e2e-htmx1 job)."""
+def test_busy_button_request_class_clears(page, playground_url):
+    """htmx 1.9.10 shared one requestCount between the request-indicator
+    class and hx-disabled-elt, so .htmx-request stuck on an element that is
+    both (why gth-busy-button keys on :disabled); htmx 2 clears it."""
     page.goto(f"{playground_url}/forms")
     button = page.locator("#busy-button .gth-busy-button[type=button]")
     button.click()
@@ -2768,7 +2875,7 @@ def test_busy_button_request_class_on_each_htmx(page, playground_url):
     expect(button).to_be_enabled(timeout=5000)
     page.wait_for_timeout(100)
     sticks = "htmx-request" in (button.get_attribute("class") or "")
-    assert sticks is page.evaluate("htmx.version").startswith("1.")
+    assert page.evaluate("htmx.version").startswith("2.") and not sticks
     
 # ── CSP-ready shell (v0.17) ────────────────────────────────────────────────
 
@@ -2836,3 +2943,17 @@ def test_loading_bar_waits_for_every_request(page, playground_url):
     expect(page.locator("#loading-bar-result")).to_have_text("Answered after 600 ms.")
     expect(bar).to_have_class("gth-loading-bar is-active")  # the 1.8 s one is still running
     expect(bar).not_to_have_class("gth-loading-bar is-active", timeout=3000)
+
+
+# ── gth-timeline (v0.20) ───────────────────────────────────────────────────
+
+def test_timeline_loads_older_entries(page, playground_url):
+    page.goto(f"{playground_url}/data#timeline")
+    items = page.locator("#timeline .gth-timeline-item")
+    expect(items).to_have_count(4)
+    page.locator("#timeline .gth-pagination-more").click()
+    expect(items).to_have_count(8)
+    # the next page replaces the centred wrapper rather than landing inside it
+    expect(page.locator("#timeline .gth-pagination .gth-timeline-page")).to_have_count(0)
+    first_time = page.locator("#timeline time").first
+    expect(first_time).to_have_attribute("datetime", re.compile(r"^\d{4}-\d\d-\d\d"))

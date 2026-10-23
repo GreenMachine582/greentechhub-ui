@@ -18,14 +18,13 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import quote, unquote, urlencode
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
-    PlainTextResponse,
     RedirectResponse,
     Response,
 )
@@ -39,7 +38,8 @@ from greentechhub_core.settings.builtins import (
     SITE_BANNER_TONE_KEY,
     site_banner_settings,
 )
-from greentechhub_fastapi import register_email
+from greentechhub_fastapi import register_csp, register_email, register_error_pages
+from greentechhub_fastapi.admin import admin_nav_item
 from greentechhub_fastapi.auth import EmailVerificationViews, PasswordResetViews
 from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.email import email_looks_valid
@@ -47,11 +47,11 @@ from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
 from markupsafe import Markup
 from starlette.datastructures import UploadFile
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import greentechhub_ui
 from greentechhub_ui.formatting import fiscal_year_label
 from greentechhub_ui.htmx import trigger, wants_fragment
+from greentechhub_ui.navigation import filter_by_scope
 
 _here = Path(__file__).parent
 
@@ -167,12 +167,6 @@ THEME_COOKIE = "playground-theme"
 THEME_MODES = ("light", "dark", "system")
 
 
-def csp_context(request: Request) -> dict:
-    """csp_nonce for app.html (and the playground's own inline script): the
-    per-request nonce content_security_policy put in the CSP header."""
-    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
-
-
 def theme_context(request: Request) -> dict:
     """What a service's settings wiring supplies (greentechhub-fastapi's
     register_settings, later): the signed-in user's saved ui.theme as theme_mode,
@@ -199,6 +193,10 @@ PERSONAS = {
               "granted": frozenset({"settings.manage"}), "icon": "person-gear",
               "description": "Holds settings.manage: Settings \u203a App and the Roles page "
                              "appear in the sidebar."},
+    "authentik": {"user": {"username": "sso-sam", "email": "sam@example.com"},
+                  "granted": frozenset(), "icon": "shield-lock",
+                  "description": "Signed in through Authentik: the Profile's name and email are "
+                                 "Authentik's, shown read-only."},
 }
 
 
@@ -302,7 +300,7 @@ def site_banners_context(request: Request) -> dict:
 
 
 templates = Jinja2Templates(directory=_here / "templates",
-                            context_processors=[ui_context, csp_context, theme_context,
+                            context_processors=[ui_context, theme_context,
                                                 user_context, settings_values_context,
                                                 site_banners_context])
 # The playground dogfoods layout="sidebar": one page per category, each
@@ -327,12 +325,15 @@ PLAYGROUND_NAV = [
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
+        {"label": "Timeline", "url": "/data#timeline"},
         {"label": "Filter bar + report", "url": "/data#report"},
         {"label": "Data tables", "url": "/tables", "icon": "grid-3x3"},
         {"label": "Tree", "url": "/tree", "icon": "diagram-3"},
     ]},
     {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
         {"label": "Form + validation", "url": "/forms#form"},
+        {"label": "Copy button", "url": "/forms#copy"},
+        {"label": "Field group", "url": "/forms#field-group"},
         {"label": "Chips + switch", "url": "/forms#chips"},
         {"label": "Date range", "url": "/forms#date-range"},
         {"label": "File drop", "url": "/forms#file-drop"},
@@ -370,11 +371,16 @@ PLAYGROUND_NAV = [
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
     {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
-    # Only the demo admin (sign in on /extensibility) sees this.
-    {"label": "Roles", "url": "/roles", "icon": "people",
-     "required_permission": "settings.manage"},
-    {"label": "Audit log", "url": "/audit", "icon": "journal-text",
-     "required_permission": "settings.manage"},
+    # greentechhub-fastapi's "Admin" group (admin_nav_item, what register_admin
+    # returns): one entry per admin page with its permission, so only the demo
+    # admin (sign in on /extensibility) sees it, and nobody sees an empty group.
+    # The playground's pages are its own demo routes, so plain objects stand in
+    # for fastapi's RoleAdminViews / AuditViews (admin_nav_item reads only these).
+    admin_nav_item([
+        SimpleNamespace(url="/roles", title="Roles", icon="people", permission=MANAGE_PERMISSION),
+        SimpleNamespace(url="/audit", title="Audit log", icon="journal-text",
+                        permission=MANAGE_PERMISSION),
+    ]),
 ]
 
 # Title and subtitle per category page.
@@ -392,8 +398,8 @@ PAGES = {
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
     "personas": ("Personas", "Impersonate a persona to see the playground as they would: the user "
                              "menu, permission-filtered nav and gated pages."),
-    "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
-                 "own widget."),
+    "settings": ("Settings", "settings_page.html: a section nav, then gth_settings_section cards "
+                 "with fieldset groups and two-column rows."),
     "outbox": ("Outbox", "The emails the password reset and email verification demos sent."),
 }
 
@@ -402,9 +408,6 @@ greentechhub_ui.install(
     service_name="Playground",
     show_logo=True,
     layout="sidebar",
-    # htmx 2 by default; PLAYGROUND_HTMX=1 runs the whole playground (and so
-    # the e2e suite) on the htmx=1 opt-out — docs/htmx2.md, CI's e2e-htmx1 job.
-    htmx=int(os.environ.get("PLAYGROUND_HTMX", "2")),
     nav_items=greentechhub_ui.navigation.build_nav_items(
         custom_items=PLAYGROUND_NAV,
         # Demonstrates the built-in + consumer-registered merge docs/components.md
@@ -421,49 +424,16 @@ app = FastAPI(title="greentechhub-ui playground", docs_url=None, redoc_url=None)
 mount_static_dirs(app, greentechhub_ui.static_dirs())
 
 # The recommended Content-Security-Policy (docs/contract.md ›
-# Content-Security-Policy) on every response, with a fresh nonce per request
-# that csp_context hands app.html as csp_nonce — so the e2e suite (no console
-# errors, every page) proves the shell and every component run under it.
-CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; "
-       "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'")
+# Content-Security-Policy) on every response through greentechhub-fastapi's
+# register_csp, with a fresh nonce per request that ui_context hands app.html
+# as csp_nonce — so the e2e suite (no console errors, every page) proves the
+# shell and every component run under it.
+register_csp(app)
 
-
-@app.middleware("http")
-async def content_security_policy(request: Request, call_next):
-    request.state.csp_nonce = secrets.token_urlsafe(16)
-    response = await call_next(request)
-    response.headers.setdefault("Content-Security-Policy",
-                                CSP.format(nonce=request.state.csp_nonce))
-    return response
-  
-# Error pages (docs/components.md › Error pages): 403.html / 404.html /
-# 500.html for a browser's page request; JSON and htmx requests keep the
-# defaults.
-ERROR_PAGES = {403: "403.html", 404: "404.html"}
-
-
-def wants_error_page(request: Request) -> bool:
-    return ("text/html" in request.headers.get("accept", "")
-            and "hx-request" not in request.headers
-            and not request.url.path.startswith("/api"))
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_error_page(request: Request, exc: StarletteHTTPException):
-    if exc.status_code in ERROR_PAGES and wants_error_page(request):
-        return templates.TemplateResponse(request, ERROR_PAGES[exc.status_code], {},
-                                          status_code=exc.status_code)
-    return await http_exception_handler(request, exc)
-
-
-@app.exception_handler(Exception)
-async def server_error_page(request: Request, exc: Exception):
-    if not wants_error_page(request):
-        return PlainTextResponse("Internal Server Error", status_code=500)
-    return templates.TemplateResponse(request, "500.html",
-                                      {"error_reference": request.headers.get("x-request-id")},
-                                      status_code=500)
+# Error pages (docs/components.md › Error pages): greentechhub-fastapi's
+# register_error_pages answers a browser's page request with 403.html /
+# 404.html / 500.html; JSON and htmx requests keep the defaults.
+register_error_pages(app, templates=templates, api_prefix="/api")
 
 
 @app.get("/demo/error-page/{code}")
@@ -640,21 +610,38 @@ def _visible_sections(request: Request) -> list[str]:
 # templates of their own: plain str fields and write-only secret fields
 # through settings_section.html. Per persona, restored by the demo reset.
 PROFILES_INITIAL = {"viewer": {"display_name": "", "email": "viewer@example.com"},
-                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"}}
+                    "admin": {"display_name": "Ada Admin", "email": "admin@example.com"},
+                    "authentik": {"display_name": "Sam Single-Sign-On", "email": "sam@example.com"}}
 PROFILES = {k: dict(v) for k, v in PROFILES_INITIAL.items()}
+# The profile fields an identity provider owns, per persona: what
+# greentechhub-fastapi's account_profile locks for someone signed in through
+# Authentik (readonly, "Managed by Authentik."; a save keeps their value).
+LOCKED = {"authentik": frozenset({"display_name", "email"})}
 DEMO_CURRENT_PASSWORD = "password"
 
 
-def _field(key: str, label: str, help_text: str = "", secret: bool = False) -> dict:
+def _field(key: str, label: str, help_text: str = "", secret: bool = False, **extra) -> dict:
     return {"key": key, "type": "str", "label": label, "default": "", "help_text": help_text,
-            "secret": secret}
+            "secret": secret, **extra}
 
 
-def _profile_section(values: dict, errors=None) -> dict:
+def _profile_field(key: str, label: str, help_text: str, locked: frozenset[str], **extra) -> dict:
+    if key in locked:
+        return _field(key, label, "Managed by Authentik.", readonly=True, **extra)
+    return _field(key, label, help_text, **extra)
+
+
+def _profile_section(values: dict, errors=None, locked: frozenset[str] = frozenset(),
+                     user_id: str = "") -> dict:
+    # User ID: read-only and copyable (gth_setting_field's `copyable`); the save ignores it.
     return {"id": "profile", "title": "Profile", "description": "How you appear to others.",
-            "settings": [_field("display_name", "Display name", "Shown instead of your user ID."),
-                         _field("email", "Email")],
-            "values": values, "errors": errors, "action": "/settings-demo/profile",
+            "settings": [_field("user_id", "User ID", "Use it where a service asks for your ID.",
+                                readonly=True, copyable=True),
+                         _profile_field("display_name", "Display name",
+                                        "Shown instead of your user ID.", locked),
+                         _profile_field("email", "Email", "", locked, input_type="email")],
+            "values": values | {"user_id": user_id}, "errors": errors,
+            "action": "/settings-demo/profile",
             "submit_label": "Save profile"}
 
 
@@ -666,6 +653,8 @@ def _password_section(errors=None) -> dict:
                          _field("new_password", "New password", "At least 8 characters.",
                                 secret=True),
                          _field("new_password_confirm", "Confirm new password", secret=True)],
+            # layout="stacked": a change-password form reads better label-over-field.
+            "layout": "stacked",
             "values": {}, "errors": errors, "action": "/settings-demo/password",
             "submit_label": "Change password"}
 
@@ -677,17 +666,22 @@ async def settings_demo_profile(request: Request):
     if PERSONAS[persona]["user"] is None:
         return Response(status_code=401)
     form = await request.form()
-    values = {"display_name": str(form.get("display_name") or "").strip(),
-              "email": str(form.get("email") or "").strip()}
+    locked = LOCKED.get(persona, frozenset())
+    user_id = PERSONAS[persona]["user"]["username"]
+    # A locked field keeps its stored value whatever the form sent.
+    values = {key: PROFILES[persona][key] if key in locked else str(form.get(key) or "").strip()
+              for key in ("display_name", "email")}
     errors: dict[str, list[str]] = {}
     if len(values["display_name"]) > 80:
         errors["display_name"] = ["Use at most 80 characters."]
     if values["email"] and not email_looks_valid(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
-        return _render_section(request, _profile_section(values, errors), status_code=422)
+        return _render_section(request, _profile_section(values, errors, locked, user_id),
+                               status_code=422)
     PROFILES[persona] = values
-    return _render_section(request, _profile_section(values), headers={
+    section = _profile_section(values, locked=locked, user_id=user_id)
+    return _render_section(request, section, headers={
         "HX-Trigger": greentechhub_ui.toast("Profile saved")})
 
 
@@ -792,6 +786,22 @@ async def settings_demo_revoke_token(request: Request, token_id: str):
         "HX-Trigger": greentechhub_ui.toast("Token revoked")})
 
 
+def _data_section() -> dict:
+    """A section with its own template (as API tokens has): gth_setting_row
+    lays out custom controls — a download link, plain text — like settings."""
+    return {"id": "data", "title": "Your data", "template": "_settings_data_section.html",
+            "description": "Custom rows (gth_setting_row) in the same two-column layout.",
+            "export_url": "/settings-demo/export",
+            "stored_in": "Preferences in this browser (a cookie); App settings on the server."}
+
+
+@app.get("/settings-demo/export")
+async def settings_demo_export(request: Request):
+    """The "Your data" section's export: this browser's saved settings as JSON."""
+    return JSONResponse(_saved_settings(request),
+                        headers={"Content-Disposition": 'attachment; filename="settings.json"'})
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
@@ -799,15 +809,21 @@ async def settings_page(request: Request):
     persona = _persona(request)
     if PERSONAS[persona]["user"] is not None:
         # SettingsViews' order: Profile first, then Password and API tokens after Preferences.
-        sections = [_profile_section(PROFILES[persona]), sections[0], _password_section(),
+        sections = [_profile_section(PROFILES[persona], locked=LOCKED.get(persona, frozenset()),
+                                     user_id=PERSONAS[persona]["user"]["username"]),
+                    sections[0], _password_section(),
                     _api_tokens_section(request), *sections[1:]]
+    sections.append(_data_section())
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,
         "settings_intro": (
-            "gth_setting_field picks the widget from the setting's type: a switch for bool, "
-            "segmented buttons for four or fewer choices, a select for more, number and text "
-            "fields for int and str, and a write-only password field for a secret (the API "
-            "token). Save a page size of 500 to see the 422 path."),
+            "Each section is a card; a setting's group is a fieldset. Labels sit beside their "
+            "controls and stack when the card is narrow (resize the window); Password opts out "
+            "with layout=\"stacked\", and Your data lays out its own controls with "
+            "gth_setting_row. The nav jumps between sections. Copy buttons: the User ID, and a "
+            "new API token. Each type picks its widget (a switch, segmented buttons or a select, "
+            "number and text fields, a write-only secret); save a page size of 500 to see the "
+            "422 path."),
         "settings_sections": sections,
     })
 
@@ -881,7 +897,12 @@ async def demo_theme(theme: str = Form(...)):
 
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
-    return _page(request, "overview", categories=PLAYGROUND_NAV)
+    # What this persona may open, as the sidebar shows it (the Admin group only
+    # for the admin).
+    context = user_context(request)
+    categories = filter_by_scope(PLAYGROUND_NAV, context.get("current_user"),
+                                 context.get("granted"))
+    return _page(request, "overview", categories=categories)
 
 
 @app.get("/layout", response_class=HTMLResponse)
@@ -891,7 +912,8 @@ async def layout_page(request: Request):
 
 @app.get("/data", response_class=HTMLResponse)
 async def data_page(request: Request):
-    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1))
+    return _page(request, "data", tasks=TASKS, inline=0, **_paginate_widgets(0), **_widget_rows(1),
+                 **await _timeline_page())
 
 
 # gth_embed_card demo: a stand-in for a Grafana panel that shows the theme
@@ -1158,6 +1180,32 @@ for _days, _action, _actor, _target, _summary in [
     AUDIT_STORE.record_sync(new_entry(
         _action, actor=_actor, target=("user", _target) if _target else None, summary=_summary,
         now=datetime(2026, 10, 1, 9, 30, tzinfo=UTC) + timedelta(days=9 - _days)))
+
+
+# gth_timeline over the same store: AuditViews' row shape, newest first, a
+# page at a time; "Load older" fetches the next page as a fragment.
+TIMELINE_PAGE_SIZE = 4
+
+
+async def _timeline_page(before: datetime | None = None) -> dict:
+    entries = await AUDIT_STORE.entries(before=before, limit=TIMELINE_PAGE_SIZE)
+    next_url = None
+    if len(entries) == TIMELINE_PAGE_SIZE:
+        next_url = "/timeline-demo/feed?" + urlencode({"before": entries[-1].at.isoformat()})
+    rows = [{"at": e.at, "actor": e.actor, "action": e.action,
+             "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
+             "summary": e.summary} for e in entries]
+    return {"timeline_entries": rows, "timeline_next_url": next_url}
+
+
+@app.get("/timeline-demo/feed", response_class=HTMLResponse)
+async def timeline_feed(request: Request, before: str = ""):
+    """The next page of the Data page's timeline: gth_timeline_page alone."""
+    try:
+        cursor = datetime.fromisoformat(before) if before else None
+    except ValueError:
+        cursor = None
+    return templates.TemplateResponse(request, "_timeline_page.html", await _timeline_page(cursor))
 
 
 @app.get("/audit", response_class=HTMLResponse)

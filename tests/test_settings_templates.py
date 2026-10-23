@@ -1,6 +1,8 @@
 """settings_page.html / settings_section.html — the ready-made settings page
 a service (or greentechhub-fastapi's SettingsViews) renders with data only."""
 
+import re
+
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader
 from test_macros_snapshot import assert_snapshot
 
@@ -50,6 +52,44 @@ def test_page_renders_every_section_with_default_htmx_wiring():
     assert 'hx-swap="outerHTML"' in html
 
 
+def _page(**context) -> str:
+    sections = [
+        _section(),
+        {"id": "api_tokens", "template": "api_tokens_section.html",
+         "action": "/settings/api-tokens"},
+        {"id": "app", "title": "App", "settings": [BANNER], "action": "/settings/app"},
+    ]
+    return _env().get_template("settings_page.html").render(
+        **({"page_title": "Settings", "settings_sections": sections} | context))
+
+
+def test_page_lists_its_sections_in_a_nav():
+    html = _page()
+    nav = html.split('<nav class="gth-settings-nav" aria-label="Settings sections">', 1)[1]
+    nav = nav.split("</nav>", 1)[0]
+    links = re.findall(r'<a class="nav-link" href="([^"]+)">([^<]+)</a>', nav)
+    # in order; a section without a title (the API tokens one here) is named by its id
+    assert links == [("#gth-settings-preferences", "Preferences"),
+                     ("#gth-settings-api_tokens", "Api tokens"),
+                     ("#gth-settings-app", "App")]
+    content = html.split('<div class="gth-settings-content">', 1)[1]
+    for sid in ("preferences", "api_tokens", "app"):
+        assert f'id="gth-settings-{sid}"' in content
+    assert html.index("</nav>") < html.index('<div class="gth-settings-content">')
+
+
+def test_no_nav_for_one_section_or_when_turned_off():
+    for html in (_page(settings_sections=[_section()]), _page(settings_nav=False)):
+        assert "gth-settings-nav" not in html and "gth-settings-layout" not in html
+        assert 'id="gth-settings-preferences"' in html
+
+
+def test_settings_page_with_nav_snapshot():
+    html = _page(settings_intro="Change how things look.")
+    page = html.split('<p class="text-secondary small">Change how things look.</p>', 1)[1]
+    assert_snapshot(page.split('<section class="card', 1)[0], "settings_page_with_nav")
+
+
 def test_values_are_read_by_key_not_the_dict_method():
     html = _render_section()
     assert 'gth-field-ui.theme-2" autocomplete="off" checked' in html
@@ -84,6 +124,52 @@ def test_section_without_action_has_no_form():
     html = _render_section(action=None)
     assert "<form" not in html
     assert "hx-post" not in html
+    assert "card-footer" not in html  # no submit button, so no footer
+
+
+def test_section_is_a_card_with_the_save_button_in_the_footer():
+    html = _render_section(description="Only you see these.")
+    assert ('<section class="card gth-card gth-settings-section gth-settings-rows mb-4"'
+            ' id="gth-settings-preferences"') in html
+    header = html.split('<div class="card-header', 1)[1].split("</div>", 1)[0]
+    assert 'id="gth-settings-preferences-title">Preferences</h2>' in header
+    assert "Only you see these." in header
+    # the form wraps the body (the fields) and the footer (the submit button)
+    form = html.split("<form", 1)[1].split("</form>", 1)[0]
+    body, footer = form.split('<div class="card-footer', 1)
+    assert 'class="card-body gth-card-body"' in body and 'name="ui.theme"' in body
+    assert '<button type="submit" class="btn btn-primary">Save</button>' in footer
+    # the last field sits flush with the card body's padding
+    assert body.rstrip().rsplit('gth-form-field', 1)[0].rstrip().endswith('<div class="mb-0')
+
+
+def test_rows_layout_is_the_default_and_stacked_opts_out():
+    assert 'gth-settings-section gth-settings-rows mb-4"' in _render_section()
+    stacked = _render_section(layout="stacked")
+    assert "gth-settings-rows" not in stacked
+    assert '<section class="card gth-card gth-settings-section mb-4"' in stacked
+
+
+def test_setting_row_lays_out_a_custom_control_like_a_setting():
+    env = _env()
+    html = env.from_string(
+        '{% from "settings.html" import gth_setting_row %}'
+        '{% call gth_setting_row("Export", help_text="Every setting, as JSON.",'
+        ' for_id="export-btn") %}'
+        '<button id="export-btn" type="button">Download</button>{% endcall %}'
+    ).render()
+    assert_snapshot(html, "setting_row")
+    assert '<div class="mb-3 gth-form-field gth-setting-row">' in html
+    assert '<label class="form-label" for="export-btn">Export</label>' in html
+    control = html.split('<div class="gth-setting-row-control">', 1)[1].split("</div>", 1)[0]
+    assert '<button id="export-btn"' in control
+    # the help follows the control, so stacked it sits underneath like a field's
+    assert html.index("gth-setting-row-control") < html.index("Every setting, as JSON.")
+    plain = env.from_string(
+        '{% from "settings.html" import gth_setting_row %}'
+        '{% call gth_setting_row("Version") %}1.2.3{% endcall %}'
+    ).render()
+    assert '<span class="form-label d-block">Version</span>' in plain and "<label" not in plain
 
 
 def test_empty_page_renders():

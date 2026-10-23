@@ -13,9 +13,10 @@
       values?           the submitted form after a 422 (name, scopes, expires_in_days)
       created?          {"name", "token"}: shown once, right after a create
       errors?           {field: [messages]}
-    hx-target/hx-swap sit on the section, so the form and each revoke modal's
-    hx-delete inherit them. No inline script: the new token sits in a
-    readonly field to copy. -#}
+    The same card shell as gth_settings_section (header, then a body holding
+    the rest). hx-target/hx-swap sit on the section, so the form and each revoke modal's
+    hx-delete inherit them. The new token sits in a readonly field with a
+    gth_copy_button (static/js/copy.js, copy_js_url; no inline script). -#}
 {% from "form.html" import gth_form_field %}
 {% from "chips.html" import gth_chips %}
 {% from "select.html" import gth_select %}
@@ -23,6 +24,8 @@
 {% from "badge.html" import gth_badge %}
 {% from "confirm_delete.html" import gth_confirm_delete %}
 {% from "empty_state.html" import gth_empty_state %}
+{% from "copy_button.html" import gth_copy_button with context %}
+{% from "field_group.html" import gth_field_group %}
 {%- set sid = "gth-settings-" ~ section.id|default("api_tokens") %}
 {%- set errors = section.errors|default(none) or {} %}
 {%- set form = section["values"] if section["values"] is mapping else {} %}
@@ -34,12 +37,15 @@
     "label": "Never" if days is none else days ~ " days"}) %}
 {%- endfor %}
 {%- set created = section.created|default(none) %}
-<section class="gth-settings-section gth-api-tokens mb-4" id="{{ sid }}" aria-labelledby="{{ sid }}-title"
+<section class="card gth-card gth-settings-section gth-api-tokens mb-4" id="{{ sid }}" aria-labelledby="{{ sid }}-title"
   hx-target="#{{ sid }}" hx-swap="outerHTML">
-  <h2 class="h5 mb-1" id="{{ sid }}-title">{{ section.title|default("API tokens") }}</h2>
-  {%- if section.description|default(none) %}
-  <p class="text-secondary small mb-3">{{ section.description }}</p>
-  {%- endif %}
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="{{ sid }}-title">{{ section.title|default("API tokens") }}</h2>
+    {%- if section.description|default(none) %}
+    <p class="text-secondary small mb-0 mt-1">{{ section.description }}</p>
+    {%- endif %}
+  </div>
+  <div class="card-body gth-card-body">
   {%- if section.error|default(none) %}
   <div class="alert alert-danger gth-form-error" role="alert">{{ section.error }}</div>
   {%- endif %}
@@ -47,14 +53,17 @@
   <div class="alert alert-success gth-api-token-created" role="status">
     <p class="mb-2"><strong>Copy your new token now.</strong> You won't see it again.</p>
     <label class="form-label small" for="{{ sid }}-new-token">{{ created.name }}</label>
-    <input type="text" class="form-control font-monospace" id="{{ sid }}-new-token" value="{{ created.token }}"
-      readonly autocomplete="off" spellcheck="false">
+    <div class="input-group">
+      <input type="text" class="form-control font-monospace" id="{{ sid }}-new-token" value="{{ created.token }}"
+        readonly autocomplete="off" spellcheck="false">
+      {{- gth_copy_button(target="#" ~ sid ~ "-new-token", size=None) }}
+    </div>
     <p class="small mb-0 mt-2">Send it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
   </div>
   {%- endif %}
   <form method="post" action="{{ section.action }}" hx-post="{{ section.action }}"
     class="gth-form gth-api-tokens-add mb-4" novalidate>
-    <h3 class="h6">New token</h3>
+    {% call gth_field_group("New token") %}
     {{ gth_form_field("name", "Name", value=form.name|default(""), errors=errors.get("name"), maxlength=80,
         help_text="What it's for, e.g. the script that uses it.", id=sid ~ "-name") }}
     {%- if scope_choices %}
@@ -70,6 +79,7 @@
     {%- endif %}
     {{ gth_select("expires_in_days", "Expires", expiry_options, value=expiry if expiry is not none else "",
         errors=errors.get("expires_in_days"), id=sid ~ "-expiry") }}
+    {% endcall %}
     <button type="submit" class="btn btn-primary">Create token</button>
   </form>
   {%- if section.tokens|default([]) %}
@@ -90,13 +100,18 @@
     <td class="text-end">
       <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
         data-bs-target="#{{ sid }}-revoke-{{ loop.index }}">Revoke</button>
-      {{ gth_confirm_delete(sid ~ "-revoke-" ~ loop.index, token.revoke_url, "the " ~ token.name ~ " token",
-          hx_target="#" ~ sid) }}
     </td>
   </tr>
   {%- endfor %}
   {% endcall %}
+  {#- The revoke modals sit after the table, not in their row's text-end cell,
+      whose alignment they would inherit. #}
+  {%- for token in section.tokens %}
+  {{ gth_confirm_delete(sid ~ "-revoke-" ~ loop.index, token.revoke_url, "the " ~ token.name ~ " token",
+      hx_target="#" ~ sid) }}
+  {%- endfor %}
   {%- else %}
   {{ gth_empty_state("No API tokens yet.") }}
   {%- endif %}
+  </div>
 </section>

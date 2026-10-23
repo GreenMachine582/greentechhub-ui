@@ -1,0 +1,4 @@
+{#- The next page of the Data page's timeline (/timeline-demo/feed): what a
+    "Load older" request swaps in for its button. -#}
+{% from "timeline.html" import gth_timeline_page %}
+{{ gth_timeline_page(timeline_entries, next_url=timeline_next_url, kinds={"sync": ("arrow-repeat", "good")}) }}

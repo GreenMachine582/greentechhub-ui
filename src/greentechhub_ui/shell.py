@@ -16,7 +16,6 @@ The consumer still mounts the directories itself — this only knows the
 prefixes, it doesn't own the app.
 """
 
-import warnings
 from functools import partial
 
 from greentechhub_ui import navigation
@@ -42,8 +41,9 @@ def shell_globals(
     `theme_prefix` where `greentechhub_ui.theme_path` is. `navbar_theme="dark"`
     pins gth_navbar dark; by default it follows the color mode.
     `layout="sidebar"` moves nav_items into gth_sidebar (see app.html).
-    htmx 2 is the default since v0.19. `htmx=1` loads the vendored 1.9.10
-    instead, an opt-out kept for one release (it warns); see docs/htmx2.md.
+    It loads the vendored htmx 2. `htmx` stays as a parameter so a
+    leftover `htmx=1` fails clearly: the 1.9.10 opt-out was removed in
+    v0.20 (see docs/htmx2.md).
 
     Also installs nav helpers as globals: `nav_breadcrumbs(path)` (the
     gth_page_header breadcrumbs derived from nav_items),
@@ -53,13 +53,10 @@ def shell_globals(
     """
     if layout not in ("navbar", "sidebar"):
         raise ValueError(f"layout must be 'navbar' or 'sidebar', got {layout!r}")
-    if htmx not in (1, 2):
-        raise ValueError(f"htmx must be 1 or 2, got {htmx!r}")
-    if htmx == 1:
-        warnings.warn(
-            "shell_globals(htmx=1) loads htmx 1.9.10, kept for one release: the next one drops it. "
-            "See greentechhub-ui's docs/htmx2.md › Upgrading a service.",
-            DeprecationWarning, stacklevel=2,
+    if htmx != 2:
+        raise ValueError(
+            f"htmx={htmx!r}: htmx 2 is the only version since greentechhub-ui v0.20 "
+            "(the htmx=1 opt-out was removed). See docs/htmx2.md › Upgrading a service."
         )
     globals_ = {
         "brand": brand_context(
@@ -70,7 +67,7 @@ def shell_globals(
         "icons_css_url": f"{assets_prefix}/icons/bootstrap-icons.min.css",
         "bootstrap_css_url": f"{assets_prefix}/css/bootstrap.min.css",
         "bootstrap_js_url": f"{assets_prefix}/js/bootstrap.bundle.min.js",
-        "htmx_js_url": f"{assets_prefix}/js/{'htmx-1.min.js' if htmx == 1 else 'htmx.min.js'}",
+        "htmx_js_url": f"{assets_prefix}/js/htmx.min.js",
         "htmx_setup_js_url": f"{assets_prefix}/js/htmx-setup.js",
         "prepaint_js_url": f"{assets_prefix}/js/prepaint.js",
         "toast_js_url": f"{assets_prefix}/js/toast.js",
@@ -89,6 +86,7 @@ def shell_globals(
         "back_to_top_js_url": f"{assets_prefix}/js/back-to-top.js",
         "loading_bar_js_url": f"{assets_prefix}/js/loading-bar.js",
         "embed_card_js_url": f"{assets_prefix}/js/embed-card.js",
+        "copy_js_url": f"{assets_prefix}/js/copy.js",
         "show_theme_toggle": theme_toggle,
         "navbar_theme": navbar_theme,
         "layout": layout,

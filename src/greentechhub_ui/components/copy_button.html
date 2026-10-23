@@ -1,0 +1,22 @@
+{% macro gth_copy_button(target=None, text=None, label="Copy", copied_label="Copied", icon="clipboard",
+                         icon_only=False, button_class="btn-outline-secondary", size="sm") %}
+{#- A copy-to-clipboard button (v0.20). It copies the `target` element's text
+    (a CSS selector; a field's value, otherwise its text) or a literal `text`.
+    Behaviour in static/js/copy.js (copy_js_url): the label shows
+    `copied_label` with a tick for a moment and screen readers hear it; when
+    the clipboard isn't available (an insecure origin, a denied permission) it
+    selects the target field's text and a toast says to press Ctrl+C.
+    Without copy_js_url it renders nothing, so there's never a dead button.
+    icon_only: the label is visually hidden (still the accessible name).
+    size: "sm" | "lg" | None — None inside an input-group, to match the field.
+    gth_form_field(copy=True) puts one in the field's input-group. -#}
+{%- if copy_js_url is defined and copy_js_url %}
+<button type="button" class="btn{% if size %} btn-{{ size }}{% endif %} {{ button_class }} gth-copy-button" data-gth-copy
+  {%- if target %} data-gth-copy-target="{{ target|e }}"{% endif %}
+  {%- if text is not none %} data-gth-copy-text="{{ text|e }}"{% endif %}
+  data-gth-copied-label="{{ copied_label|e }}">
+  <i class="bi bi-{{ icon|e }}" aria-hidden="true"></i>
+  <span class="gth-copy-label{% if icon_only %} visually-hidden{% endif %}">{{ label|e }}</span>
+</button>
+{%- endif %}
+{%- endmacro %}

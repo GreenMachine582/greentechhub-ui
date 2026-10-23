@@ -428,6 +428,111 @@
   white-space: pre-wrap;
 }
 
+/* ── gth-settings-nav (v0.20) — settings_page.html's section list ────────
+   Plain links to each section's anchor. Narrow: a row of pills above the
+   sections that scrolls sideways. From 992px: a sticky column beside them,
+   under the sticky navbar. No active state: nothing tracks the scroll. */
+.gth-settings-nav-list {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.gth-settings-nav-list .nav-link {
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+.gth-settings-nav-list .nav-link:hover,
+.gth-settings-nav-list .nav-link:focus-visible {
+  color: var(--gth-accent);
+  background-color: var(--bs-tertiary-bg);
+}
+@media (min-width: 992px) {
+  .gth-settings-layout {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+  .gth-settings-nav {
+    position: sticky;
+    top: calc(var(--gth-navbar-height) + 1rem);
+  }
+  .gth-settings-nav-list {
+    flex-direction: column;
+    margin-bottom: 0;
+    overflow-x: visible;
+  }
+}
+
+/* ── gth_settings_section(layout="rows") (v0.20) — two-column settings ────
+   Label and help on the left, the control on the right, once the section is
+   wide enough: a container query on the card, so a narrow column on a wide
+   screen stacks too. Grid on each widget's existing wrapper (.gth-form-field:
+   gth_form_field, gth_select, gth_segmented, gth_switch, gth_setting_row), so
+   no widget's markup changes: every child goes right, the label and help go
+   left, and dense flow puts the label beside the control and the help under
+   it while errors and the counter stay under the control. */
+.gth-settings-rows {
+  container: gth-settings / inline-size;
+  --gth-setting-gap: 1.5rem;
+}
+@container gth-settings (min-width: 34rem) {
+  .gth-settings-rows .gth-form-field {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-auto-flow: row dense;
+    column-gap: var(--gth-setting-gap);
+    align-items: start;
+  }
+  .gth-settings-rows .gth-form-field > * {
+    grid-column: 2;
+  }
+  .gth-settings-rows .gth-form-field > .form-label,
+  .gth-settings-rows .gth-form-field > .form-check-label,
+  .gth-settings-rows .gth-form-field > .form-text {
+    grid-column: 1;
+  }
+  /* level with the control's text (Bootstrap's input padding + border) */
+  .gth-settings-rows .gth-form-field > .form-label,
+  .gth-settings-rows .gth-form-field > .form-check-label {
+    margin-bottom: 0;
+    padding-top: calc(0.375rem + var(--bs-border-width));
+  }
+  .gth-settings-rows .gth-form-field > .form-text {
+    margin-top: 0.125rem;
+  }
+  .gth-settings-rows .gth-switch {
+    padding-left: 0;
+  }
+  .gth-settings-rows .gth-switch > .form-check-input {
+    float: none;
+    margin-left: 0;
+    margin-top: 0.5rem;
+    justify-self: start;
+  }
+  .gth-settings-rows .gth-switch > .form-check-label {
+    padding-top: 0.25rem;
+  }
+  .gth-settings-rows .gth-segmented-track {
+    justify-self: start;
+  }
+  /* a secret's "Remove the saved value" sits under its field's control */
+  .gth-settings-rows .gth-setting-clear {
+    margin-left: calc((100% - var(--gth-setting-gap)) * 0.4 + var(--gth-setting-gap));
+  }
+}
+
+/* ── gth-field-group (v0.20) — a fieldset of form fields ─────────────────
+   Bootstrap's reboot already strips the fieldset's border, padding and margin
+   and floats the legend full-width; the legend's h6 class sets its size.
+   Consecutive groups get a divider. */
+.gth-field-group + .gth-field-group {
+  border-top: 1px solid var(--bs-border-color);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
 /* gth-theme-toggle — icon shown reflects which mode clicking switches TO
    (sun visible in dark mode invites switching to light, and vice versa).
    Pure CSS, driven entirely by the data-bs-theme attribute the toggle's JS
@@ -442,7 +547,7 @@
 
 /* gth-busy-button: swap to the busy label while the request is in flight.
    Keyed on :disabled (set by hx-disabled-elt="this"), NOT .htmx-request:
-   in htmx 1.9.10 (the htmx=1 opt-out) the request-indicator class and
+   in htmx 1.9.10 (before v0.19's htmx 2) the request-indicator class and
    hx-disabled-elt share one requestCount per element, so on an element
    that is both, .htmx-request is never removed after the request ends
    (disabled is, correctly). */
@@ -1841,4 +1946,65 @@ body.gth-picker-modal-open {
 }
 [data-bs-theme="dark"] .gth-avatar {
   color: #0b1a0b;
+}
+
+/* Timeline (v0.20): gth_timeline's day groups and entries, each with a round
+   icon on a thin vertical rule. */
+.gth-timeline-day + .gth-timeline-day,
+.gth-timeline-page + .gth-timeline-page {
+  margin-top: 1rem;
+}
+.gth-timeline-day-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.5rem;
+}
+.gth-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.gth-timeline-list::before {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.95rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+.gth-timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+}
+.gth-timeline-icon {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.gth-timeline-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gth-timeline-summary {
+  overflow-wrap: anywhere;
+}
+.gth-timeline-meta {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: baseline;
 }

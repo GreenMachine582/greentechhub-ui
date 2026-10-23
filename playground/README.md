@@ -20,12 +20,28 @@ python playground/app.py
 
 Open **http://127.0.0.1:8500/**.
 
+## Container
+
+`playground/Dockerfile` builds the playground with greentechhub-ui installed as a wheel, the way a consumer gets
+it. From the repo root:
+
+```
+docker build -f playground/Dockerfile -t gth-playground .
+docker run --rm -p 8500:8500 gth-playground
+```
+
+`.github/workflows/playground-image.yml` publishes it for amd64 and arm64 as
+`ghcr.io/greenmachine582/greentechhub-ui-playground`: `dev` and `sha-<short>` on every push to `dev`, and `X.Y.Z`,
+`X.Y` and `latest` for each release tag. Pull requests only build it and smoke-test it. The homelab cluster runs it
+at `playground.home.green-tech-hub.com`.
+
 ## What to try
 
 The playground itself runs in `app.html`'s `layout="sidebar"`: one page per category (Layout, Data, Forms,
 Feedback, Overlays, Navigation, Extensibility), each demo an anchor the sidebar links to. There's no real sign-in:
-impersonate a persona (anonymous, viewer or admin) on **Personas** to see the user menu, permission-filtered nav and
-the admin-only Roles page; a gated page sends you there and back. Press
+impersonate a persona (anonymous, viewer, admin or authentik) on **Personas** to see the user menu, permission-filtered
+nav, the admin-only Roles page, and a Profile an identity provider manages (read-only, "Managed by Authentik."); a
+gated page sends you there and back. Press
 <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘K</kbd>) to jump to any of them, collapse the sidebar to an icon rail with the
 button at its bottom, or narrow the window below 992px for the drawer.
 

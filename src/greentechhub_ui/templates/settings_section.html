@@ -1,7 +1,7 @@
 {#- settings_section.html — one settings section, from a `section` mapping
     shaped like gth_settings_section's parameters:
       id, title, settings, values?, errors?, error?, action?, description?,
-      submit_label?, form_attrs?
+      submit_label?, form_attrs?, layout? ("rows" | "stacked")
     settings_page.html includes it once per section, and a save response
     renders it alone: 200 with a toast, or 422 with `errors`.
     With an `action` and no `form_attrs`, the form posts over htmx and swaps
@@ -19,4 +19,5 @@
 {{ gth_settings_section(section.id, section.title, section.settings,
     values=values, errors=section.errors|default(none), action=action,
     description=section.description|default(none), error=section.error|default(none),
-    submit_label=section.submit_label|default("Save"), form_attrs=form_attrs) }}
+    submit_label=section.submit_label|default("Save"), form_attrs=form_attrs,
+    layout=section.layout|default("rows")) }}

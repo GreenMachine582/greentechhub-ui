@@ -89,6 +89,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `table_view_js_url` | none (no script rendered) — the View menu of `gth-data-table(view_options=True)`: hidden columns and density (v0.11) |
 | `char_counter_js_url` | none — `gth_form_field(maxlength=...)`'s counter then shows the server-rendered starting count only (v0.11) |
 | `embed_card_js_url` | none — `gth_embed_card` frames then load `src` unthemed through `<noscript>`, with no loading or error state (v0.17) |
+| `copy_js_url` | none — `gth_copy_button` (and `gth_form_field(copy=True)`'s button) then render nothing (v0.20) |
 | `alert_banner_js_url` | none — `gth_alert_banner`s render without a close button, and `app.html` skips the pre-paint hide (v0.13) |
 | `tree_js_url` | none (no script rendered) — needed by `gth-tree` (v0.8) |
 | `loading_bar_js_url` | none — with it set, `app.html` renders `gth-loading-bar` and its script (v0.17); `loading_bar_delay` (default 300 ms) is how long a request runs before the bar shows |
@@ -148,7 +149,8 @@ in [docs/components.md](components.md#audit-log-v017).
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in
 [docs/components.md](components.md#settings). A section with a `template` key is included through that template.
 `api_tokens_section.html` is the one ui ships, for the "API tokens" section that greentechhub-fastapi's
-`ApiTokenViews` supplies (its next release).
+`ApiTokenViews` supplies (its next release). `settings_nav=False` (v0.20) hides the section nav the page shows with
+two or more sections.
 
 **Login page (v0.14)** — the context `login_page.html` takes, matching greentechhub-fastapi's `LoginViews`:
 `error` after a failed sign-in (shown as a danger `gth_alert`), nothing otherwise. Optional: `login_url` (the
@@ -274,29 +276,17 @@ base-uri 'self'; form-action 'self'; object-src 'none'
 - **Assets:** mount `static_dirs()` and use `shell_globals()` (since v0.19 there's no CDN fallback). Every asset is
   then same-origin, so `'self'` allows it.
 
-**FastAPI** — a middleware that makes a nonce per request, plus a context processor that hands it to templates:
+**FastAPI** — greentechhub-fastapi's `register_csp` (v0.17) makes the nonce per request and sends this policy.
+Its `ui_context` hands the nonce to templates as `csp_nonce`:
 
 ```python
-import secrets
+from greentechhub_fastapi import register_csp
 
-CSP = ("default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
-       "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; "
-       "base-uri 'self'; form-action 'self'; object-src 'none'")
-
-
-@app.middleware("http")
-async def content_security_policy(request, call_next):
-    request.state.csp_nonce = secrets.token_urlsafe(16)
-    response = await call_next(request)
-    response.headers.setdefault("Content-Security-Policy", CSP.format(nonce=request.state.csp_nonce))
-    return response
-
-
-def csp_context(request):
-    return {"csp_nonce": getattr(request.state, "csp_nonce", None)}
-
-templates = Jinja2Templates(directory="templates", context_processors=[ui_context, csp_context])
+register_csp(app, frame_src=[settings.GRAFANA_ORIGIN])  # frame_src= / connect_src= add origins; policy= replaces it
+templates = Jinja2Templates(directory="templates", context_processors=[ui_context])
 ```
+
+A route that sends its own `Content-Security-Policy` keeps it. The playground sends its policy this way.
 
 **Django 6+** — the built-in support uses the same name:
 
