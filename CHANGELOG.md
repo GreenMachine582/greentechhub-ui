@@ -5,6 +5,41 @@ change bumps the minor version). From v0.9.0 on, entries are written by
 [release-please](https://github.com/googleapis/release-please) from conventional commits; the same notes are
 published as [GitHub Releases](https://github.com/GreenMachine582/greentechhub-ui/releases).
 
+## [0.20.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.19.0...v0.20.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **shell:** shell_globals(htmx=1) and install(..., htmx=1) are removed; htmx 2 (vendored 2.0.11) is the only version. A service still passing htmx=1 gets a ValueError: drop the argument, after checking its own templates against docs/htmx2.md › Upgrading a service, or stay on greentechhub-ui v0.19.
+
+### Features
+
+* **components:** gth_timeline ([#124](https://github.com/GreenMachine582/greentechhub-ui/issues/124)) ([4e73ee2](https://github.com/GreenMachine582/greentechhub-ui/commit/4e73ee2a30bcbb84aa60eb20eb3aed7574cf05d8))
+* **copy:** add gth_copy_button and copy the new API token ([#136](https://github.com/GreenMachine582/greentechhub-ui/issues/136)) ([1a8067a](https://github.com/GreenMachine582/greentechhub-ui/commit/1a8067a1d1561f0ff50de1e83f8c8a3797bb6600))
+* **formatting:** pluralise ([#119](https://github.com/GreenMachine582/greentechhub-ui/issues/119)) ([a321cc1](https://github.com/GreenMachine582/greentechhub-ui/commit/a321cc1a7f23916834b41ec302ed6457780cea5f))
+* **forms:** add gth_field_group and group settings with it ([#137](https://github.com/GreenMachine582/greentechhub-ui/issues/137)) ([7d4b8ef](https://github.com/GreenMachine582/greentechhub-ui/commit/7d4b8ef435fd74c0fa5071512feeb15172f6a49b))
+* **playground:** Admin nav group ([#123](https://github.com/GreenMachine582/greentechhub-ui/issues/123)) ([feb2536](https://github.com/GreenMachine582/greentechhub-ui/commit/feb253692c1410f8e5f9a011332000163b28152b))
+* **playground:** an Authentik persona with a managed profile ([#127](https://github.com/GreenMachine582/greentechhub-ui/issues/127)) ([244554d](https://github.com/GreenMachine582/greentechhub-ui/commit/244554d69b3c16ad362a4026a294def309905538))
+* **settings:** copy button on copyable str settings ([#140](https://github.com/GreenMachine582/greentechhub-ui/issues/140)) ([87232de](https://github.com/GreenMachine582/greentechhub-ui/commit/87232decd4213ba65280d7c880a5c263996b350e))
+* **settings:** read-only and typed str fields ([#125](https://github.com/GreenMachine582/greentechhub-ui/issues/125)) ([ab6da8f](https://github.com/GreenMachine582/greentechhub-ui/commit/ab6da8f0ebd34189a2d57703f769ddcb2b9b7a93))
+* **settings:** render settings sections as cards ([#135](https://github.com/GreenMachine582/greentechhub-ui/issues/135)) ([5554da9](https://github.com/GreenMachine582/greentechhub-ui/commit/5554da92be836ecbcfe01cc7b3bd4dd868b82dd8))
+* **settings:** section nav on the settings page ([#139](https://github.com/GreenMachine582/greentechhub-ui/issues/139)) ([f6b96aa](https://github.com/GreenMachine582/greentechhub-ui/commit/f6b96aa106c9e905bf769eb6cbebdd8b0ef3fd3a))
+* **settings:** two-column setting rows ([#138](https://github.com/GreenMachine582/greentechhub-ui/issues/138)) ([0f77bf9](https://github.com/GreenMachine582/greentechhub-ui/commit/0f77bf9827411029713b9efdfb65b195e643fbb3))
+* **shell:** drop the htmx=1 opt-out ([#122](https://github.com/GreenMachine582/greentechhub-ui/issues/122)) ([ce28153](https://github.com/GreenMachine582/greentechhub-ui/commit/ce28153acc84ce59689ae81c92d46e0107d89ffd))
+
+
+### Bug Fixes
+
+* **audit:** load older entries into the table instead of navigating ([#133](https://github.com/GreenMachine582/greentechhub-ui/issues/133)) ([17bce09](https://github.com/GreenMachine582/greentechhub-ui/commit/17bce09fc512f152bff895467031b460f62d2d2e))
+* **pagination:** swap the wrapper, not the button ([#130](https://github.com/GreenMachine582/greentechhub-ui/issues/130)) ([fbc6e4c](https://github.com/GreenMachine582/greentechhub-ui/commit/fbc6e4cab7e6adc92debf00ea9d3c525986ec31c))
+* **settings:** render confirm modals outside the table cells ([#132](https://github.com/GreenMachine582/greentechhub-ui/issues/132)) ([989db53](https://github.com/GreenMachine582/greentechhub-ui/commit/989db5397a300237550c9c02030b406d935f5afa))
+
+
+### Build
+
+* **deps:** dev pins core v0.15.0, fastapi v0.17.0 ([#120](https://github.com/GreenMachine582/greentechhub-ui/issues/120)) ([2ad7b3a](https://github.com/GreenMachine582/greentechhub-ui/commit/2ad7b3a766a4b02daee3db7c8f3c6876f1d12128))
+* **deps:** dev pins core v0.16.0, fastapi v0.18.0 ([#126](https://github.com/GreenMachine582/greentechhub-ui/issues/126)) ([ebeae17](https://github.com/GreenMachine582/greentechhub-ui/commit/ebeae17404cd10d8cc11f4e08d614a33017e1094))
+
 ## [0.19.0](https://github.com/GreenMachine582/greentechhub-ui/compare/v0.18.0...v0.19.0) (2026-10-15)
 
 
