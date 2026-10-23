@@ -24,7 +24,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-copy-button` | Copy-to-clipboard button for a field's value, an element's text or a literal string, with a "Copied" tick and a Ctrl+C fallback; `gth_form_field(copy=True)` (v0.20) |
 | `gth-field-group` | A `<fieldset>` of form fields with its title as the `<legend>` and an optional description; a divider between consecutive groups (v0.20) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14); an `id` prefix for two same-named fields on a page (v0.15) |
-| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
+| `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12); two-column rows, `gth_setting_row` (v0.20) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
 | `gth-table-filter` | Debounced search box + filter-control slot that re-requests a `gth-data-table` from page 1 (v0.7) |
 | `gth-skeleton` | Loading placeholders — lines, or table rows (v0.7) |
@@ -1255,7 +1255,8 @@ core. Field names are the setting keys (`ui.theme`), which is what core's `regis
 {# settings.html #}
 gth_setting_field(setting, value=None, errors=None, name=None, field_class="mb-3", segmented_max=4)
 gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
-                     error=None, submit_label="Save", form_attrs=None)
+                     error=None, submit_label="Save", form_attrs=None, layout="rows")
+gth_setting_row(label, help_text=None, for_id=None, row_class="mb-3")   {# a {% call %} block #}
 ```
 
 | `setting.type` | Widget |
@@ -1279,6 +1280,12 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
 - `gth_settings_section` groups fields into a `gth_field_group` (a fieldset, the group as its legend) per
   `setting.group`, in first-seen order, with ungrouped settings first, outside any group. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
   `error` is a banner.
+- `layout="rows"` (v0.20, the default) puts each setting's label and help on the left and its control on the right
+  once the card is at least 34rem wide (a container query, so a narrow column stacks too), and stacks below that.
+  It's CSS grid over each widget's own markup, so ids, aria and the submitted fields don't change.
+  `layout="stacked"` keeps every label above its control. `gth_setting_row` lays out a custom control (a button,
+  a read-only value) the same way: the label (`for_id` makes it a `<label for>`) and help on the left, the
+  `{% call %}` body on the right.
 - With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it
   back with a 422.
@@ -1363,7 +1370,7 @@ are in the [contract](contract.md).
 level, then fill `{% block content %}` (`.gth-auth` centres it).
 
 A section is a mapping (or object) shaped like `gth_settings_section`'s parameters: `id`, `title`, `settings`, and
-optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`. With an `action` and no
+optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`, `form_attrs`, `layout`. With an `action` and no
 `form_attrs`, the form posts over htmx and swaps the section in place (`hx-post` = action, `hx-target` =
 `#gth-settings-<id>`, `hx-swap="outerHTML"`). Sections are stacked rather than tabbed, so a
 `/settings#gth-settings-<id>` link lands on its section and a 422 is never hidden in a closed tab.

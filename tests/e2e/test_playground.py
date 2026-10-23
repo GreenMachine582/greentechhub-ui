@@ -425,6 +425,33 @@ def test_choice_buttons_show_hover(page, playground_url):
     expect(chip).not_to_have_css("background-color", resting)
 
 
+def _box(page, selector):
+    return page.locator(selector).bounding_box()
+
+
+def test_settings_rows_put_labels_beside_controls_and_stack_when_narrow(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # the App section (a switch) needs settings.manage
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    label = _box(page, "label[for='gth-field-locale.timezone']")
+    select = _box(page, "[id='gth-field-locale.timezone']")
+    assert label["x"] + label["width"] <= select["x"]  # the label is left of the select
+    assert abs(label["y"] - select["y"]) < 12  # on the same row
+    help_text = _box(page, "[id='gth-field-locale.timezone-help']")
+    # the help sits under the label
+    assert help_text["x"] < select["x"] and help_text["y"] > label["y"]
+
+    toggle = _box(page, "[id='gth-field-site.maintenance']")
+    toggle_label = _box(page, "label[for='gth-field-site.maintenance']")
+    assert toggle_label["x"] + toggle_label["width"] <= toggle["x"]
+
+    page.set_viewport_size({"width": 375, "height": 800})
+    label = _box(page, "label[for='gth-field-locale.timezone']")
+    select = _box(page, "[id='gth-field-locale.timezone']")
+    assert label["y"] + label["height"] <= select["y"] + 1  # stacked: the label above
+    assert abs(label["x"] - select["x"]) < 2
+
+
 def test_segmented_track_style(page, playground_url):
     page.goto(f"{playground_url}/settings")
     field = page.locator("#gth-settings-preferences .gth-segmented").first  # Theme

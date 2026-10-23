@@ -49,12 +49,7 @@ component work.
     onto `gth_data_table`, dropping its `gth_table_load_more(select=...)` row. Release order: ui, then fastapi.
 
 ### Settings & layout
-Settings sections are cards with fieldset groups now, but every field is still a stacked label-over-control.
-- [ ] `gth_setting_row` — a two-column row: label and help text on the left, the control on the right; stacks on
-  narrow screens
-  - Used by `gth_setting_field` for switch, segmented, select and text, so labels and controls line up across
-    sections.
-  - `gth_settings_section(layout="rows"|"stacked")` keeps today's stacked form available.
+Settings sections are cards with fieldset groups and two-column rows now.
 - [ ] Settings page nav — an optional in-page section list (sticky on the side on wide screens, jump links on top on
   narrow) built from `settings_sections`, linking the existing `#gth-settings-<id>` anchors
 - [ ] Read-only `str` settings: `gth_setting_field` passes `copy=True` when it's useful (e.g. a `copy` flag on the
