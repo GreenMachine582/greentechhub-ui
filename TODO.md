@@ -49,11 +49,7 @@ component work.
     onto `gth_data_table`, dropping its `gth_table_load_more(select=...)` row. Release order: ui, then fastapi.
 
 ### Settings & layout
-Settings sections are cards now, but setting groups are still only an `h3.h6` subheading
-(`components/settings.html`), and every field is a stacked label-over-control.
-- [ ] `gth_field_group` — a `<fieldset>`/`<legend>` wrapper that replaces the `h3.h6` group subheading
-  - `gth_field_group(title, description=None, group_class="")` as a `{% call %}` block; a divider between groups.
-  - Real grouping for screen readers, and usable on any form, not only settings.
+Settings sections are cards with fieldset groups now, but every field is still a stacked label-over-control.
 - [ ] `gth_setting_row` — a two-column row: label and help text on the left, the control on the right; stacks on
   narrow screens
   - Used by `gth_setting_field` for switch, segmented, select and text, so labels and controls line up across
@@ -61,7 +57,6 @@ Settings sections are cards now, but setting groups are still only an `h3.h6` su
   - `gth_settings_section(layout="rows"|"stacked")` keeps today's stacked form available.
 - [ ] Settings page nav — an optional in-page section list (sticky on the side on wide screens, jump links on top on
   narrow) built from `settings_sections`, linking the existing `#gth-settings-<id>` anchors
-- [ ] `api_tokens_section.html` — `gth_field_group` for the "New token" form instead of the hand-written `h3.h6`
 - [ ] Read-only `str` settings: `gth_setting_field` passes `copy=True` when it's useful (e.g. a `copy` flag on the
   setting), for keys and URLs a user copies elsewhere
 - [ ] Playground: restructure `SETTINGS_DEMO` and `/settings` to show groups, rows, nav and the copy button; refresh

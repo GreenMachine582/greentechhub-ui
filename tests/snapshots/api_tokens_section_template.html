@@ -6,6 +6,7 @@
 
 
 
+
 <section class="card gth-card gth-settings-section gth-api-tokens mb-4" id="gth-settings-api_tokens" aria-labelledby="gth-settings-api_tokens-title"
   hx-target="#gth-settings-api_tokens" hx-swap="outerHTML">
   <div class="card-header gth-card-header gth-settings-section-header">
@@ -29,7 +30,9 @@
   </div>
   <form method="post" action="/settings/api-tokens" hx-post="/settings/api-tokens"
     class="gth-form gth-api-tokens-add mb-4" novalidate>
-    <h3 class="h6">New token</h3>
+    <fieldset class="gth-field-group">
+  <legend class="gth-field-group-legend h6 text-secondary mb-2">New token</legend>
+  
     
 <div class="mb-3 gth-form-field">
   <label class="form-label" for="gth-settings-api_tokens-name">Name</label>
@@ -77,6 +80,8 @@
   </select>
 </div>
 
+    
+</fieldset>
     <button type="submit" class="btn btn-primary">Create token</button>
   </form>
   

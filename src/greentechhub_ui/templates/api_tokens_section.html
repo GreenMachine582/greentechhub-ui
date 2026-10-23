@@ -25,6 +25,7 @@
 {% from "confirm_delete.html" import gth_confirm_delete %}
 {% from "empty_state.html" import gth_empty_state %}
 {% from "copy_button.html" import gth_copy_button with context %}
+{% from "field_group.html" import gth_field_group %}
 {%- set sid = "gth-settings-" ~ section.id|default("api_tokens") %}
 {%- set errors = section.errors|default(none) or {} %}
 {%- set form = section["values"] if section["values"] is mapping else {} %}
@@ -62,7 +63,7 @@
   {%- endif %}
   <form method="post" action="{{ section.action }}" hx-post="{{ section.action }}"
     class="gth-form gth-api-tokens-add mb-4" novalidate>
-    <h3 class="h6">New token</h3>
+    {% call gth_field_group("New token") %}
     {{ gth_form_field("name", "Name", value=form.name|default(""), errors=errors.get("name"), maxlength=80,
         help_text="What it's for, e.g. the script that uses it.", id=sid ~ "-name") }}
     {%- if scope_choices %}
@@ -78,6 +79,7 @@
     {%- endif %}
     {{ gth_select("expires_in_days", "Expires", expiry_options, value=expiry if expiry is not none else "",
         errors=errors.get("expires_in_days"), id=sid ~ "-expiry") }}
+    {% endcall %}
     <button type="submit" class="btn btn-primary">Create token</button>
   </form>
   {%- if section.tokens|default([]) %}

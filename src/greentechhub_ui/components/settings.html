@@ -1,4 +1,5 @@
 {% from "chips.html" import gth_switch %}
+{% from "field_group.html" import gth_field_group %}
 {% from "form.html" import gth_form_field %}
 {% from "segmented.html" import gth_segmented %}
 {% from "select.html" import gth_select %}
@@ -74,10 +75,19 @@
 {%- endif -%}
 {% endmacro %}
 
+{% macro _setting_fields(settings, group, values, errors, last_group) %}
+{#- One group's fields; the very last field of the section sits flush with the
+    card body's padding (mb-0). -#}
+{%- for s in settings if (s.group or "") == group %}
+{{ gth_setting_field(s, values.get(s.key), errors.get(s.key), field_class="mb-0" if loop.last and last_group else "mb-3") }}
+{%- endfor %}
+{%- endmacro %}
+
 {% macro gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
                               error=None, submit_label="Save", form_attrs=None) %}
-{#- A titled block of settings fields, grouped under subheadings by setting.group
-    (first-seen order; ungrouped settings come first, without a heading).
+{#- A titled block of settings fields, grouped by setting.group into a
+    gth_field_group (a fieldset with the group as its legend) each, in first-seen
+    order; ungrouped settings come first, outside any group.
     values: key → current value (e.g. core's Settings.effective()); a missing key
     falls back to the default. errors: key → [messages]. error: a banner message.
     action: when set, the fields sit in a <form method="post" action=action> with a
@@ -108,12 +118,14 @@
     <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
     {%- endif %}
     {%- for group in ns.groups %}
+    {%- set last_group = loop.last %}
     {%- if group %}
-    <h3 class="h6 text-secondary {{ 'mt-3 ' if not loop.first }}mb-2">{{ group }}</h3>
+    {% call gth_field_group(group, id="gth-settings-" ~ id ~ "-group-" ~ loop.index) %}
+    {{- _setting_fields(settings, group, values, errors, last_group) }}
+    {% endcall %}
+    {%- else %}
+    {{ _setting_fields(settings, group, values, errors, last_group) }}
     {%- endif %}
-    {%- for s in settings if (s.group or "") == group %}
-    {{ gth_setting_field(s, values.get(s.key), errors.get(s.key), field_class="mb-0" if loop.last and ns.groups|last == group else "mb-3") }}
-    {%- endfor %}
     {%- endfor %}
   </div>
   {%- if action %}

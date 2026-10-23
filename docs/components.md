@@ -22,6 +22,7 @@ All macros are prefixed `gth-` and are the only public surface consumers should 
 | `gth-combobox` | Server-backed searchable single-select ("autocomplete") (v0.7) |
 | `gth-segmented` | Radio choices for 2–4 mutually exclusive options (v0.7): a brand-green "track" with the checked option as a raised thumb, or the joined Bootstrap button group when options carry a `style` (v0.12); help text and errors (v0.12) |
 | `gth-copy-button` | Copy-to-clipboard button for a field's value, an element's text or a literal string, with a "Copied" tick and a Ctrl+C fallback; `gth_form_field(copy=True)` (v0.20) |
+| `gth-field-group` | A `<fieldset>` of form fields with its title as the `<legend>` and an optional description; a divider between consecutive groups (v0.20) |
 | `gth-select` | Labelled native `<select>` with the form-field help/error layout (v0.12); `hide_label` for filter bars (v0.14); an `id` prefix for two same-named fields on a page (v0.15) |
 | `gth-setting-field` / `gth-settings-section` | Renders `greentechhub-core` setting definitions: each type picks its widget, grouped into a titled section with an optional form (v0.12) |
 | `gth-data-table` | Table whose navigation is config: `TableState(mode="pages"\|"load_more"\|"infinite"\|"none")`, plus sortable headers — one template for the page and every partial (v0.7); bulk selection with a sticky action bar, column visibility and density, CSV export link (v0.11) |
@@ -1114,6 +1115,12 @@ gth_form_field(name, label, value=None, type="text", ..., help_text=None, errors
    and its help/error/prefix/suffix/counter ids.
    copy (v0.20): a gth_copy_button for the field's value at the end of its input-group. #}
 
+{# field_group.html (v0.20) — a {% call %} block #}
+gth_field_group(title=None, description=None, id=None, group_class="")
+{# A <fieldset class="gth-field-group"> with `title` as its <legend>, so screen readers
+   announce the group with each field. description: a hint under the legend, the
+   fieldset's aria-describedby when an `id` is given. Consecutive groups get a divider. #}
+
 {# copy_button.html (v0.20) — the behaviour in static/js/copy.js (copy_js_url) #}
 gth_copy_button(target=None, text=None, label="Copy", copied_label="Copied", icon="clipboard",
                 icon_only=False, button_class="btn-outline-secondary", size="sm")
@@ -1130,6 +1137,9 @@ gth_copy_button(target=None, text=None, label="Copy", copied_label="Copied", ico
 {{ gth_form_field("notes", "Notes", value=notes, type="textarea", maxlength=140, help_text="Optional.") }}
 {{ gth_form_field("webhook", "Webhook URL", value=webhook_url, input_attrs={"readonly": "readonly"}, copy=True) }}
 {{ gth_copy_button(text=invite_link, label="Copy invite link") }}
+{% call gth_field_group("Delivery", description="Where the report is sent.", id="report-delivery") %}
+  {{ gth_form_field("email", "Email", type="email", value=email) }}
+{% endcall %}
 ```
 
 A call without the new arguments renders exactly as before. `maxlength` only stops the browser, so the server must
@@ -1266,8 +1276,8 @@ gth_settings_section(id, title, settings, values=None, errors=None, action=None,
   - a blank field keeps the stored value;
   - `<key>.__clear=true` resets it (`reset_user`/`reset_app`);
   - anything else is the new value (`set_user`/`set_app`, which encrypt it).
-- `gth_settings_section` groups fields under an `h3` per `setting.group`, in first-seen order, with ungrouped
-  settings first. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
+- `gth_settings_section` groups fields into a `gth_field_group` (a fieldset, the group as its legend) per
+  `setting.group`, in first-seen order, with ungrouped settings first, outside any group. `values` is key → value (core's `Settings.effective(identity)`) and `errors` is key → messages.
   `error` is a banner.
 - With `action`, the fields sit in a `<form method="post">` with a submit button. `form_attrs` adds `hx-*`. Without
   it, the caller brings the form. The section's id is `gth-settings-<id>`, the natural `hx-target` for swapping it

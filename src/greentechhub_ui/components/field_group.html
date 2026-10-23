@@ -1,0 +1,19 @@
+{% macro gth_field_group(title=None, description=None, id=None, group_class="") %}
+{#- A titled group of form fields (v0.20), as a {% call %} block: a <fieldset>
+    whose <legend> is `title`, so assistive tech announces the group with each
+    field in it. description: a hint under the legend; with an `id` it's also
+    the fieldset's aria-describedby ("<id>-description"). Consecutive groups
+    get a divider between them (theme.css). gth_settings_section renders each
+    setting.group with it. -#}
+<fieldset class="gth-field-group{% if group_class %} {{ group_class }}{% endif %}"
+  {%- if id %} id="{{ id|e }}"{% endif %}
+  {%- if id and description %} aria-describedby="{{ id|e }}-description"{% endif %}>
+  {%- if title %}
+  <legend class="gth-field-group-legend h6 text-secondary mb-2">{{ title|e }}</legend>
+  {%- endif %}
+  {%- if description %}
+  <p class="form-text mt-0 mb-2 gth-field-group-description"{% if id %} id="{{ id|e }}-description"{% endif %}>{{ description|e }}</p>
+  {%- endif %}
+  {{ caller() }}
+</fieldset>
+{%- endmacro %}
