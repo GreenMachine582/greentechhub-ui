@@ -484,6 +484,40 @@ def test_settings_page_renders_each_widget():
         assert marker in page.text, marker
 
 
+def test_settings_page_shows_the_layout_features():
+    page = _run(_as("admin", "GET", "/settings")).text
+    nav = page.split('class="gth-settings-nav"', 1)[1].split("</nav>", 1)[0]
+    assert re.findall(r'href="#gth-settings-(\w+)">([^<]+)<', nav) == [
+        ("profile", "Profile"), ("preferences", "Preferences"), ("password", "Password"),
+        ("api_tokens", "API tokens"), ("app", "App"), ("data", "Your data")]
+
+    def section(sid):
+        return re.search(rf'<section class="([^"]+)" id="gth-settings-{sid}"', page).group(1)
+
+    assert "gth-settings-rows" in section("preferences")
+    assert "gth-settings-rows" not in section("password")  # layout="stacked"
+    data = page.split('id="gth-settings-data"', 1)[1].split("</section>", 1)[0]
+    assert data.count(" gth-form-field gth-setting-row\"") == 2
+    assert 'href="/settings-demo/export" download' in data
+    assert 'for="gth-settings-data-export">Export settings</label>' in data
+
+
+def test_settings_export_downloads_the_saved_settings_as_json():
+    response = _run(_get("/settings-demo/export"))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["content-disposition"] == 'attachment; filename="settings.json"'
+    assert isinstance(response.json(), dict)
+
+
+def test_forms_page_shows_a_described_field_group():
+    page = _run(_get("/forms")).text
+    group = page.split('id="field-group"', 1)[1].split("</section>", 1)[0]
+    assert ('<fieldset class="gth-field-group" id="field-group-delivery"'
+            ' aria-describedby="field-group-delivery-description">') in group
+    assert ">Delivery</legend>" in group and ">Format</legend>" in group
+
+
 def test_settings_demo_saves_and_toasts():
     playground_app.SETTINGS_VALUES.clear()
     data = {"ui.theme": "dark", "locale.timezone": "Asia/Tokyo", "locale.date_format": "dmy",
@@ -924,7 +958,7 @@ def test_profile_and_password_sections_as_settings_views_sends_them():
                                      cookies={"playground-user": "viewer"}) as client:
             page = (await client.get("/settings")).text
             assert re.findall(r'id="gth-settings-(\w+)"', page) == [
-                "profile", "preferences", "password", "api_tokens"]
+                "profile", "preferences", "password", "api_tokens", "data"]
             saved = await client.post("/settings-demo/profile",
                                       data={"display_name": " Vera Viewer ", "email": ""})
             assert saved.status_code == 200 and "Profile saved" in saved.headers["HX-Trigger"]

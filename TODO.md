@@ -48,11 +48,6 @@ component work.
   - Then greentechhub-fastapi's `AuditViews` builds the state and answers `partial=rows`, and `audit_page.html` moves
     onto `gth_data_table`, dropping its `gth_table_load_more(select=...)` row. Release order: ui, then fastapi.
 
-### Settings & layout
-Settings sections are cards with fieldset groups and two-column rows now.
-- [ ] Playground: restructure `SETTINGS_DEMO` and `/settings` to show groups, rows, nav and the copy button; refresh
-  `tests/test_settings_templates.py`, `tests/test_api_tokens_templates.py` and the e2e playground tests
-
 ### Ideas — not scheduled
 - Settings nav: highlight the section in view — a scrollspy that re-observes sections after an htmx swap (Bootstrap's
   ScrollSpy keeps references to the swapped-out elements)

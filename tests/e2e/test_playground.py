@@ -455,6 +455,11 @@ def test_settings_rows_put_labels_beside_controls_and_stack_when_narrow(page, pl
     toggle_label = _box(page, "label[for='gth-field-site.maintenance']")
     assert toggle_label["x"] + toggle_label["width"] <= toggle["x"]
 
+    # Password opts out with layout="stacked": its label stays above the field
+    pw_label = _box(page, "label[for='gth-field-new_password']")
+    pw_input = _box(page, "[id='gth-field-new_password']")
+    assert pw_label["y"] + pw_label["height"] <= pw_input["y"] + 1
+
     page.set_viewport_size({"width": 375, "height": 800})
     label = _box(page, "label[for='gth-field-locale.timezone']")
     select = _box(page, "[id='gth-field-locale.timezone']")
@@ -463,12 +468,12 @@ def test_settings_rows_put_labels_beside_controls_and_stack_when_narrow(page, pl
 
 
 def test_settings_nav_jumps_to_sections_and_stays_in_view(page, playground_url):
-    _impersonate(page, playground_url, "admin")  # five sections, App last
+    _impersonate(page, playground_url, "admin")  # six sections, App then Your data
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(f"{playground_url}/settings")
     nav = page.locator(".gth-settings-nav")
     expect(nav.locator(".nav-link")).to_have_text(
-        ["Profile", "Preferences", "Password", "API tokens", "App"])
+        ["Profile", "Preferences", "Password", "API tokens", "App", "Your data"])
     first = _box(page, "#gth-settings-profile")
     nav_box = nav.bounding_box()
     assert nav_box["x"] + nav_box["width"] <= first["x"]  # beside the sections
