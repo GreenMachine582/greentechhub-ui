@@ -13,7 +13,8 @@
       values?           the submitted form after a 422 (name, scopes, expires_in_days)
       created?          {"name", "token"}: shown once, right after a create
       errors?           {field: [messages]}
-    hx-target/hx-swap sit on the section, so the form and each revoke modal's
+    The same card shell as gth_settings_section (header, then a body holding
+    the rest). hx-target/hx-swap sit on the section, so the form and each revoke modal's
     hx-delete inherit them. No inline script: the new token sits in a
     readonly field to copy. -#}
 {% from "form.html" import gth_form_field %}
@@ -34,12 +35,15 @@
     "label": "Never" if days is none else days ~ " days"}) %}
 {%- endfor %}
 {%- set created = section.created|default(none) %}
-<section class="gth-settings-section gth-api-tokens mb-4" id="{{ sid }}" aria-labelledby="{{ sid }}-title"
+<section class="card gth-card gth-settings-section gth-api-tokens mb-4" id="{{ sid }}" aria-labelledby="{{ sid }}-title"
   hx-target="#{{ sid }}" hx-swap="outerHTML">
-  <h2 class="h5 mb-1" id="{{ sid }}-title">{{ section.title|default("API tokens") }}</h2>
-  {%- if section.description|default(none) %}
-  <p class="text-secondary small mb-3">{{ section.description }}</p>
-  {%- endif %}
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="{{ sid }}-title">{{ section.title|default("API tokens") }}</h2>
+    {%- if section.description|default(none) %}
+    <p class="text-secondary small mb-0 mt-1">{{ section.description }}</p>
+    {%- endif %}
+  </div>
+  <div class="card-body gth-card-body">
   {%- if section.error|default(none) %}
   <div class="alert alert-danger gth-form-error" role="alert">{{ section.error }}</div>
   {%- endif %}
@@ -103,4 +107,5 @@
   {%- else %}
   {{ gth_empty_state("No API tokens yet.") }}
   {%- endif %}
+  </div>
 </section>

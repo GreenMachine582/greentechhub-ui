@@ -84,6 +84,23 @@ def test_section_without_action_has_no_form():
     html = _render_section(action=None)
     assert "<form" not in html
     assert "hx-post" not in html
+    assert "card-footer" not in html  # no submit button, so no footer
+
+
+def test_section_is_a_card_with_the_save_button_in_the_footer():
+    html = _render_section(description="Only you see these.")
+    assert ('<section class="card gth-card gth-settings-section mb-4"'
+            ' id="gth-settings-preferences"') in html
+    header = html.split('<div class="card-header', 1)[1].split("</div>", 1)[0]
+    assert 'id="gth-settings-preferences-title">Preferences</h2>' in header
+    assert "Only you see these." in header
+    # the form wraps the body (the fields) and the footer (the submit button)
+    form = html.split("<form", 1)[1].split("</form>", 1)[0]
+    body, footer = form.split('<div class="card-footer', 1)
+    assert 'class="card-body gth-card-body"' in body and 'name="ui.theme"' in body
+    assert '<button type="submit" class="btn btn-primary">Save</button>' in footer
+    # the last field sits flush with the card body's padding
+    assert body.rstrip().rsplit('gth-form-field', 1)[0].rstrip().endswith('<div class="mb-0')
 
 
 def test_empty_page_renders():

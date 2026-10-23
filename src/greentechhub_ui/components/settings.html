@@ -83,33 +83,43 @@
     action: when set, the fields sit in a <form method="post" action=action> with a
     submit button (form_attrs adds e.g. hx-post/hx-target/hx-swap); without it the
     caller supplies the form. The section's id is "gth-settings-<id>", the natural
-    hx-target for re-rendering it with a 422 response. -#}
+    hx-target for re-rendering it with a 422 response.
+    It renders as a card (gth_card's classes; the form has to wrap both the body
+    and the footer, so not gth_card itself): the title and description in the
+    header, the fields in the body, and with an action the submit button in the
+    footer. -#}
 {%- set values = values or {} -%}
 {%- set errors = errors or {} -%}
 {%- set ns = namespace(groups=[]) -%}
 {%- for s in settings %}{% if (s.group or "") not in ns.groups %}{% set ns.groups = ns.groups + [s.group or ""] %}{% endif %}{% endfor -%}
-<section class="gth-settings-section mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
-  <h2 class="h5 mb-1" id="gth-settings-{{ id }}-title">{{ title }}</h2>
-  {%- if description %}
-  <p class="text-secondary small mb-3">{{ description }}</p>
-  {%- endif %}
+<section class="card gth-card gth-settings-section mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="gth-settings-{{ id }}-title">{{ title }}</h2>
+    {%- if description %}
+    <p class="text-secondary small mb-0 mt-1">{{ description }}</p>
+    {%- endif %}
+  </div>
   {%- if action %}
   <form method="post" action="{{ action }}" class="gth-form" novalidate
     {%- for k, v in (form_attrs or {}).items() %} {{ k|e }}="{{ v|e }}"{% endfor %}>
   {%- endif %}
-  {%- if error %}
-  <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
-  {%- endif %}
-  {%- for group in ns.groups %}
-  {%- if group %}
-  <h3 class="h6 text-secondary mt-3 mb-2">{{ group }}</h3>
-  {%- endif %}
-  {%- for s in settings if (s.group or "") == group %}
-  {{ gth_setting_field(s, values.get(s.key), errors.get(s.key)) }}
-  {%- endfor %}
-  {%- endfor %}
+  <div class="card-body gth-card-body">
+    {%- if error %}
+    <div class="alert alert-danger gth-form-error" role="alert">{{ error }}</div>
+    {%- endif %}
+    {%- for group in ns.groups %}
+    {%- if group %}
+    <h3 class="h6 text-secondary {{ 'mt-3 ' if not loop.first }}mb-2">{{ group }}</h3>
+    {%- endif %}
+    {%- for s in settings if (s.group or "") == group %}
+    {{ gth_setting_field(s, values.get(s.key), errors.get(s.key), field_class="mb-0" if loop.last and ns.groups|last == group else "mb-3") }}
+    {%- endfor %}
+    {%- endfor %}
+  </div>
   {%- if action %}
-  <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+  <div class="card-footer gth-card-footer gth-settings-section-footer d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+  </div>
   </form>
   {%- endif %}
 </section>

@@ -44,11 +44,8 @@ component work.
     Sensor, Motor"). Later: saved filters per user (core settings).
 
 ### Settings & layout
-The playground `/settings` page is stacked bare forms: each section is a `<section>` with a hand-written `h2.h5`,
-setting groups are only an `h3.h6` subheading (`components/settings.html`), and `api_tokens_section.html` hand-rolls
-its own headers.
-- [ ] `gth_settings_section` as a card — reuse `gth_card`: a header with the title and description, the fields in the
-  body, the save actions (`gth_form_actions`) in the footer, so sections read as separate blocks
+Settings sections are cards now, but setting groups are still only an `h3.h6` subheading
+(`components/settings.html`), and every field is a stacked label-over-control.
 - [ ] `gth_field_group` — a `<fieldset>`/`<legend>` wrapper that replaces the `h3.h6` group subheading
   - `gth_field_group(title, description=None, group_class="")` as a `{% call %}` block; a divider between groups.
   - Real grouping for screen readers, and usable on any form, not only settings.
@@ -59,8 +56,7 @@ its own headers.
   - `gth_settings_section(layout="rows"|"stacked")` keeps today's stacked form available.
 - [ ] Settings page nav — an optional in-page section list (sticky on the side on wide screens, jump links on top on
   narrow) built from `settings_sections`, linking the existing `#gth-settings-<id>` anchors
-- [ ] `api_tokens_section.html` — use the shared section card header and `gth_field_group` for the "New token" form
-  instead of the hand-written `h2.h5` / `h3.h6`, so it matches the other sections
+- [ ] `api_tokens_section.html` — `gth_field_group` for the "New token" form instead of the hand-written `h3.h6`
 - [ ] `gth_copy_button` — a shared copy-to-clipboard button
   - `gth_copy_button(target=None, text=None, label="Copy", icon="clipboard", copied_icon="check2", size="sm",
     button_class="")`: copies a target element's value or text (`target` selector) or a literal `text`.
