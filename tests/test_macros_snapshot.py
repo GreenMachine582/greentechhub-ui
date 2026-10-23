@@ -538,6 +538,19 @@ def test_table_load_more_with_next():
     assert_snapshot(rendered, "table_load_more_with_next")
 
 
+def test_table_load_more_select_picks_rows_from_a_full_page():
+    rendered = _render(
+        """{% from "table.html" import gth_table_load_more %}
+        {{ gth_table_load_more("/log?before=x", select="#log-rows > tr") }}
+        {{ gth_table_load_more("/log?before=x", select="#log-rows > tr", infinite=True) }}"""
+    )
+    # the button, and the infinite row and its fallback button
+    assert rendered.count('hx-select="#log-rows &gt; tr"') == 3
+    plain = _render("""{% from "table.html" import gth_table_load_more %}
+        {{ gth_table_load_more("/rows?page=2") }}""")
+    assert "hx-select" not in plain
+
+
 def test_table_load_more_no_next_renders_nothing():
     rendered = _render(
         """{% from "table.html" import gth_table_load_more %}

@@ -20,7 +20,7 @@
 {% endif %}
 {% endmacro %}
 
-{% macro gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None) %}
+{% macro gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None, select=None) %}
 {# gth_pagination's table-row sibling: gth_pagination's fixed
    hx-target="this" can't append <tr>s, so this renders a trailing row whose
    button replaces the row itself (hx-target="closest tr") with the next
@@ -29,15 +29,19 @@
    infinite=True: the row fetches itself when scrolled into view
    (hx-trigger="intersect once", observed within the `root` selector's
    scroll box if given) and shows a skeleton; the button stays as a
-   keyboard/screen-reader fallback, visible on focus. #}
+   keyboard/screen-reader fallback, visible on focus.
+   select: an hx-select for when next_url answers with a full page rather
+   than a rows partial (e.g. audit_page.html, whose older page is the same
+   page): it picks that page's rows, which must end with their own trailing
+   row, e.g. "#my-tbody > tr". #}
 {% if next_url %}
 {% if infinite %}
 <tr class="gth-pagination gth-table-load-more gth-table-infinite"
-  hx-get="{{ next_url|e }}" hx-trigger="intersect once{% if root %} root:{{ root|e }}{% endif %}" hx-target="this" hx-swap="outerHTML">
+  hx-get="{{ next_url|e }}" hx-trigger="intersect once{% if root %} root:{{ root|e }}{% endif %}" hx-target="this" hx-swap="outerHTML"{% if select %} hx-select="{{ select|e }}"{% endif %}>
   <td colspan="{{ colspan }}" class="py-2">
     <span class="placeholder-glow d-block" aria-hidden="true"><span class="placeholder col-12"></span></span>
     <button type="button" class="btn btn-sm btn-outline-secondary visually-hidden-focusable gth-pagination-more"
-      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML" hx-sync="closest tr:drop">
+      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML" hx-sync="closest tr:drop"{% if select %} hx-select="{{ select|e }}"{% endif %}>
       {{ label }}
     </button>
   </td>
@@ -46,7 +50,7 @@
 <tr class="gth-pagination gth-table-load-more">
   <td colspan="{{ colspan }}" class="text-center py-2">
     <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
-      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML">
+      hx-get="{{ next_url|e }}" hx-target="closest tr" hx-swap="outerHTML"{% if select %} hx-select="{{ select|e }}"{% endif %}>
       {{ label }}{% if total is not none %} <span class="text-secondary">({{ total }} total)</span>{% endif %}
     </button>
   </td>

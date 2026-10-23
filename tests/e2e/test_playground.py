@@ -279,6 +279,24 @@ def test_roles_page_assign_change_remove(page, playground_url):
     expect(page.locator("body")).not_to_have_class(re.compile("modal-open"))
 
 
+def test_audit_older_entries_append_to_the_table(page, playground_url):
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/audit")
+    entries = page.locator("#gth-audit-rows tr:not(.gth-table-load-more)")
+    expect(entries).to_have_count(5)
+    newest = entries.first.inner_text()
+    page.click("#gth-audit-rows .gth-pagination-more")
+    # the older page's rows land under the first five; no navigation
+    expect(entries.nth(5)).to_be_visible()
+    expect(entries.first).to_have_text(newest)
+    expect(page).to_have_url(re.compile(r"/audit$"))
+    # the clicked row swapped itself out: only the older page's own "Older entries" row may
+    # remain, and only as the last row
+    more = page.locator("#gth-audit-rows tr.gth-table-load-more")
+    expect(page.locator("#gth-audit-rows tr.gth-table-load-more:not(:last-child)")).to_have_count(0)
+    expect(more).to_have_count(1 if entries.count() >= 10 else 0)
+
+
 def test_density_and_motion_preferences(page, playground_url):
     def padding_top(selector):
         return page.eval_on_selector(selector, "el => parseFloat(getComputedStyle(el).paddingTop)")
