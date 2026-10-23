@@ -358,9 +358,12 @@ gth_table_filter(state, placeholder="Search…", search_param="q", label="Search
    {% call %} slot — e.g. gth_segmented, gth_chips — re-requests the table from
    page 1. Slot controls' names must be listed in filter_params. #}
 
-gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None)
+gth_table_load_more(next_url, label="Load more", colspan=99, total=None, infinite=False, root=None, select=None)
 {# Low-level trailing row (gth_data_table uses it). infinite=True: fetches on
-   intersect, observed within the `root` selector's scroll box if given. #}
+   intersect, observed within the `root` selector's scroll box if given.
+   select: an hx-select when next_url returns a full page, not a rows partial
+   — it picks that page's rows (ending with their own trailing row), e.g.
+   "#my-tbody > tr". audit_page.html uses it. #}
 
 {# skeleton.html #}
 gth_skeleton(lines=3, skeleton_class="")     {# placeholder-glow lines, aria-hidden #}
@@ -1489,9 +1492,9 @@ as a plain GET form, a table of entries newest first, and an "Older entries" but
 
 - `at` shows through the `datetime` filter inside a `<time datetime>`. A missing actor shows as "System".
 - Empty, it says "Nothing has been recorded yet.", or "No entries match these filters." while filtered.
-- "Older entries" is the table's last row. It fetches `audit_next_url` with htmx and swaps itself for that page's
-  rows (`hx-select="#gth-audit-rows > tr"`), which end with their own "Older entries" row, so older entries pile up
-  under the first page. The server renders the older page in full as before. Without JS it's a plain link.
+- "Older entries" is a `gth_table_load_more` row (`select="#gth-audit-rows > tr"`): it fetches `audit_next_url` and
+  swaps itself for that page's rows, which end with their own "Older entries" row, so older entries pile up under
+  the first page. The server renders the older page in full as before.
 
 The playground's `/audit` page (admin only, like `/roles`) runs this flow over core's `InMemoryAuditStore`.
 

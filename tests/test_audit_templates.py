@@ -67,19 +67,19 @@ def test_empty_states():
     assert "No entries match these filters." in filtered
 
 
-def test_the_older_entries_row_appends_in_place():
-    assert "gth-audit-older" not in _render()
+def test_older_entries_is_a_load_more_row_picking_the_older_pages_rows():
+    assert "gth-table-load-more" not in _render()
     cursor = "before=2026-10-08T09%3A00%3A00%2B00%3A00"
     url = f"/admin/audit?action=auth.&amp;{cursor}"
     html = _render(audit_next_url=f"/admin/audit?action=auth.&{cursor}")
     body = html.split('<tbody id="gth-audit-rows">', 1)[1].split("</tbody>", 1)[0]
     last_row = re.findall(r"<tr\b.*?</tr>", body, re.S)[-1]
-    assert 'class="gth-audit-more"' in last_row
-    # a real link without JS; with htmx, the row swaps itself for the older page's rows
-    assert f'href="{url}"' in last_row and f'hx-get="{url}"' in last_row
-    assert 'hx-target="closest tr" hx-swap="outerHTML"' in last_row
-    assert 'hx-select="#gth-audit-rows > tr"' in last_row
-    assert "<nav" not in body.split("gth-audit-rows", 1)[-1]
+    assert 'class="gth-pagination gth-table-load-more"' in last_row
+    # swaps itself for the older (full) page's rows, which bring their own load-more row
+    assert (f'hx-get="{url}" hx-target="closest tr" hx-swap="outerHTML"'
+            ' hx-select="#gth-audit-rows &gt; tr"') in last_row
+    assert "Older entries" in last_row
+    assert "Audit log pages" not in html  # the old pager <nav> is gone
 
 
 CELL = '<code class="gth-audit-action">'
@@ -104,10 +104,11 @@ def _playground_get(path, user="admin"):
 def test_the_playground_demo_filters_and_pages_back():
     first = _playground_get("/audit")
     assert first.status_code == 200 and first.text.count(CELL) == 5
-    older = re.search(r'gth-audit-older" href="([^"]+)"', first.text).group(1).replace("&amp;", "&")
+    older = re.search(r'gth-pagination-more"\s+hx-get="([^"]+)"', first.text).group(1)
+    older = older.replace("&amp;", "&")
     last = _playground_get(older).text
     assert last.count(CELL) == 3
-    assert 'id="gth-audit-rows"' in last and "gth-audit-older" not in last  # the chain ends
+    assert 'id="gth-audit-rows"' in last and "gth-table-load-more" not in last  # the chain ends
     auth = _playground_get("/audit?action=auth.")
     assert re.findall(re.escape(CELL) + r"([^<]+)<", auth.text) == [
         "auth.password_changed", "auth.signed_in", "auth.sign_in_failed", "auth.signed_in"]

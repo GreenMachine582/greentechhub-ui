@@ -1,8 +1,8 @@
 {#- audit_page.html — a ready-made audit log page: page.html's header, a filter
     row (user, action, on or before a date) as a plain GET form, the entries
-    newest first, and an "Older entries" button that loads the next page's
-    rows into the table (htmx; hx-select picks them out of the full page, so
-    the server just renders the older page — a plain link without JS).
+    newest first, and an "Older entries" gth_table_load_more row that appends
+    the older page's rows (its hx-select picks them out of that full page, so
+    the server just renders the older page).
     greentechhub-fastapi's AuditViews renders this by default; any framework
     can, with the same context:
       audit_url        the page's own url, the filter form's action
@@ -12,7 +12,7 @@
       audit_next_url   the next (older) page's url, keeping the filters, or None
       audit_actions_help  optional hint under the action field -#}
 {% extends "page.html" %}
-{% from "table.html" import gth_table %}
+{% from "table.html" import gth_table, gth_table_load_more %}
 {% from "empty_state.html" import gth_empty_state %}
 {%- set url = audit_url|default("/admin/audit") %}
 {%- set filters = audit_filters|default(none) or {} %}
@@ -62,15 +62,8 @@
       <td>{{ entry.summary|default("", true)|e }}</td>
     </tr>
   {%- endfor %}
-  {%- if audit_next_url|default(none) %}
-    <tr class="gth-audit-more">
-      <td colspan="5" class="text-center py-2">
-        <a class="btn btn-sm btn-outline-secondary gth-audit-older" href="{{ audit_next_url|e }}"
-          hx-get="{{ audit_next_url|e }}" hx-target="closest tr" hx-swap="outerHTML"
-          hx-select="#gth-audit-rows > tr">Older entries</a>
-      </td>
-    </tr>
-  {%- endif %}
+  {{ gth_table_load_more(audit_next_url|default(none), label="Older entries", colspan=5,
+      select="#gth-audit-rows > tr") }}
   {% endcall %}
   {%- else %}
   {{ gth_empty_state("No entries match these filters." if filtered else "Nothing has been recorded yet.") }}
