@@ -83,8 +83,26 @@
 {%- endfor %}
 {%- endmacro %}
 
+{% macro gth_setting_row(label, help_text=None, for_id=None, row_class="mb-3") %}
+{#- A custom control laid out like a setting (v0.20), as a {% call %} block:
+    the label (a <label for=for_id>, or a plain label text without for_id) and
+    help on the left, the caller's control on the right, in a "rows" settings
+    section; stacked elsewhere. -#}
+<div class="{{ row_class }} gth-form-field gth-setting-row">
+  {%- if for_id %}
+  <label class="form-label" for="{{ for_id|e }}">{{ label }}</label>
+  {%- else %}
+  <span class="form-label d-block">{{ label }}</span>
+  {%- endif %}
+  <div class="gth-setting-row-control">{{ caller() }}</div>
+  {%- if help_text %}
+  <div class="form-text">{{ help_text }}</div>
+  {%- endif %}
+</div>
+{%- endmacro %}
+
 {% macro gth_settings_section(id, title, settings, values=None, errors=None, action=None, description=None,
-                              error=None, submit_label="Save", form_attrs=None) %}
+                              error=None, submit_label="Save", form_attrs=None, layout="rows") %}
 {#- A titled block of settings fields, grouped by setting.group into a
     gth_field_group (a fieldset with the group as its legend) each, in first-seen
     order; ungrouped settings come first, outside any group.
@@ -97,12 +115,17 @@
     It renders as a card (gth_card's classes; the form has to wrap both the body
     and the footer, so not gth_card itself): the title and description in the
     header, the fields in the body, and with an action the submit button in the
-    footer. -#}
+    footer.
+    layout (v0.20): "rows" (the default) puts each setting's label and help on
+    the left and its control on the right once the card is wide enough (a
+    container query in theme.css), stacking below that; "stacked" keeps every
+    label above its control. Same markup either way, so ids and aria don't
+    change. -#}
 {%- set values = values or {} -%}
 {%- set errors = errors or {} -%}
 {%- set ns = namespace(groups=[]) -%}
 {%- for s in settings %}{% if (s.group or "") not in ns.groups %}{% set ns.groups = ns.groups + [s.group or ""] %}{% endif %}{% endfor -%}
-<section class="card gth-card gth-settings-section mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
+<section class="card gth-card gth-settings-section{% if layout == 'rows' %} gth-settings-rows{% endif %} mb-4" id="gth-settings-{{ id }}" aria-labelledby="gth-settings-{{ id }}-title">
   <div class="card-header gth-card-header gth-settings-section-header">
     <h2 class="h5 mb-0" id="gth-settings-{{ id }}-title">{{ title }}</h2>
     {%- if description %}

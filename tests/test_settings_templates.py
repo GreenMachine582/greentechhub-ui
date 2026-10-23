@@ -89,7 +89,7 @@ def test_section_without_action_has_no_form():
 
 def test_section_is_a_card_with_the_save_button_in_the_footer():
     html = _render_section(description="Only you see these.")
-    assert ('<section class="card gth-card gth-settings-section mb-4"'
+    assert ('<section class="card gth-card gth-settings-section gth-settings-rows mb-4"'
             ' id="gth-settings-preferences"') in html
     header = html.split('<div class="card-header', 1)[1].split("</div>", 1)[0]
     assert 'id="gth-settings-preferences-title">Preferences</h2>' in header
@@ -101,6 +101,35 @@ def test_section_is_a_card_with_the_save_button_in_the_footer():
     assert '<button type="submit" class="btn btn-primary">Save</button>' in footer
     # the last field sits flush with the card body's padding
     assert body.rstrip().rsplit('gth-form-field', 1)[0].rstrip().endswith('<div class="mb-0')
+
+
+def test_rows_layout_is_the_default_and_stacked_opts_out():
+    assert 'gth-settings-section gth-settings-rows mb-4"' in _render_section()
+    stacked = _render_section(layout="stacked")
+    assert "gth-settings-rows" not in stacked
+    assert '<section class="card gth-card gth-settings-section mb-4"' in stacked
+
+
+def test_setting_row_lays_out_a_custom_control_like_a_setting():
+    env = _env()
+    html = env.from_string(
+        '{% from "settings.html" import gth_setting_row %}'
+        '{% call gth_setting_row("Export", help_text="Every setting, as JSON.",'
+        ' for_id="export-btn") %}'
+        '<button id="export-btn" type="button">Download</button>{% endcall %}'
+    ).render()
+    assert_snapshot(html, "setting_row")
+    assert '<div class="mb-3 gth-form-field gth-setting-row">' in html
+    assert '<label class="form-label" for="export-btn">Export</label>' in html
+    control = html.split('<div class="gth-setting-row-control">', 1)[1].split("</div>", 1)[0]
+    assert '<button id="export-btn"' in control
+    # the help follows the control, so stacked it sits underneath like a field's
+    assert html.index("gth-setting-row-control") < html.index("Every setting, as JSON.")
+    plain = env.from_string(
+        '{% from "settings.html" import gth_setting_row %}'
+        '{% call gth_setting_row("Version") %}1.2.3{% endcall %}'
+    ).render()
+    assert '<span class="form-label d-block">Version</span>' in plain and "<label" not in plain
 
 
 def test_empty_page_renders():
