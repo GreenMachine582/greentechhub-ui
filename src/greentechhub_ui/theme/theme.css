@@ -428,6 +428,43 @@
   white-space: pre-wrap;
 }
 
+/* ── gth-settings-nav (v0.20) — settings_page.html's section list ────────
+   Plain links to each section's anchor. Narrow: a row of pills above the
+   sections that scrolls sideways. From 992px: a sticky column beside them,
+   under the sticky navbar. No active state: nothing tracks the scroll. */
+.gth-settings-nav-list {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.gth-settings-nav-list .nav-link {
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+.gth-settings-nav-list .nav-link:hover,
+.gth-settings-nav-list .nav-link:focus-visible {
+  color: var(--gth-accent);
+  background-color: var(--bs-tertiary-bg);
+}
+@media (min-width: 992px) {
+  .gth-settings-layout {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+  .gth-settings-nav {
+    position: sticky;
+    top: calc(var(--gth-navbar-height) + 1rem);
+  }
+  .gth-settings-nav-list {
+    flex-direction: column;
+    margin-bottom: 0;
+    overflow-x: visible;
+  }
+}
+
 /* ── gth_settings_section(layout="rows") (v0.20) — two-column settings ────
    Label and help on the left, the control on the right, once the section is
    wide enough: a container query on the card, so a narrow column on a wide

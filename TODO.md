@@ -50,14 +50,14 @@ component work.
 
 ### Settings & layout
 Settings sections are cards with fieldset groups and two-column rows now.
-- [ ] Settings page nav — an optional in-page section list (sticky on the side on wide screens, jump links on top on
-  narrow) built from `settings_sections`, linking the existing `#gth-settings-<id>` anchors
 - [ ] Read-only `str` settings: `gth_setting_field` passes `copy=True` when it's useful (e.g. a `copy` flag on the
   setting), for keys and URLs a user copies elsewhere
 - [ ] Playground: restructure `SETTINGS_DEMO` and `/settings` to show groups, rows, nav and the copy button; refresh
   `tests/test_settings_templates.py`, `tests/test_api_tokens_templates.py` and the e2e playground tests
 
 ### Ideas — not scheduled
+- Settings nav: highlight the section in view — a scrollspy that re-observes sections after an htmx swap (Bootstrap's
+  ScrollSpy keeps references to the swapped-out elements)
 - App switcher — a navbar grid menu linking the gth apps (BottleBot, PyFinBot, Market Watch, hardware-ledger), set in
   config; with Authentik SSO, moving between them needs no extra sign-in
 - Templates for greentechhub-fastapi's admin view ideas — users admin (on `register_users` and core's `UserStore`:

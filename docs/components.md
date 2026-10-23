@@ -1303,7 +1303,7 @@ markup (greentechhub-fastapi's `SettingsViews` renders them by default):
 
 | Template | Context |
 |---|---|
-| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text |
+| `settings_page.html` | extends `page.html` (`page_title`, `page_subtitle`); `settings_sections`: a list of sections; optional `settings_intro` text; `settings_nav` (v0.20, default on): the section nav, shown with 2+ sections |
 | `settings_section.html` | `section`: one section — the fragment a save response returns (200 + toast, or 422 + errors) |
 | `api_tokens_section.html` | `section`: the API tokens section (below), included by `settings_page.html` through the section's `template` |
 
@@ -1374,6 +1374,11 @@ optionally `values`, `errors`, `error`, `action`, `description`, `submit_label`,
 `form_attrs`, the form posts over htmx and swaps the section in place (`hx-post` = action, `hx-target` =
 `#gth-settings-<id>`, `hx-swap="outerHTML"`). Sections are stacked rather than tabbed, so a
 `/settings#gth-settings-<id>` link lands on its section and a 422 is never hidden in a closed tab.
+
+With two or more sections, `settings_page.html` lists them in a nav (v0.20): plain links to each section's anchor,
+named by its `title` (or its `id`, humanised), sticky beside the sections from 992px and a sideways-scrolling row of
+pills above them below that. No script, so the links keep working across a section's htmx swap. Pass
+`settings_nav=False` to hide it.
 
 ```python
 templates.TemplateResponse(request, "settings_page.html", {
