@@ -95,3 +95,52 @@ def test_the_script_ships_with_the_package():
     assert "[data-gth-copy]" in source and "navigator.clipboard" in source
     assert "showToast" in source  # the fallback toast, through toast.js
     assert "getElementById" in source  # "#gth-field-ui.theme" isn't a class selector
+
+
+SETTING_FIELD = ('{% from "settings.html" import gth_setting_field %}'
+                 '{{ gth_setting_field(s, value) }}')
+
+
+def test_a_copyable_str_setting_gets_a_copy_button_targeting_its_field():
+    setting = {"key": "api.base_url", "type": "str", "label": "Base URL", "default": "",
+               "readonly": True, "copyable": True}
+    html = _render(SETTING_FIELD, s=setting, value="https://api.example.test")
+    group = html.split('<div class="input-group">', 1)[1]
+    assert 'id="gth-field-api.base_url"' in group and "readonly" in group
+    # "#gth-field-api.base_url": copy.js looks a "#…" target up by id, so the dot is fine
+    assert 'data-gth-copy-target="#gth-field-api.base_url"' in group
+
+
+def test_settings_without_copyable_get_no_button():
+    plain = {"key": "site.banner", "type": "str", "label": "Banner", "default": ""}
+    # a dict's .copy is a method: only a real `copyable: True` counts
+    for setting in (plain, plain | {"copyable": "yes"}, plain | {"copyable": False}):
+        assert "gth-copy-button" not in _render(SETTING_FIELD, s=setting, value="x")
+
+
+def test_copyable_is_ignored_on_a_secret_and_without_the_script():
+    secret = {"key": "smtp.password", "type": "str", "label": "Password", "default": "",
+              "secret": True, "copyable": True}
+    assert "gth-copy-button" not in _render(SETTING_FIELD, s=secret, value=None)
+    setting = {"key": "k", "type": "str", "label": "K", "default": "", "copyable": True}
+    html = _render(SETTING_FIELD, copy_js_url=None, s=setting, value="v")
+    assert "gth-copy-button" not in html and "input-group" not in html
+
+
+def test_the_playground_profile_has_a_copyable_user_id():
+    import asyncio
+
+    import httpx
+
+    from playground.app import app
+
+    async def go():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                     cookies={"playground-user": "admin"}) as client:
+            return (await client.get("/settings")).text
+
+    profile = asyncio.run(go()).split('id="gth-settings-profile"', 1)[1].split("</section>", 1)[0]
+    assert re.search(r'id="gth-field-user_id" name="user_id"\s+class="form-control"'
+                     r'\s+value="admin"', profile)
+    assert 'data-gth-copy-target="#gth-field-user_id"' in profile

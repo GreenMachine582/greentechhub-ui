@@ -1266,6 +1266,7 @@ gth_setting_row(label, help_text=None, for_id=None, row_class="mb-3")   {# a {% 
 | `choice` with more | `gth_select` |
 | `int` | `gth_form_field(type="number", step=1)` with `min`/`max` |
 | `str` | `gth_form_field`; `input_type` sets the `<input type>` (`"email"`), and `readonly` locks the field (a profile field an identity provider owns, which greentechhub-fastapi's `SettingsViews` marks for IdP sign-ins with "Managed by …" as its help) |
+| `str` with `copyable` (v0.20) | the same field with a `gth_copy_button` at the end of its input-group (`gth_form_field(copy=True)`), for a key, URL or ID; usually with `readonly`. Needs `copy_js_url`; ignored on a secret |
 | `str` with `secret` | `gth_form_field(type="password")`, always empty, `autocomplete="new-password"`; when a value is saved, "Saved. Leave blank to keep it." and a `<key>.__clear` checkbox |
 
 - `value=None` falls back to `setting.default`. `type` may be a string or an enum (core's `SettingType` is a

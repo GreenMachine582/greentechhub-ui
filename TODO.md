@@ -50,8 +50,6 @@ component work.
 
 ### Settings & layout
 Settings sections are cards with fieldset groups and two-column rows now.
-- [ ] Read-only `str` settings: `gth_setting_field` passes `copy=True` when it's useful (e.g. a `copy` flag on the
-  setting), for keys and URLs a user copies elsewhere
 - [ ] Playground: restructure `SETTINGS_DEMO` and `/settings` to show groups, rows, nav and the copy button; refresh
   `tests/test_settings_templates.py`, `tests/test_api_tokens_templates.py` and the e2e playground tests
 
