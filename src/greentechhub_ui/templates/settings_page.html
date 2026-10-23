@@ -5,14 +5,37 @@
     a 422 is never hidden in a closed tab. greentechhub-fastapi's
     SettingsViews renders this by default; any framework can, with the same
     context. A section with a `template` key is included through that
-    template instead (api_tokens_section.html, for the API tokens section). -#}
+    template instead (api_tokens_section.html, for the API tokens section).
+    With two or more sections a nav lists them (v0.20): plain links to each
+    section's anchor, sticky beside the sections on wide screens and a row of
+    jump links above them on narrow ones. settings_nav=False hides it. -#}
 {% extends "page.html" %}
+
+{%- set sections = settings_sections|default([]) %}
+{%- set show_nav = settings_nav|default(true) and sections|length > 1 %}
 
 {% block page %}
 {%- if settings_intro|default(none) %}
 <p class="text-secondary small">{{ settings_intro }}</p>
 {%- endif %}
-{%- for section in settings_sections|default([]) %}
+{%- if show_nav %}
+<div class="gth-settings-layout">
+  <nav class="gth-settings-nav" aria-label="Settings sections">
+    <ul class="nav nav-pills gth-settings-nav-list">
+      {%- for section in sections %}
+      <li class="nav-item"><a class="nav-link" href="#gth-settings-{{ section.id|e }}">
+        {{- section.title|default(section.id|replace("_", " ")|capitalize) -}}
+      </a></li>
+      {%- endfor %}
+    </ul>
+  </nav>
+  <div class="gth-settings-content">
+{%- endif %}
+{%- for section in sections %}
 {% include section.template|default("settings_section.html") %}
 {%- endfor %}
+{%- if show_nav %}
+  </div>
+</div>
+{%- endif %}
 {% endblock %}

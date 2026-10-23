@@ -452,6 +452,28 @@ def test_settings_rows_put_labels_beside_controls_and_stack_when_narrow(page, pl
     assert abs(label["x"] - select["x"]) < 2
 
 
+def test_settings_nav_jumps_to_sections_and_stays_in_view(page, playground_url):
+    _impersonate(page, playground_url, "admin")  # five sections, App last
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    nav = page.locator(".gth-settings-nav")
+    expect(nav.locator(".nav-link")).to_have_text(
+        ["Profile", "Preferences", "Password", "API tokens", "App"])
+    first = _box(page, "#gth-settings-profile")
+    nav_box = nav.bounding_box()
+    assert nav_box["x"] + nav_box["width"] <= first["x"]  # beside the sections
+
+    nav.get_by_role("link", name="App").click()
+    expect(page).to_have_url(re.compile(r"/settings#gth-settings-app$"))
+    expect(page.locator("#gth-settings-app")).to_be_in_viewport()
+    expect(nav).to_be_in_viewport()  # sticky, so still there after the jump
+
+    page.set_viewport_size({"width": 375, "height": 800})
+    page.goto(f"{playground_url}/settings")
+    nav_box = page.locator(".gth-settings-nav").bounding_box()
+    assert nav_box["y"] + nav_box["height"] <= _box(page, "#gth-settings-profile")["y"]  # above
+
+
 def test_segmented_track_style(page, playground_url):
     page.goto(f"{playground_url}/settings")
     field = page.locator("#gth-settings-preferences .gth-segmented").first  # Theme
