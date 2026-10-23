@@ -3,6 +3,8 @@
 {% from "chips.html" import gth_chips, gth_switch %}
 {% from "copy_button.html" import gth_copy_button %}
 {% from "form.html" import gth_form_field %}
+{% from "field_group.html" import gth_field_group %}
+{% from "select.html" import gth_select %}
 {% from "date_range.html" import gth_date_range %}
 {% from "record_picker.html" import gth_record_picker %}
 
@@ -23,6 +25,19 @@
   {{ gth_form_field("copy_demo_webhook", "Webhook URL", value="https://hooks.example.test/gth/3f9c2a",
       input_attrs={"readonly": "readonly"}, copy=True, field_class="mb-3 gth-copy-demo") }}
   {{ gth_copy_button(text="gth-invite-7Q4M", label="Copy invite code", icon="link-45deg") }}
+</section>
+
+<section class="mb-5" id="field-group">
+  <h2 class="h4">gth-field-group</h2>
+  <p class="text-secondary small">A fieldset with its title as the legend; with an <code>id</code>, the description
+    is the group's <code>aria-describedby</code>. Consecutive groups get a divider. The settings page's groups use it.</p>
+  {% call gth_field_group("Delivery", description="Where and how often the report is sent.", id="field-group-delivery") %}
+    {{ gth_form_field("field_group_email", "Email", type="email", value="ada@example.com") }}
+    {{ gth_select("field_group_frequency", "Frequency", [("daily", "Daily"), ("weekly", "Weekly")], value="weekly") }}
+  {% endcall %}
+  {% call gth_field_group("Format") %}
+    {{ gth_select("field_group_format", "File type", [("csv", "CSV"), ("pdf", "PDF")], value="csv", field_class="mb-0") }}
+  {% endcall %}
 </section>
 
 <section class="mb-5" id="chips">

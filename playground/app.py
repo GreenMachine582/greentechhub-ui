@@ -333,6 +333,7 @@ PLAYGROUND_NAV = [
     {"label": "Forms", "url": "/forms", "icon": "input-cursor-text", "children": [
         {"label": "Form + validation", "url": "/forms#form"},
         {"label": "Copy button", "url": "/forms#copy"},
+        {"label": "Field group", "url": "/forms#field-group"},
         {"label": "Chips + switch", "url": "/forms#chips"},
         {"label": "Date range", "url": "/forms#date-range"},
         {"label": "File drop", "url": "/forms#file-drop"},
@@ -397,8 +398,8 @@ PAGES = {
     "extensibility": ("Extensibility", "Data-driven extra_head / extra_css / extra_js slots."),
     "personas": ("Personas", "Impersonate a persona to see the playground as they would: the user "
                              "menu, permission-filtered nav and gated pages."),
-    "settings": ("Settings", "gth_settings_section over setting definitions: each type picks its "
-                 "own widget."),
+    "settings": ("Settings", "settings_page.html: a section nav, then gth_settings_section cards "
+                 "with fieldset groups and two-column rows."),
     "outbox": ("Outbox", "The emails the password reset and email verification demos sent."),
 }
 
@@ -652,6 +653,8 @@ def _password_section(errors=None) -> dict:
                          _field("new_password", "New password", "At least 8 characters.",
                                 secret=True),
                          _field("new_password_confirm", "Confirm new password", secret=True)],
+            # layout="stacked": a change-password form reads better label-over-field.
+            "layout": "stacked",
             "values": {}, "errors": errors, "action": "/settings-demo/password",
             "submit_label": "Change password"}
 
@@ -783,6 +786,22 @@ async def settings_demo_revoke_token(request: Request, token_id: str):
         "HX-Trigger": greentechhub_ui.toast("Token revoked")})
 
 
+def _data_section() -> dict:
+    """A section with its own template (as API tokens has): gth_setting_row
+    lays out custom controls — a download link, plain text — like settings."""
+    return {"id": "data", "title": "Your data", "template": "_settings_data_section.html",
+            "description": "Custom rows (gth_setting_row) in the same two-column layout.",
+            "export_url": "/settings-demo/export",
+            "stored_in": "Preferences in this browser (a cookie); App settings on the server."}
+
+
+@app.get("/settings-demo/export")
+async def settings_demo_export(request: Request):
+    """The "Your data" section's export: this browser's saved settings as JSON."""
+    return JSONResponse(_saved_settings(request),
+                        headers={"Content-Disposition": 'attachment; filename="settings.json"'})
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     title, subtitle = PAGES["settings"]
@@ -794,13 +813,17 @@ async def settings_page(request: Request):
                                      user_id=PERSONAS[persona]["user"]["username"]),
                     sections[0], _password_section(),
                     _api_tokens_section(request), *sections[1:]]
+    sections.append(_data_section())
     return templates.TemplateResponse(request, "settings_page.html", {
         "page_title": title, "page_subtitle": subtitle,
         "settings_intro": (
-            "gth_setting_field picks the widget from the setting's type: a switch for bool, "
-            "segmented buttons for four or fewer choices, a select for more, number and text "
-            "fields for int and str, and a write-only password field for a secret (the API "
-            "token). Save a page size of 500 to see the 422 path."),
+            "Each section is a card; a setting's group is a fieldset. Labels sit beside their "
+            "controls and stack when the card is narrow (resize the window); Password opts out "
+            "with layout=\"stacked\", and Your data lays out its own controls with "
+            "gth_setting_row. The nav jumps between sections. Copy buttons: the User ID, and a "
+            "new API token. Each type picks its widget (a switch, segmented buttons or a select, "
+            "number and text fields, a write-only secret); save a page size of 500 to see the "
+            "422 path."),
         "settings_sections": sections,
     })
 

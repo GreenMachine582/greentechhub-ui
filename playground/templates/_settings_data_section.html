@@ -1,0 +1,24 @@
+{#- The /settings "Your data" section: a section with its own `template`
+    (like api_tokens_section.html), in gth_settings_section's card shell with
+    the two-column rows, holding gth_setting_rows — custom controls laid out
+    like settings. -#}
+{% from "settings.html" import gth_setting_row %}
+<section class="card gth-card gth-settings-section gth-settings-rows mb-4" id="gth-settings-{{ section.id }}"
+  aria-labelledby="gth-settings-{{ section.id }}-title">
+  <div class="card-header gth-card-header gth-settings-section-header">
+    <h2 class="h5 mb-0" id="gth-settings-{{ section.id }}-title">{{ section.title }}</h2>
+    <p class="text-secondary small mb-0 mt-1">{{ section.description }}</p>
+  </div>
+  <div class="card-body gth-card-body">
+    {% call gth_setting_row("Export settings", help_text="Everything this page saved for you, as JSON.",
+        for_id="gth-settings-data-export") %}
+    <a class="btn btn-outline-secondary gth-download" id="gth-settings-data-export"
+      href="{{ section.export_url }}" download>
+      <i class="bi bi-download" aria-hidden="true"></i> Download settings.json
+    </a>
+    {% endcall %}
+    {% call gth_setting_row("Stored in", row_class="mb-0") %}
+    <p class="mb-0 pt-2">{{ section.stored_in }}</p>
+    {% endcall %}
+  </div>
+</section>
