@@ -212,6 +212,16 @@ def test_copy_button_copies_the_new_api_token(page, playground_url):
     expect(button).not_to_contain_text("Copied")
 
 
+def test_copyable_setting_copies_the_user_id(page, playground_url):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    _impersonate(page, playground_url, "admin")
+    page.goto(f"{playground_url}/settings")
+    profile = page.locator("#gth-settings-profile")
+    profile.locator(".gth-copy-button").click()
+    expect(profile.locator(".gth-copy-button")).to_contain_text("Copied")
+    assert page.evaluate("navigator.clipboard.readText()") == "admin"
+
+
 def test_copy_button_copies_literal_text(page, playground_url):
     page.context.grant_permissions(["clipboard-read", "clipboard-write"])
     page.goto(f"{playground_url}/forms#copy")

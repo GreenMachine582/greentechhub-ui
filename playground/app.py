@@ -630,12 +630,17 @@ def _profile_field(key: str, label: str, help_text: str, locked: frozenset[str],
     return _field(key, label, help_text, **extra)
 
 
-def _profile_section(values: dict, errors=None, locked: frozenset[str] = frozenset()) -> dict:
+def _profile_section(values: dict, errors=None, locked: frozenset[str] = frozenset(),
+                     user_id: str = "") -> dict:
+    # User ID: read-only and copyable (gth_setting_field's `copyable`); the save ignores it.
     return {"id": "profile", "title": "Profile", "description": "How you appear to others.",
-            "settings": [_profile_field("display_name", "Display name",
+            "settings": [_field("user_id", "User ID", "Use it where a service asks for your ID.",
+                                readonly=True, copyable=True),
+                         _profile_field("display_name", "Display name",
                                         "Shown instead of your user ID.", locked),
                          _profile_field("email", "Email", "", locked, input_type="email")],
-            "values": values, "errors": errors, "action": "/settings-demo/profile",
+            "values": values | {"user_id": user_id}, "errors": errors,
+            "action": "/settings-demo/profile",
             "submit_label": "Save profile"}
 
 
@@ -659,6 +664,7 @@ async def settings_demo_profile(request: Request):
         return Response(status_code=401)
     form = await request.form()
     locked = LOCKED.get(persona, frozenset())
+    user_id = PERSONAS[persona]["user"]["username"]
     # A locked field keeps its stored value whatever the form sent.
     values = {key: PROFILES[persona][key] if key in locked else str(form.get(key) or "").strip()
               for key in ("display_name", "email")}
@@ -668,9 +674,11 @@ async def settings_demo_profile(request: Request):
     if values["email"] and not email_looks_valid(values["email"]):
         errors["email"] = ["Enter an email address, like name@example.com."]
     if errors:
-        return _render_section(request, _profile_section(values, errors, locked), status_code=422)
+        return _render_section(request, _profile_section(values, errors, locked, user_id),
+                               status_code=422)
     PROFILES[persona] = values
-    return _render_section(request, _profile_section(values, locked=locked), headers={
+    section = _profile_section(values, locked=locked, user_id=user_id)
+    return _render_section(request, section, headers={
         "HX-Trigger": greentechhub_ui.toast("Profile saved")})
 
 
@@ -782,7 +790,8 @@ async def settings_page(request: Request):
     persona = _persona(request)
     if PERSONAS[persona]["user"] is not None:
         # SettingsViews' order: Profile first, then Password and API tokens after Preferences.
-        sections = [_profile_section(PROFILES[persona], locked=LOCKED.get(persona, frozenset())),
+        sections = [_profile_section(PROFILES[persona], locked=LOCKED.get(persona, frozenset()),
+                                     user_id=PERSONAS[persona]["user"]["username"]),
                     sections[0], _password_section(),
                     _api_tokens_section(request), *sections[1:]]
     return templates.TemplateResponse(request, "settings_page.html", {
