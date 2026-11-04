@@ -48,6 +48,14 @@ component work.
   - Then greentechhub-fastapi's `AuditViews` builds the state and answers `partial=rows`, and `audit_page.html` moves
     onto `gth_data_table`, dropping its `gth_table_load_more(select=...)` row. Release order: ui, then fastapi.
 
+### Local single-user apps
+For a local tool with one user and no sign-in that scans folders and runs long jobs.
+- [ ] `activity_page.html` — the audit log as a `gth_timeline` activity feed, a drop-in `AuditViews` page template
+- [ ] `gth_job_status` — a background job's progress, pause/resume/cancel buttons and its result panel, for
+  greentechhub-fastapi's `JobViews`
+- [ ] `gth_folder_picker` — a path input with a browse modal (breadcrumbs, drive roots, hidden folders toggle,
+  "Choose this folder"), for greentechhub-fastapi's `FolderPickerViews`
+
 ### Ideas — not scheduled
 - Settings nav: highlight the section in view — a scrollspy that re-observes sections after an htmx swap (Bootstrap's
   ScrollSpy keeps references to the swapped-out elements)
