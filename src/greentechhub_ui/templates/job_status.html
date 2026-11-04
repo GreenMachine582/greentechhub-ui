@@ -1,0 +1,10 @@
+{#- job_status.html — a background job's status partial (v0.21): what
+    greentechhub-fastapi's JobViews renders for GET {url}/{id} and the
+    pause / resume / cancel actions, and what a service's "start" route
+    answers (JobViews.status_response). Context: job (a job_dict),
+    poll_url (None once finished), pause_url, resume_url, cancel_url,
+    poll_every, and optionally job_result_link. -#}
+{% from "jobs.html" import gth_job_status %}
+{{ gth_job_status(job, poll_url=poll_url|default(none), pause_url=pause_url|default(none),
+    resume_url=resume_url|default(none), cancel_url=cancel_url|default(none),
+    poll_every=poll_every|default("1s"), result_link=job_result_link|default(none)) }}

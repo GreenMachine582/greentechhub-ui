@@ -1568,6 +1568,49 @@ the rows greentechhub-fastapi's `AuditViews` passes, or any list of the same sha
   serving a feed answers "Load older" from a route of its own. The playground's `/data#timeline` does this.
 - With no entries, `gth_empty_state(empty_message)`.
 
+### Job status (v0.21)
+
+`gth_job_status` shows a background job: its progress while it runs, Pause / Resume and Cancel, then its result.
+It's what greentechhub-fastapi's `JobViews` renders (`job_status.html`) over greentechhub-core's `JobRunner`, and
+any server can answer the same shape.
+
+```jinja
+{% from "jobs.html" import gth_job_status, gth_job_state_badge %}
+{{ gth_job_status(job, poll_url="/jobs/" ~ job.id, pause_url=..., resume_url=..., cancel_url=...,
+    poll_every="1s", id=None, result_link=None) }}
+```
+
+| `job` key | |
+|---|---|
+| `id` | names the element, `gth-job-<id>` (or pass `id`) |
+| `label` | the heading, and the progress bar's accessible name |
+| `state` | `queued`, `running`, `paused`, `succeeded`, `failed` or `cancelled`, shown as a badge (`gth_job_state_badge`) |
+| `done`, `total` | the counts: "3 of 12"; `total` None is an indeterminate bar |
+| `message` | what it's doing now (a file name), one truncated line |
+| `result` | once it succeeded: `badges` (`gth_result_panel`'s pairs), `problems` and `link` are shown when present |
+| `error` | a failed job's message |
+
+- **While active** it polls `poll_url` every `poll_every` and swaps the answer's `.gth-job-body` into itself
+  (`hx-select`, `innerHTML`). The element is never replaced, so it stays one `aria-live` region. The running part is
+  `aria-live="off"`, so each poll isn't announced; the finished result is. Polling stops when the server answers
+  **286** (`JobViews` does, once the job is finished) or leaves `poll_url` out.
+- The buttons post to their url and swap the same way, with `hx-disabled-elt`. Pause shows while running, Resume
+  while paused, Cancel whenever `cancel_url` is given. Each is left out without its url.
+- **Finished:** a `gth_result_panel` headed by the label, with the result's badges, problems and link (or
+  `result_link`). A failed job shows its error as a danger alert, and a cancelled one gets a "Cancelled" badge.
+- `job_status.html` is the partial `JobViews` renders: `job`, `poll_url`, `pause_url`, `resume_url`, `cancel_url`,
+  `poll_every`, and optionally `job_result_link`. `jobs_page.html` lists recent jobs (`jobs`, each with
+  `status_url`) in a table: state badge, progress, start and finish times.
+
+A service's "start" route answers with the partial (`JobViews.status_response`), which starts the polling:
+
+```html
+<button hx-post="/scan" hx-target="#scan-status" hx-swap="innerHTML">Scan music</button>
+<div id="scan-status"></div>
+```
+
+The playground's `/data#job-status` runs this flow over a fake scan.
+
 ### Error pages (v0.17)
 
 `403.html`, `404.html` and `500.html` extend `error_page.html`, which extends `page.html`: the service's own shell
