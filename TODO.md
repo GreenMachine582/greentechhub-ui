@@ -50,7 +50,6 @@ component work.
 
 ### Local single-user apps
 For a local tool with one user and no sign-in that scans folders and runs long jobs.
-- [ ] `activity_page.html` — the audit log as a `gth_timeline` activity feed, a drop-in `AuditViews` page template
 - [ ] `gth_folder_picker` — a path input with a browse modal (breadcrumbs, drive roots, hidden folders toggle,
   "Choose this folder"), for greentechhub-fastapi's `FolderPickerViews`
 
@@ -95,15 +94,12 @@ land before it takes v0.19 or later.
 - [ ] Decide on the navbar color-mode change — accept the light navbar in light mode, or pin `navbar_theme="dark"`
 
 ### PyFinBot
-It pins v0.19 and already mounts `static_dirs()` and calls `install()`. It moves to this release (core v0.16,
-fastapi v0.18) in its user-accounts PR (PyFinBot #114). That brings:
-- htmx 2 only. Its templates use none of the 2.x changes ([docs/htmx2.md › Upgrading a
-  service](docs/htmx2.md#upgrading-a-service)).
-- `pluralise` for its `_plural` helpers.
-- The read-only, typed profile fields for Authentik sign-ins.
+It pins v0.20 (with core v0.16 and fastapi v0.18, since PyFinBot #114): it mounts `static_dirs()`, calls
+`install()` and runs on htmx 2 only. Its Authentik sign-ins get the read-only, typed profile fields; `pluralise`
+replaced its `_plural` helpers (#115); and `gth_timeline` is the dashboard's activity feed over its audit entries
+(#116).
 
-What's left after that is adoption, each a PR tracked in PyFinBot's `todo.md`. `gth_timeline` is one example, for
-an audit activity feed.
+What's left is adopting each release's new pieces, a PR each in PyFinBot's `todo.md`.
 
 ### GreenTechHub
 - [ ] Adopt `theme/` for brand consistency
