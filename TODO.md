@@ -50,6 +50,13 @@ component work.
 
 ### Local single-user apps
 For a local tool with one user and no sign-in that scans folders and runs long jobs.
+- [ ] Hosted apps: browsing and moving files on the *user's* machine when the server is elsewhere. With
+  `gth_folder_picker` the server browses its own disk, which is the user's only while the app runs locally. With no
+  install, only the File System Access API can do it, and only in Chromium desktop browsers (Chrome, Edge):
+  - `showDirectoryPicker({mode: "readwrite"})` gives directory handles, never paths
+  - the handles are kept in IndexedDB, and the browser asks again for permission each session
+  - a client-side executor runs the server's plan (list, hash, move, rename) on those handles and reports progress
+  - Firefox and Safari can't write, so they need a small local agent, or the app run locally
 
 ### Ideas — not scheduled
 - Settings nav: highlight the section in view — a scrollspy that re-observes sections after an htmx swap (Bootstrap's
