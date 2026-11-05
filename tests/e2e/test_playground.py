@@ -2959,6 +2959,29 @@ def test_timeline_loads_older_entries(page, playground_url):
     expect(first_time).to_have_attribute("datetime", re.compile(r"^\d{4}-\d\d-\d\d"))
 
 
+def test_activity_page_loads_older_entries_into_the_timeline(page, playground_url):
+    page.goto(f"{playground_url}/activity")
+    items = page.locator("#gth-activity-feed .gth-timeline-item")
+    expect(items).to_have_count(4)
+    newest = items.first.inner_text()
+    page.click("#gth-activity-feed .gth-pagination-more")
+    expect(items).to_have_count(7)
+    expect(items.first).to_have_text(newest)
+    expect(page).to_have_url(re.compile(r"/activity$"))
+    # the last page has no "Load older" of its own, and the clicked one swapped itself out
+    expect(page.locator("#gth-activity-feed .gth-pagination-more")).to_have_count(0)
+    expect(page.locator("#gth-activity-feed > .gth-timeline-page")).to_have_count(2)
+
+
+def test_activity_page_filters_by_action(page, playground_url):
+    page.goto(f"{playground_url}/activity")
+    page.fill("#gth-activity-action", "jobs.")
+    page.click(".gth-activity-filters button[type=submit]")
+    expect(page).to_have_url(re.compile(r"/activity\?action=jobs\.$"))
+    expect(page.locator("#gth-activity-feed .gth-timeline-action")).to_have_count(4)
+    expect(page.locator(".gth-activity-clear")).to_be_visible()
+
+
 def test_job_status_pause_resume_and_finish(page, playground_url):
     page.goto(f"{playground_url}/data#job-status")
     page.get_by_role("button", name="Scan music").click()

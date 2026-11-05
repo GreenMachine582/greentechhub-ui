@@ -142,7 +142,8 @@ optionally `roles_error`, `roles_form` and `roles_title`. Shapes are in
 
 **Audit log page (v0.17)** — the context `audit_page.html` takes (greentechhub-fastapi's `AuditViews` supplies
 it): `audit_url`, `audit_filters`, `audit_entries`, `audit_next_url`, and optionally `audit_actions_help`. Shapes are
-in [docs/components.md](components.md#audit-log-v017).
+in [docs/components.md](components.md#audit-log-v017). `activity_page.html` (v0.21) takes the same context and shows
+it as a timeline; see [docs/components.md](components.md#activity-page-v021).
 
 **Background jobs (v0.21)** — the context `job_status.html` takes (greentechhub-fastapi's `JobViews` supplies it):
 `job` (`id`, `label`, `state`, `done`, `total`, `message`, `result`, `error`), `poll_url` (None once finished),

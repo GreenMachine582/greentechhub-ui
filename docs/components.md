@@ -1568,6 +1568,35 @@ the rows greentechhub-fastapi's `AuditViews` passes, or any list of the same sha
   serving a feed answers "Load older" from a route of its own. The playground's `/data#timeline` does this.
 - With no entries, `gth_empty_state(empty_message)`.
 
+### Activity page (v0.21)
+
+`activity_page.html` is the audit log as an activity feed: `audit_page.html`'s context, shown as a `gth_timeline`.
+greentechhub-fastapi's `AuditViews` renders it with `page_template = "activity_page.html"`, typically with
+`permission=None` for a local single-user app, where it's the app's activity page:
+
+```python
+activity = AuditViews(templates=templates, permission=None)
+activity.url, activity.title, activity.page_template = "/activity", "Activity", "activity_page.html"
+register_audit(app, settings, store=store, views=activity)
+```
+
+| Context | |
+|---|---|
+| `audit_url` | the page's own url, the filter form's action |
+| `audit_filters` | its `action` is the "Show" filter's value (an action, or a prefix ending in `.`); a Clear link while it's set |
+| `audit_entries` | as for `audit_page.html`, newest first |
+| `audit_next_url` | the older page's url, keeping the filters, or None |
+| `activity_kinds` | optional `{first word of an action: (icon, tone)}`, merged over `gth_timeline`'s defaults and these: `jobs` (hourglass, info), `scan` (search, info), `plan` (list-check, brand), `library` (collection, good) |
+| `activity_filter` | optional `False`: no filter form |
+
+- The entries are `gth_timeline_page`'s: grouped by day, relative times, "System" for no actor.
+- "Load older" fetches `audit_next_url`, the next page rendered in full, and picks its entries out with
+  `hx-select="#gth-activity-feed > *"`. That swaps the button for the older page's day groups and its own "Load
+  older", so the server needs no fragment route (unlike a bare `gth_timeline`).
+- Empty, it says "No activity yet.", or "Nothing matches this filter." while filtered.
+
+The playground's `/activity` page runs this flow over core's `InMemoryAuditStore`, with no persona needed.
+
 ### Job status (v0.21)
 
 `gth_job_status` shows a background job: its progress while it runs, Pause / Resume and Cancel, then its result.

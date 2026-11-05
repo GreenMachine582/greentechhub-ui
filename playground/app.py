@@ -372,6 +372,7 @@ PLAYGROUND_NAV = [
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
     {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
+    {"label": "Activity", "url": "/activity", "icon": "clock-history"},
     # greentechhub-fastapi's "Admin" group (admin_nav_item, what register_admin
     # returns): one entry per admin page with its permission, so only the demo
     # admin (sign in on /extensibility) sees it, and nobody sees an empty group.
@@ -1288,6 +1289,52 @@ async def audit_page(request: Request):
         "page_title": "Audit log",
         "page_subtitle": "gth-ui's audit_page.html over core's InMemoryAuditStore.",
         "audit_url": "/audit", "audit_filters": filters, "audit_next_url": next_url,
+        "audit_entries": [{"at": e.at, "actor": e.actor, "action": e.action,
+                           "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
+                           "summary": e.summary} for e in entries],
+    })
+
+
+# ── Activity page demo ────────────────────────────────────────────────────────
+# activity_page.html: the same AuditViews context as /audit, as a timeline, for
+# a local single-user app (AuditViews(permission=None) on AUTH_ADAPTER=
+# single_user): no persona needed. "Load older" re-requests this page with the
+# cursor and picks the entries out with hx-select.
+
+ACTIVITY_STORE = InMemoryAuditStore()
+ACTIVITY_PAGE_SIZE = 4
+for _hours, _action, _actor, _target, _summary in [
+    (50, "settings.changed", "local", None, "Changed library.folder"),
+    (49, "jobs.succeeded", "local", ("job", "1"), "Scan D:\Music finished"),
+    (30, "jobs.failed", "local", ("job", "2"), "Scan E:\ failed"),
+    (29, "plan.created", "local", ("plan", "1"), "Planned 42 moves"),
+    (28, "plan.applied", "local", ("plan", "1"), "Applied 42 moves"),
+    (5, "jobs.cancelled", "local", ("job", "3"), "Library build was cancelled"),
+    (2, "jobs.succeeded", None, ("job", "4"), "Nightly match finished"),
+]:
+    ACTIVITY_STORE.record_sync(new_entry(
+        _action, actor=_actor, target=_target, summary=_summary,
+        now=datetime(2026, 10, 10, 9, 0, tzinfo=UTC) + timedelta(hours=50 - _hours)))
+
+
+@app.get("/activity", response_class=HTMLResponse)
+async def activity_page(request: Request):
+    query = request.query_params
+    action = (query.get("action") or "").strip().lower()
+    try:
+        before = datetime.fromisoformat(query["before"]) if query.get("before") else None
+    except ValueError:
+        before = None
+    entries = await ACTIVITY_STORE.entries(action=action or None, before=before,
+                                           limit=ACTIVITY_PAGE_SIZE)
+    next_url = None
+    if len(entries) == ACTIVITY_PAGE_SIZE:
+        kept = {"action": action} if action else {}
+        next_url = "/activity?" + urlencode({**kept, "before": entries[-1].at.isoformat()})
+    return templates.TemplateResponse(request, "activity_page.html", {
+        "page_title": "Activity",
+        "page_subtitle": "activity_page.html: AuditViews' context as a gth_timeline.",
+        "audit_url": "/activity", "audit_filters": {"action": action}, "audit_next_url": next_url,
         "audit_entries": [{"at": e.at, "actor": e.actor, "action": e.action,
                            "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
                            "summary": e.summary} for e in entries],
