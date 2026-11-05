@@ -58,6 +58,7 @@ FRAGMENT_PARSER = html5lib.HTMLParser(strict=True)
         "filter_bar",
         "result_panel",
         "result_panel_error",
+        "job_status_running",
         "folder_picker",
         "segmented_id",
         "switch_id",

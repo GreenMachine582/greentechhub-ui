@@ -322,6 +322,7 @@ PLAYGROUND_NAV = [
         {"label": "Action menu", "url": "/data#action-menu"},
         {"label": "Description list", "url": "/data#description-list"},
         {"label": "Progress", "url": "/data#progress"},
+        {"label": "Job status", "url": "/data#job-status"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
@@ -372,6 +373,7 @@ PLAYGROUND_NAV = [
     {"label": "Extensibility", "url": "/extensibility", "icon": "plug"},
     {"label": "Personas", "url": "/personas", "icon": "person-badge"},
     {"label": "Login page", "url": "/login-demo", "icon": "box-arrow-in-right"},
+    {"label": "Activity", "url": "/activity", "icon": "clock-history"},
     # greentechhub-fastapi's "Admin" group (admin_nav_item, what register_admin
     # returns): one entry per admin page with its permission, so only the demo
     # admin (sign in on /extensibility) sees it, and nobody sees an empty group.
@@ -957,6 +959,57 @@ async def progress_start(request: Request):
     return _progress_live(request)
 
 
+# gth_job_status demo: a fake folder scan, standing in for greentechhub-fastapi's
+# JobViews over core's JobRunner (job_status.html with JobViews' context). Each
+# poll scans one file while it's running; pause, resume and cancel act at once.
+JOB_DEMO: dict = {}
+JOB_DEMO_FILES = ["intro.mp3", "verse.flac", "chorus.mp3", "bridge.ogg", "outro.mp3", "bonus.wav"]
+
+
+def _job_demo(request: Request, *, status_code: int = 200) -> HTMLResponse:
+    job = dict(JOB_DEMO)
+    active = job["state"] in ("queued", "running", "paused")
+    if job["state"] == "succeeded":
+        job["result"] = {"badges": [[f"{job['total']} files", "good"], ["1 skipped", "warn"]],
+                         "problems": ["bonus.wav: unsupported format"],
+                         "link": {"url": "/data#job-status", "label": "Open the library"}}
+    return templates.TemplateResponse(request, "job_status.html", {
+        "job": job, "poll_url": "/demo/job" if active else None, "poll_every": "1s",
+        "pause_url": "/demo/job/pause", "resume_url": "/demo/job/resume",
+        "cancel_url": "/demo/job/cancel"}, status_code=status_code)
+
+
+@app.post("/demo/job/start", response_class=HTMLResponse)
+async def job_start(request: Request):
+    JOB_DEMO.clear()
+    JOB_DEMO.update(id="demo", label="Scan D:/Music", state="running", done=0,
+                    total=len(JOB_DEMO_FILES), message="Listing files…", result={}, error=None)
+    return _job_demo(request)
+
+
+@app.get("/demo/job", response_class=HTMLResponse)
+async def job_poll(request: Request):
+    if JOB_DEMO.get("state") == "running":
+        JOB_DEMO["done"] += 1
+        JOB_DEMO["message"] = JOB_DEMO_FILES[JOB_DEMO["done"] - 1]
+        if JOB_DEMO["done"] >= JOB_DEMO["total"]:
+            JOB_DEMO.update(state="succeeded", message="")
+    finished = JOB_DEMO.get("state") not in ("queued", "running", "paused")
+    return _job_demo(request, status_code=286 if finished else 200)
+
+
+@app.post("/demo/job/{action}", response_class=HTMLResponse)
+async def job_control(request: Request, action: str):
+    state = JOB_DEMO.get("state")
+    if action == "pause" and state == "running":
+        JOB_DEMO["state"] = "paused"
+    elif action == "resume" and state == "paused":
+        JOB_DEMO["state"] = "running"
+    elif action == "cancel" and state in ("running", "paused"):
+        JOB_DEMO["state"] = "cancelled"
+    return _job_demo(request)
+
+
 # gth_folder_picker demo: folder_browser.html with FolderPickerViews' context
 # (fastapi's listing_dict over core's list_folders), over a made-up tree so it
 # looks the same on every machine. "Locked" can't be opened; E: isn't ready.
@@ -1301,6 +1354,52 @@ async def audit_page(request: Request):
         "page_title": "Audit log",
         "page_subtitle": "gth-ui's audit_page.html over core's InMemoryAuditStore.",
         "audit_url": "/audit", "audit_filters": filters, "audit_next_url": next_url,
+        "audit_entries": [{"at": e.at, "actor": e.actor, "action": e.action,
+                           "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
+                           "summary": e.summary} for e in entries],
+    })
+
+
+# ── Activity page demo ────────────────────────────────────────────────────────
+# activity_page.html: the same AuditViews context as /audit, as a timeline, for
+# a local single-user app (AuditViews(permission=None) on AUTH_ADAPTER=
+# single_user): no persona needed. "Load older" re-requests this page with the
+# cursor and picks the entries out with hx-select.
+
+ACTIVITY_STORE = InMemoryAuditStore()
+ACTIVITY_PAGE_SIZE = 4
+for _hours, _action, _actor, _target, _summary in [
+    (50, "settings.changed", "local", None, "Changed library.folder"),
+    (49, "jobs.succeeded", "local", ("job", "1"), "Scan D:\Music finished"),
+    (30, "jobs.failed", "local", ("job", "2"), "Scan E:\ failed"),
+    (29, "plan.created", "local", ("plan", "1"), "Planned 42 moves"),
+    (28, "plan.applied", "local", ("plan", "1"), "Applied 42 moves"),
+    (5, "jobs.cancelled", "local", ("job", "3"), "Library build was cancelled"),
+    (2, "jobs.succeeded", None, ("job", "4"), "Nightly match finished"),
+]:
+    ACTIVITY_STORE.record_sync(new_entry(
+        _action, actor=_actor, target=_target, summary=_summary,
+        now=datetime(2026, 10, 10, 9, 0, tzinfo=UTC) + timedelta(hours=50 - _hours)))
+
+
+@app.get("/activity", response_class=HTMLResponse)
+async def activity_page(request: Request):
+    query = request.query_params
+    action = (query.get("action") or "").strip().lower()
+    try:
+        before = datetime.fromisoformat(query["before"]) if query.get("before") else None
+    except ValueError:
+        before = None
+    entries = await ACTIVITY_STORE.entries(action=action or None, before=before,
+                                           limit=ACTIVITY_PAGE_SIZE)
+    next_url = None
+    if len(entries) == ACTIVITY_PAGE_SIZE:
+        kept = {"action": action} if action else {}
+        next_url = "/activity?" + urlencode({**kept, "before": entries[-1].at.isoformat()})
+    return templates.TemplateResponse(request, "activity_page.html", {
+        "page_title": "Activity",
+        "page_subtitle": "activity_page.html: AuditViews' context as a gth_timeline.",
+        "audit_url": "/activity", "audit_filters": {"action": action}, "audit_next_url": next_url,
         "audit_entries": [{"at": e.at, "actor": e.actor, "action": e.action,
                            "target": f"{e.target_type}:{e.target_id}" if e.target_type else None,
                            "summary": e.summary} for e in entries],

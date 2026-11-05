@@ -109,6 +109,16 @@
   </div>
 </section>
 
+<section class="mb-5" id="job-status">
+  <h2 class="h4">gth-job-status</h2>
+  <p class="text-secondary small">A background job (greentechhub-fastapi's <code>JobViews</code> over core's
+    <code>JobRunner</code>): progress that polls itself, Pause / Resume and Cancel, then a result panel. This fake
+    scan advances one file per poll; the finished answer is sent with status 286, which stops the polling.</p>
+  <button type="button" class="btn btn-sm btn-outline-primary mb-2" hx-post="/demo/job/start"
+    hx-target="#job-demo" hx-swap="innerHTML">Scan music</button>
+  <div id="job-demo"></div>
+</section>
+
 <section class="mb-5" id="pagination">
   <h2 class="h4">gth-pagination</h2>
   <div id="widgets-list">

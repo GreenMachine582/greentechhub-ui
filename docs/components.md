@@ -1568,6 +1568,78 @@ the rows greentechhub-fastapi's `AuditViews` passes, or any list of the same sha
   serving a feed answers "Load older" from a route of its own. The playground's `/data#timeline` does this.
 - With no entries, `gth_empty_state(empty_message)`.
 
+### Activity page (v0.21)
+
+`activity_page.html` is the audit log as an activity feed: `audit_page.html`'s context, shown as a `gth_timeline`.
+greentechhub-fastapi's `AuditViews` renders it with `page_template = "activity_page.html"`, typically with
+`permission=None` for a local single-user app, where it's the app's activity page:
+
+```python
+activity = AuditViews(templates=templates, permission=None)
+activity.url, activity.title, activity.page_template = "/activity", "Activity", "activity_page.html"
+register_audit(app, settings, store=store, views=activity)
+```
+
+| Context | |
+|---|---|
+| `audit_url` | the page's own url, the filter form's action |
+| `audit_filters` | its `action` is the "Show" filter's value (an action, or a prefix ending in `.`); a Clear link while it's set |
+| `audit_entries` | as for `audit_page.html`, newest first |
+| `audit_next_url` | the older page's url, keeping the filters, or None |
+| `activity_kinds` | optional `{first word of an action: (icon, tone)}`, merged over `gth_timeline`'s defaults and these: `jobs` (hourglass, info), `scan` (search, info), `plan` (list-check, brand), `library` (collection, good) |
+| `activity_filter` | optional `False`: no filter form |
+
+- The entries are `gth_timeline_page`'s: grouped by day, relative times, "System" for no actor.
+- "Load older" fetches `audit_next_url`, the next page rendered in full, and picks its entries out with
+  `hx-select="#gth-activity-feed > *"`. That swaps the button for the older page's day groups and its own "Load
+  older", so the server needs no fragment route (unlike a bare `gth_timeline`).
+- Empty, it says "No activity yet.", or "Nothing matches this filter." while filtered.
+
+The playground's `/activity` page runs this flow over core's `InMemoryAuditStore`, with no persona needed.
+
+### Job status (v0.21)
+
+`gth_job_status` shows a background job: its progress while it runs, Pause / Resume and Cancel, then its result.
+It's what greentechhub-fastapi's `JobViews` renders (`job_status.html`) over greentechhub-core's `JobRunner`, and
+any server can answer the same shape.
+
+```jinja
+{% from "jobs.html" import gth_job_status, gth_job_state_badge %}
+{{ gth_job_status(job, poll_url="/jobs/" ~ job.id, pause_url=..., resume_url=..., cancel_url=...,
+    poll_every="1s", id=None, result_link=None) }}
+```
+
+| `job` key | |
+|---|---|
+| `id` | names the element, `gth-job-<id>` (or pass `id`) |
+| `label` | the heading, and the progress bar's accessible name |
+| `state` | `queued`, `running`, `paused`, `succeeded`, `failed` or `cancelled`, shown as a badge (`gth_job_state_badge`) |
+| `done`, `total` | the counts: "3 of 12"; `total` None is an indeterminate bar |
+| `message` | what it's doing now (a file name), one truncated line |
+| `result` | once it succeeded: `badges` (`gth_result_panel`'s pairs), `problems` and `link` are shown when present |
+| `error` | a failed job's message |
+
+- **While active** it polls `poll_url` every `poll_every` and swaps the answer's `.gth-job-body` into itself
+  (`hx-select`, `innerHTML`). The element is never replaced, so it stays one `aria-live` region. The running part is
+  `aria-live="off"`, so each poll isn't announced; the finished result is. Polling stops when the server answers
+  **286** (`JobViews` does, once the job is finished) or leaves `poll_url` out.
+- The buttons post to their url and swap the same way, with `hx-disabled-elt`. Pause shows while running, Resume
+  while paused, Cancel whenever `cancel_url` is given. Each is left out without its url.
+- **Finished:** a `gth_result_panel` headed by the label, with the result's badges, problems and link (or
+  `result_link`). A failed job shows its error as a danger alert, and a cancelled one gets a "Cancelled" badge.
+- `job_status.html` is the partial `JobViews` renders: `job`, `poll_url`, `pause_url`, `resume_url`, `cancel_url`,
+  `poll_every`, and optionally `job_result_link`. `jobs_page.html` lists recent jobs (`jobs`, each with
+  `status_url`) in a table: state badge, progress, start and finish times.
+
+A service's "start" route answers with the partial (`JobViews.status_response`), which starts the polling:
+
+```html
+<button hx-post="/scan" hx-target="#scan-status" hx-swap="innerHTML">Scan music</button>
+<div id="scan-status"></div>
+```
+
+The playground's `/data#job-status` runs this flow over a fake scan.
+
 ### Folder picker (v0.21)
 
 `gth_folder_picker` is a folder path field with a "Browse…" modal: breadcrumbs, drive roots, a hidden-folders

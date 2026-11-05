@@ -1,0 +1,66 @@
+{#- activity_page.html — the audit log as an activity feed: page.html's
+    header, an optional "Show" filter on the action, and the entries as a
+    gth_timeline (grouped by day, an icon per kind of action, relative
+    times), with "Load older" appending the next page's entries.
+    It takes audit_page.html's context, so greentechhub-fastapi's AuditViews
+    renders it with page_template = "activity_page.html" (often with
+    permission=None: an activity page for a local single-user app):
+      audit_url        the page's own url, the filter form's action
+      audit_filters    {"action", ...} as submitted ("" when unset)
+      audit_entries    [{"at", "actor" (None for the system), "action",
+                         "target" ("type:id" or None), "summary"}], newest first
+      audit_next_url   the next (older) page's url, keeping the filters, or None
+      activity_kinds   optional {first word of an action: (icon, tone)},
+                       merged over gth_timeline's and these defaults
+      activity_filter  optional false: no filter form
+    "Load older" fetches audit_next_url (the next page, rendered whole) and
+    picks its entries out with hx-select, so the server needs nothing
+    special for it. -#}
+{% extends "page.html" %}
+{% from "timeline.html" import gth_timeline_page %}
+{% from "empty_state.html" import gth_empty_state %}
+{%- set url = audit_url|default("/activity") %}
+{%- set filters = audit_filters|default(none) or {} %}
+{%- set action = filters.action|default("") %}
+{%- set entries = audit_entries|default([]) %}
+{%- set next_url = audit_next_url|default(none) %}
+{%- set kinds = {"jobs": ("hourglass-split", "info"), "scan": ("search", "info"),
+                 "plan": ("list-check", "brand"), "library": ("collection", "good")} %}
+{%- set _ = kinds.update(activity_kinds|default(none) or {}) %}
+
+{% block page %}
+<section class="gth-activity" id="gth-activity" aria-label="Activity">
+  {%- if activity_filter|default(true) %}
+  <form method="get" action="{{ url|e }}" class="d-flex flex-wrap align-items-end gap-2 gth-filter-bar gth-activity-filters mb-3"
+    role="search" aria-label="Filter the activity">
+    <div>
+      <label class="form-label small mb-1" for="gth-activity-action">Show</label>
+      <input class="form-control form-control-sm" type="text" id="gth-activity-action" name="action"
+        value="{{ action|e }}" autocomplete="off" placeholder="e.g. jobs." aria-describedby="gth-activity-action-help">
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    {%- if action %}
+    <a class="btn btn-sm btn-link gth-activity-clear" href="{{ url|e }}">Clear</a>
+    {%- endif %}
+    <div class="form-text w-100 mt-0" id="gth-activity-action-help">
+      An action, or every action under a prefix ending in a dot.
+    </div>
+  </form>
+  {%- endif %}
+
+  <div class="gth-timeline" id="gth-activity-feed">
+    {%- if entries %}
+    {{ gth_timeline_page(entries, None, kinds) }}
+    {%- if next_url %}
+    <div class="text-center py-2 gth-pagination gth-activity-more">
+      <button type="button" class="btn btn-sm btn-outline-secondary gth-pagination-more"
+        hx-get="{{ next_url|e }}" hx-target="closest .gth-activity-more" hx-swap="outerHTML"
+        hx-select="#gth-activity-feed > *">Load older</button>
+    </div>
+    {%- endif %}
+    {%- else %}
+    {{ gth_empty_state("Nothing matches this filter." if action else "No activity yet.", icon="clock-history") }}
+    {%- endif %}
+  </div>
+</section>
+{% endblock %}
