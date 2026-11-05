@@ -3014,3 +3014,55 @@ def test_job_status_cancel(page, playground_url):
     status.get_by_role("button", name="Cancel").click()
     expect(status.locator(".gth-result-panel")).to_contain_text("Cancelled")
     expect(status.get_by_role("button", name="Pause")).to_have_count(0)
+
+
+def test_folder_picker_browse_and_choose(page, playground_url):
+    page.goto(f"{playground_url}/forms#folder-picker")
+    field = page.locator("#gth-field-library")
+    expect(field).to_have_value("C:/Music")
+    page.get_by_role("button", name="Browse…").click()
+    dialog = page.get_by_role("dialog", name="Choose library folder")
+    expect(dialog).to_be_visible()
+    folders = dialog.get_by_role("list", name="Folders")
+    # opens at the typed path, hidden folders left out
+    expect(dialog.locator("[aria-current=page]")).to_have_text("Music")
+    expect(folders.get_by_role("button")).to_have_text(["Albums", "Quarantine", "Singles"])
+    expect(dialog).to_contain_text("1 hidden folder not shown.")
+    expect(folders.get_by_role("button", name="Albums")).to_be_focused()
+    page.keyboard.press("ArrowDown")
+    expect(folders.get_by_role("button", name="Quarantine")).to_be_focused()
+    dialog.get_by_label("Show hidden folders").check()
+    expect(folders.get_by_role("button")).to_have_count(4)
+    expect(dialog.get_by_label("Show hidden folders")).to_be_focused()
+    folders.get_by_role("button", name="Albums").click()
+    expect(dialog.locator("[aria-current=page]")).to_have_text("Albums")
+    # up with a breadcrumb, then into Singles and choose it
+    dialog.get_by_role("navigation", name="Folder path").get_by_role("button", name="Music").click()
+    dialog.get_by_role("list", name="Folders").get_by_role("button", name="Singles").click()
+    dialog.get_by_role("button", name="Choose this folder").click()
+    expect(dialog).to_be_hidden()
+    expect(field).to_have_value("C:/Music/Singles")
+    expect(field).to_be_focused()
+    expect(page.locator("#folder-demo-result")).to_have_text("C:/Music/Singles")
+    # the modal lives on <body>, outside the form
+    assert page.locator("#folder-demo .modal").count() == 0
+
+
+def test_folder_picker_roots_and_errors(page, playground_url):
+    page.goto(f"{playground_url}/forms#folder-picker")
+    page.locator("#gth-field-library").fill("")
+    page.get_by_role("button", name="Browse…").click()
+    dialog = page.get_by_role("dialog", name="Choose library folder")
+    drives = dialog.get_by_role("list", name="Drives")
+    expect(drives.get_by_role("button")).to_have_text(["C:/", "D:/", "E:/"])
+    expect(dialog.get_by_role("button", name="Choose this folder")).to_be_disabled()
+    drives.get_by_role("button", name="E:/").click()
+    expect(dialog.get_by_role("alert")).to_contain_text("isn't available")
+    expect(dialog.get_by_role("button", name="Choose this folder")).to_be_disabled()
+    dialog.get_by_role("button", name="Up one folder").click()
+    dialog.get_by_role("list", name="Drives").get_by_role("button", name="C:/").click()
+    dialog.get_by_role("list", name="Folders").get_by_role("button", name="Locked").click()
+    expect(dialog.get_by_role("alert")).to_contain_text("permission")
+    page.keyboard.press("Escape")
+    expect(dialog).to_be_hidden()
+    expect(page.locator("#gth-field-library")).to_be_focused()

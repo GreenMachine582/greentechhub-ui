@@ -50,8 +50,6 @@ component work.
 
 ### Local single-user apps
 For a local tool with one user and no sign-in that scans folders and runs long jobs.
-- [ ] `gth_folder_picker` — a path input with a browse modal (breadcrumbs, drive roots, hidden folders toggle,
-  "Choose this folder"), for greentechhub-fastapi's `FolderPickerViews`
 - [ ] Hosted apps: browsing and moving files on the *user's* machine when the server is elsewhere. With
   `gth_folder_picker` the server browses its own disk, which is the user's only while the app runs locally. With no
   install, only the File System Access API can do it, and only in Chromium desktop browsers (Chrome, Edge):

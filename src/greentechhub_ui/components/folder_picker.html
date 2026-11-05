@@ -1,0 +1,137 @@
+{% from "skeleton.html" import gth_skeleton %}
+{% from "toast.html" import gth_alert %}
+
+{#- gth_folder_picker (v0.21): a folder path field with a "Browse…" modal —
+    breadcrumbs, drive roots, a hidden-folders toggle and "Choose this
+    folder". For a local app's source, quarantine or library folder.
+    Behaviour in static/js/folder-picker.js (folder_picker_js_url); the
+    browser itself is server-rendered (gth_folder_browser, from
+    greentechhub-fastapi's FolderPickerViews at browse_url) and navigates
+    with htmx.
+    The path stays an ordinary text input: type or paste a path, or browse
+    to one. Browsing opens at the typed path (or the roots when it's
+    empty). "Choose this folder" fills the input, fires input and change,
+    closes the modal and returns focus to the input. While open the modal
+    is moved to <body>, so its controls never sit inside your form.
+    The chosen path arrives as plain text: validate it on submit. -#}
+
+{% macro gth_folder_picker(name, label, browse_url, value=None, errors=None, help_text=None,
+                           placeholder=None, field_class="mb-3", id=None, title=None) %}
+{%- set fid = id or ("gth-field-" ~ name) %}
+<div class="{{ field_class }} gth-form-field gth-folder-picker" data-gth-folder-picker
+  data-gth-folder-picker-url="{{ browse_url|e }}">
+  <label class="form-label" for="{{ fid|e }}">{{ label }}</label>
+  <div class="input-group{% if errors %} has-validation{% endif %}">
+    <span class="input-group-text" aria-hidden="true"><i class="bi bi-folder2"></i></span>
+    <input type="text" class="form-control gth-folder-picker-input{% if errors %} is-invalid{% endif %}" id="{{ fid|e }}"
+      name="{{ name|e }}" value="{{ (value or '')|e }}" autocomplete="off" spellcheck="false"
+      {%- if placeholder %} placeholder="{{ placeholder|e }}"{% endif %}
+      {%- if errors %} aria-invalid="true"{% endif %}
+      {%- if help_text or errors %} aria-describedby="{% if help_text %}{{ fid|e }}-help{% endif %}{% if errors %} {{ fid|e }}-error{% endif %}"{% endif %}
+      data-gth-folder-picker-input>
+    <button type="button" class="btn btn-outline-secondary gth-folder-picker-browse" data-gth-folder-picker-browse
+      aria-haspopup="dialog" aria-controls="{{ fid|e }}-dialog">Browse…</button>
+  </div>
+  {%- if help_text %}<div class="form-text" id="{{ fid|e }}-help">{{ help_text }}</div>{% endif %}
+  {%- if errors %}
+  <div class="invalid-feedback d-block" id="{{ fid|e }}-error">
+    {%- for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+  </div>
+  {%- endif %}
+  <div class="modal fade gth-modal gth-folder-picker-modal" id="{{ fid|e }}-dialog" tabindex="-1"
+    aria-labelledby="{{ fid|e }}-dialog-label" aria-hidden="true" data-gth-folder-picker-modal
+    data-gth-folder-picker-for="{{ fid|e }}">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="{{ fid|e }}-dialog-label">{{ title or ("Choose " ~ label|lower) }}</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body gth-folder-picker-body" data-gth-folder-picker-body>{{ gth_skeleton(5) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro _folder_url(browse_url, path, show_hidden, target) -%}
+{{ browse_url }}?{{ {"path": path or "", "hidden": "1" if show_hidden else "", "target": target or ""}|urlencode }}
+{%- endmacro %}
+
+{% macro gth_folder_browser(listing, browse_url, target=None, show_hidden=False, roots_label="This computer") %}
+{#- The browser inside gth_folder_picker's modal: what browse_url answers.
+    listing is greentechhub-fastapi's listing_dict (core's FolderListing):
+    path, parent, at_roots, breadcrumbs [{label, path}], entries
+    [{name, path, hidden}], hidden_count, truncated, error, error_message.
+    Every control re-requests browse_url (hx-get) and swaps the modal body,
+    keeping show_hidden and target. -#}
+{%- set nav %} hx-target="closest [data-gth-folder-picker-body]" hx-swap="innerHTML"{% endset %}
+{%- set entries = listing.entries|default([]) %}
+{%- set can_choose = listing.path and not listing.at_roots and not listing.error %}
+<div class="gth-folder-browser" data-gth-folder-browser{% if target %} data-gth-folder-target="{{ target|e }}"{% endif %}>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <nav aria-label="Folder path" class="me-auto">
+      <ol class="breadcrumb mb-0 gth-folder-crumbs">
+        {%- set crumbs = listing.breadcrumbs|default([]) %}
+        <li class="breadcrumb-item">
+          {%- if listing.at_roots %}<span aria-current="page"><i class="bi bi-pc-display me-1" aria-hidden="true"></i>{{ roots_label }}</span>
+          {%- else %}<button type="button" class="btn btn-link btn-sm p-0 align-baseline" hx-get="{{ _folder_url(browse_url, '', show_hidden, target) }}"{{ nav }}>
+            <i class="bi bi-pc-display me-1" aria-hidden="true"></i>{{ roots_label }}</button>{% endif %}
+        </li>
+        {%- for crumb in crumbs %}
+        <li class="breadcrumb-item">
+          {%- if loop.last %}<span aria-current="page">{{ crumb.label }}</span>
+          {%- else %}<button type="button" class="btn btn-link btn-sm p-0 align-baseline" hx-get="{{ _folder_url(browse_url, crumb.path, show_hidden, target) }}"{{ nav }}>{{ crumb.label }}</button>{% endif %}
+        </li>
+        {%- endfor %}
+      </ol>
+    </nav>
+    {%- if not listing.at_roots %}
+    <button type="button" class="btn btn-sm btn-outline-secondary gth-folder-up"
+      hx-get="{{ _folder_url(browse_url, listing.parent or '', show_hidden, target) }}"{{ nav }}
+      aria-label="Up one folder" title="Up one folder"><i class="bi bi-arrow-up" aria-hidden="true"></i> Up</button>
+    {%- endif %}
+    <div class="form-check form-switch mb-0">
+      <input class="form-check-input" type="checkbox" role="switch" id="gth-folder-hidden-{{ target or 'x' }}"
+        {%- if show_hidden %} checked{% endif %}
+        hx-get="{{ _folder_url(browse_url, listing.path if not listing.at_roots else '', not show_hidden, target) }}" hx-trigger="change"{{ nav }}>
+      <label class="form-check-label small" for="gth-folder-hidden-{{ target or 'x' }}">Show hidden folders</label>
+    </div>
+  </div>
+
+  {%- if listing.error %}
+  {{ gth_alert(listing.error_message or "This folder can't be opened.", kind="warning") }}
+  {%- endif %}
+
+  {%- if entries %}
+  <ul class="list-group gth-folder-list" aria-label="{{ 'Drives' if listing.at_roots else 'Folders' }}" data-gth-folder-list>
+    {%- for f in entries %}
+    <li class="list-group-item p-0">
+      <button type="button" class="btn w-100 text-start d-flex align-items-center gap-2 rounded-0 gth-folder-entry{% if f.hidden %} text-secondary{% endif %}"
+        hx-get="{{ _folder_url(browse_url, f.path, show_hidden, target) }}"{{ nav }} data-gth-folder-entry>
+        <i class="bi bi-{{ 'hdd' if listing.at_roots else 'folder' }}" aria-hidden="true"></i>
+        <span class="text-truncate">{{ f.name }}</span>
+        {%- if f.hidden %}<span class="badge text-bg-light border ms-auto">hidden</span>{% endif %}
+      </button>
+    </li>
+    {%- endfor %}
+  </ul>
+  {%- elif not listing.error %}
+  <p class="text-secondary small mb-2 gth-folder-empty">No folders here.</p>
+  {%- endif %}
+
+  {%- if listing.truncated or (listing.hidden_count and not show_hidden) %}
+  <p class="small text-secondary mt-2 mb-0">
+    {%- if listing.truncated %}Showing the first {{ entries|length }} folders. {% endif %}
+    {%- if listing.hidden_count and not show_hidden %}{{ listing.hidden_count }} hidden {{ "folder" if listing.hidden_count == 1 else "folders" }} not shown.{% endif -%}
+  </p>
+  {%- endif %}
+
+  <div class="d-flex flex-wrap align-items-center gap-2 border-top pt-3 mt-3">
+    <code class="small text-truncate me-auto gth-folder-current" title="{{ (listing.path or '')|e }}">{{ listing.path or roots_label }}</code>
+    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+    <button type="button" class="btn btn-primary btn-sm gth-folder-choose" data-gth-folder-choose="{{ (listing.path or '')|e }}"
+      {%- if not can_choose %} disabled{% endif %}>Choose this folder</button>
+  </div>
+</div>
+{% endmacro %}

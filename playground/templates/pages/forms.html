@@ -7,6 +7,7 @@
 {% from "select.html" import gth_select %}
 {% from "date_range.html" import gth_date_range %}
 {% from "record_picker.html" import gth_record_picker %}
+{% from "folder_picker.html" import gth_folder_picker %}
 
 {% block page %}
 <section class="mb-5" id="form">
@@ -74,6 +75,19 @@
 <section class="mb-5" id="multiselect">
   <h2 class="h4">gth-multiselect (+ tags mode)</h2>
   {% include "_multi_form.html" %}
+</section>
+
+<section class="mb-5" id="folder-picker">
+  <h2 class="h4">gth-folder-picker</h2>
+  <p class="text-secondary small">A path field with a Browse modal (greentechhub-fastapi's
+    <code>FolderPickerViews</code> over core's <code>list_folders</code>; here a made-up tree). Try the hidden
+    folders switch, the locked folder and drive E:, which isn't ready.</p>
+  <form id="folder-demo" class="gth-form" hx-post="/demo/folder-pick" hx-target="#folder-demo-result"
+    hx-trigger="change">
+    {{ gth_folder_picker("library", "Library folder", "/demo/folders", value="C:/Music",
+        placeholder="C:/Music", help_text="Type a path, or browse to one.") }}
+    <p class="text-secondary small mb-0">Submitted: <code id="folder-demo-result">nothing yet</code></p>
+  </form>
 </section>
 
 <section class="mb-5" id="record-picker">
