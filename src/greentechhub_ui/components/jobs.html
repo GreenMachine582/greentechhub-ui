@@ -1,0 +1,82 @@
+{% from "badge.html" import gth_badge %}
+{% from "progress.html" import gth_progress %}
+{% from "result_panel.html" import gth_result_panel %}
+
+{#- gth_job_status (v0.21): a background job's status, for
+    greentechhub-fastapi's JobViews (its job_status.html renders this) or
+    any server with the same shape. `job` is a mapping (JobViews' job_dict):
+      id, label, state (queued|running|paused|succeeded|failed|cancelled),
+      done, total (None while unknown: an indeterminate bar), message,
+      result ({"badges", "problems", "link"} are shown when present),
+      error (a failed job's message).
+    While the job is active: its label and state, a gth_progress, the
+    current message, and Pause / Resume and Cancel buttons (each when its
+    url is given). It polls poll_url every poll_every and swaps in the
+    answer's .gth-job-body into itself, so it keeps itself current (and stays
+    one live region); the server stops the
+    polling once the job is finished (JobViews answers 286) or by leaving
+    poll_url out. Finished: a gth_result_panel headed with the label —
+    result badges, problems and link, the error as a danger alert, or a
+    "Cancelled" badge.
+    It's an aria-live region: the finished result is announced, the
+    running progress (which changes every poll) isn't. -#}
+
+{%- set _JOB_STATES = {"queued": ("Queued", "neutral"), "running": ("Running", "info"),
+                       "paused": ("Paused", "warn"), "succeeded": ("Done", "good"),
+                       "failed": ("Failed", "bad"), "cancelled": ("Cancelled", "neutral")} %}
+
+{% macro gth_job_state_badge(state) -%}
+{%- set name, tone = _JOB_STATES.get(state, (state|string|capitalize, "neutral")) -%}
+{{ gth_badge(name, tone, badge_class="gth-job-state") }}
+{%- endmacro %}
+
+{% macro gth_job_status(job, poll_url=None, pause_url=None, resume_url=None, cancel_url=None,
+                        poll_every="1s", id=None, result_link=None, status_class="") %}
+{%- set el_id = id or ("gth-job-" ~ job.id) %}
+{%- set state = job.state|default("queued")|string %}
+{%- set active = state in ("queued", "running", "paused") %}
+{%- set swap %} hx-target="#{{ el_id|e }}" hx-select="#{{ el_id|e }} .gth-job-body" hx-swap="innerHTML"{% endset %}
+<div class="gth-job-status {{ status_class }}" id="{{ el_id|e }}" aria-live="polite" data-gth-job-state="{{ state|e }}"
+  {%- if active and poll_url %} hx-get="{{ poll_url|e }}" hx-trigger="every {{ poll_every|e }}"{{ swap }}{% endif %}>
+  <div class="gth-job-body">
+  {%- if active %}
+  <div class="gth-job-running" aria-live="off">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <span class="gth-job-label fw-semibold">{{ job.label|default("Job") }}</span>
+      {{ gth_job_state_badge(state) }}
+    </div>
+    {%- set total = job.total|default(none) %}
+    {%- set done = job.done|default(0) or 0 %}
+    {{ gth_progress(done if total else none, max=total or 100, label=job.label|default("Job"),
+        show_value=total is not none, value_text=(done ~ " of " ~ total) if total else none,
+        striped=state == "running", size="sm") }}
+    {%- if job.message|default("") %}
+    <p class="small text-secondary mt-1 mb-0 text-truncate gth-job-message" title="{{ job.message|e }}">{{ job.message }}</p>
+    {%- endif %}
+    {%- if (pause_url and state != "paused") or (resume_url and state == "paused") or cancel_url %}
+    <div class="d-flex gap-2 mt-2 gth-job-actions">
+      {%- if state == "paused" and resume_url %}
+      <button type="button" class="btn btn-sm btn-outline-primary gth-job-resume" hx-post="{{ resume_url|e }}"{{ swap }}
+        hx-disabled-elt="this"><i class="bi bi-play-fill" aria-hidden="true"></i> Resume</button>
+      {%- elif state != "paused" and pause_url %}
+      <button type="button" class="btn btn-sm btn-outline-secondary gth-job-pause" hx-post="{{ pause_url|e }}"{{ swap }}
+        hx-disabled-elt="this"><i class="bi bi-pause-fill" aria-hidden="true"></i> Pause</button>
+      {%- endif %}
+      {%- if cancel_url %}
+      <button type="button" class="btn btn-sm btn-outline-danger gth-job-cancel" hx-post="{{ cancel_url|e }}"{{ swap }}
+        hx-disabled-elt="this"><i class="bi bi-x-lg" aria-hidden="true"></i> Cancel</button>
+      {%- endif %}
+    </div>
+    {%- endif %}
+  </div>
+  {%- else %}
+  {%- set result = job.result|default(none) or {} %}
+  {%- set badges = (result.badges|default(none) or [])|list %}
+  {%- if state == "cancelled" %}{% set badges = [("Cancelled", "neutral")] + badges %}{% endif %}
+  {%- set link = result_link or result.link|default(none) %}
+  {{ gth_result_panel(job.label|default("Job"), badges=badges, problems=result.problems|default(none),
+      error=(job.error|default(none) or "The job failed.") if state == "failed" else none, link=link) }}
+  {%- endif %}
+  </div>
+</div>
+{% endmacro %}

@@ -322,6 +322,7 @@ PLAYGROUND_NAV = [
         {"label": "Action menu", "url": "/data#action-menu"},
         {"label": "Description list", "url": "/data#description-list"},
         {"label": "Progress", "url": "/data#progress"},
+        {"label": "Job status", "url": "/data#job-status"},
         {"label": "Pagination", "url": "/data#pagination"},
         {"label": "Load more", "url": "/data#load-more"},
         {"label": "Formatting", "url": "/data#formatting"},
@@ -955,6 +956,57 @@ async def progress_start(request: Request):
     """Restart the fake sync: the returned bar carries poll_url, so it polls."""
     PROGRESS_DEMO["value"] = 0
     return _progress_live(request)
+
+
+# gth_job_status demo: a fake folder scan, standing in for greentechhub-fastapi's
+# JobViews over core's JobRunner (job_status.html with JobViews' context). Each
+# poll scans one file while it's running; pause, resume and cancel act at once.
+JOB_DEMO: dict = {}
+JOB_DEMO_FILES = ["intro.mp3", "verse.flac", "chorus.mp3", "bridge.ogg", "outro.mp3", "bonus.wav"]
+
+
+def _job_demo(request: Request, *, status_code: int = 200) -> HTMLResponse:
+    job = dict(JOB_DEMO)
+    active = job["state"] in ("queued", "running", "paused")
+    if job["state"] == "succeeded":
+        job["result"] = {"badges": [[f"{job['total']} files", "good"], ["1 skipped", "warn"]],
+                         "problems": ["bonus.wav: unsupported format"],
+                         "link": {"url": "/data#job-status", "label": "Open the library"}}
+    return templates.TemplateResponse(request, "job_status.html", {
+        "job": job, "poll_url": "/demo/job" if active else None, "poll_every": "1s",
+        "pause_url": "/demo/job/pause", "resume_url": "/demo/job/resume",
+        "cancel_url": "/demo/job/cancel"}, status_code=status_code)
+
+
+@app.post("/demo/job/start", response_class=HTMLResponse)
+async def job_start(request: Request):
+    JOB_DEMO.clear()
+    JOB_DEMO.update(id="demo", label="Scan D:/Music", state="running", done=0,
+                    total=len(JOB_DEMO_FILES), message="Listing files…", result={}, error=None)
+    return _job_demo(request)
+
+
+@app.get("/demo/job", response_class=HTMLResponse)
+async def job_poll(request: Request):
+    if JOB_DEMO.get("state") == "running":
+        JOB_DEMO["done"] += 1
+        JOB_DEMO["message"] = JOB_DEMO_FILES[JOB_DEMO["done"] - 1]
+        if JOB_DEMO["done"] >= JOB_DEMO["total"]:
+            JOB_DEMO.update(state="succeeded", message="")
+    finished = JOB_DEMO.get("state") not in ("queued", "running", "paused")
+    return _job_demo(request, status_code=286 if finished else 200)
+
+
+@app.post("/demo/job/{action}", response_class=HTMLResponse)
+async def job_control(request: Request, action: str):
+    state = JOB_DEMO.get("state")
+    if action == "pause" and state == "running":
+        JOB_DEMO["state"] = "paused"
+    elif action == "resume" and state == "paused":
+        JOB_DEMO["state"] = "running"
+    elif action == "cancel" and state in ("running", "paused"):
+        JOB_DEMO["state"] = "cancelled"
+    return _job_demo(request)
 
 
 # /demo/report: realised gains per financial year, for the data page's report

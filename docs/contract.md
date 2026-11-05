@@ -145,6 +145,12 @@ it): `audit_url`, `audit_filters`, `audit_entries`, `audit_next_url`, and option
 in [docs/components.md](components.md#audit-log-v017). `activity_page.html` (v0.21) takes the same context and shows
 it as a timeline; see [docs/components.md](components.md#activity-page-v021).
 
+**Background jobs (v0.21)** — the context `job_status.html` takes (greentechhub-fastapi's `JobViews` supplies it):
+`job` (`id`, `label`, `state`, `done`, `total`, `message`, `result`, `error`), `poll_url` (None once finished),
+`pause_url`, `resume_url`, `cancel_url` and `poll_every`; answer a finished job's poll with status 286. And
+`jobs_page.html`'s: `jobs` (each also with `status_url`) and `jobs_url`. Shapes are in
+[docs/components.md](components.md#job-status-v021).
+
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional
 `settings_intro`, and `section` for the single-section fragment. A section's shape is in

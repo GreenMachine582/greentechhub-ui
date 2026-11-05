@@ -2980,3 +2980,37 @@ def test_activity_page_filters_by_action(page, playground_url):
     expect(page).to_have_url(re.compile(r"/activity\?action=jobs\.$"))
     expect(page.locator("#gth-activity-feed .gth-timeline-action")).to_have_count(4)
     expect(page.locator(".gth-activity-clear")).to_be_visible()
+
+
+def test_job_status_pause_resume_and_finish(page, playground_url):
+    page.goto(f"{playground_url}/data#job-status")
+    page.get_by_role("button", name="Scan music").click()
+    status = page.locator("#gth-job-demo")
+    expect(status.locator(".gth-job-state")).to_have_text("Running")
+    bar = status.get_by_role("progressbar", name="Scan D:/Music")
+    expect(bar).to_have_attribute("aria-valuemax", "6")
+    expect(bar).not_to_have_attribute("aria-valuenow", "0", timeout=5000)
+    status.get_by_role("button", name="Pause").click()
+    expect(status.locator(".gth-job-state")).to_have_text("Paused")
+    paused_at = bar.get_attribute("aria-valuenow")
+    page.wait_for_timeout(1500)
+    expect(bar).to_have_attribute("aria-valuenow", paused_at)  # polling doesn't advance it
+    status.get_by_role("button", name="Resume").click()
+    expect(status.locator(".gth-result-panel")).to_be_visible(timeout=15000)
+    expect(status).to_contain_text("6 files")
+    expect(status).to_contain_text("bonus.wav: unsupported format")
+    # one live region throughout: the wrapper was never replaced, and it stopped polling
+    expect(page.locator("#gth-job-demo")).to_have_count(1)
+    polls = []
+    page.on("request", lambda r: polls.append(r.url) if r.url.endswith("/demo/job") else None)
+    page.wait_for_timeout(2500)
+    assert polls == []
+
+
+def test_job_status_cancel(page, playground_url):
+    page.goto(f"{playground_url}/data#job-status")
+    page.get_by_role("button", name="Scan music").click()
+    status = page.locator("#gth-job-demo")
+    status.get_by_role("button", name="Cancel").click()
+    expect(status.locator(".gth-result-panel")).to_contain_text("Cancelled")
+    expect(status.get_by_role("button", name="Pause")).to_have_count(0)

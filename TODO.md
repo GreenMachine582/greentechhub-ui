@@ -50,8 +50,6 @@ component work.
 
 ### Local single-user apps
 For a local tool with one user and no sign-in that scans folders and runs long jobs.
-- [ ] `gth_job_status` — a background job's progress, pause/resume/cancel buttons and its result panel, for
-  greentechhub-fastapi's `JobViews`
 - [ ] `gth_folder_picker` — a path input with a browse modal (breadcrumbs, drive roots, hidden folders toggle,
   "Choose this folder"), for greentechhub-fastapi's `FolderPickerViews`
 

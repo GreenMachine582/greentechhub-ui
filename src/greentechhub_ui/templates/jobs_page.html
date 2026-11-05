@@ -1,0 +1,40 @@
+{#- jobs_page.html — recent background jobs (v0.21), what
+    greentechhub-fastapi's JobViews renders for GET {url}: page.html's
+    header, then a table, newest first. Context:
+      jobs       [job_dict + "status_url"], newest first
+      jobs_url   the page's own url
+    A snapshot: reload for the latest progress (a job's own status partial
+    is what keeps itself current). -#}
+{% extends "page.html" %}
+{% from "table.html" import gth_table %}
+{% from "empty_state.html" import gth_empty_state %}
+{% from "jobs.html" import gth_job_state_badge %}
+{%- set jobs = jobs|default([]) %}
+
+{% block page %}
+<section class="gth-jobs" aria-label="Jobs">
+  {%- if jobs %}
+  {% call gth_table(["Job", "State", "Progress", "Started", "Finished"], table_class="table-sm gth-jobs-table") %}
+  {%- for job in jobs %}
+    <tr>
+      <td>{{ job.label }}{% if job.message %}<div class="small text-secondary text-truncate">{{ job.message }}</div>{% endif %}</td>
+      <td>{{ gth_job_state_badge(job.state) }}</td>
+      <td class="text-nowrap">
+        {%- if job.total %}{{ job.done }} of {{ job.total }}{% if job.percent is not none %} ({{ job.percent }}%){% endif %}
+        {%- elif job.active %}<span class="text-secondary">Working…</span>{% endif %}
+        {%- if job.error %}<div class="small text-danger">{{ job.error }}</div>{% endif %}
+      </td>
+      <td class="text-nowrap">
+        {%- if job.started_at and job.started_at.isoformat is defined %}<time datetime="{{ job.started_at.isoformat()|e }}">{{ job.started_at|datetime if "datetime" is filter else job.started_at }}</time>{% endif -%}
+      </td>
+      <td class="text-nowrap">
+        {%- if job.finished_at and job.finished_at.isoformat is defined %}<time datetime="{{ job.finished_at.isoformat()|e }}">{{ job.finished_at|datetime if "datetime" is filter else job.finished_at }}</time>{% endif -%}
+      </td>
+    </tr>
+  {%- endfor %}
+  {% endcall %}
+  {%- else %}
+  {{ gth_empty_state("No jobs have run yet.", icon="hourglass") }}
+  {%- endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+
+
+<div class="gth-job-status " id="gth-job-abc" aria-live="polite" data-gth-job-state="running" hx-get="/jobs/abc" hx-trigger="every 1s" hx-target="#gth-job-abc" hx-select="#gth-job-abc .gth-job-body" hx-swap="innerHTML">
+  <div class="gth-job-body">
+  <div class="gth-job-running" aria-live="off">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <span class="gth-job-label fw-semibold">Scan &lt;music&gt;</span>
+      
+
+
+
+
+<span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle gth-badge gth-job-state">Running</span>
+
+    </div>
+    <div class="gth-progress gth-progress-sm ">
+  <div class="gth-progress-header small"><span class="gth-progress-label">Scan &lt;music&gt;</span>
+    <span class="gth-progress-value" aria-hidden="true">3 of 12</span>
+  </div>
+  <div class="progress" role="progressbar" aria-label="Scan &lt;music&gt;"
+    aria-valuemin="0" aria-valuemax="12" aria-valuenow="3" aria-valuetext="3 of 12">
+    <div class="progress-bar  progress-bar-striped"
+      style="width: 25%"></div>
+  </div>
+</div>
+
+    <p class="small text-secondary mt-1 mb-0 text-truncate gth-job-message" title="D:/Music/a.mp3">D:/Music/a.mp3</p>
+    <div class="d-flex gap-2 mt-2 gth-job-actions">
+      <button type="button" class="btn btn-sm btn-outline-secondary gth-job-pause" hx-post="/jobs/abc/pause" hx-target="#gth-job-abc" hx-select="#gth-job-abc .gth-job-body" hx-swap="innerHTML"
+        hx-disabled-elt="this"><i class="bi bi-pause-fill" aria-hidden="true"></i> Pause</button>
+      <button type="button" class="btn btn-sm btn-outline-danger gth-job-cancel" hx-post="/jobs/abc/cancel" hx-target="#gth-job-abc" hx-select="#gth-job-abc .gth-job-body" hx-swap="innerHTML"
+        hx-disabled-elt="this"><i class="bi bi-x-lg" aria-hidden="true"></i> Cancel</button>
+    </div>
+  </div>
+  </div>
+</div>
