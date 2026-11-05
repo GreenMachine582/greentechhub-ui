@@ -1640,6 +1640,50 @@ A service's "start" route answers with the partial (`JobViews.status_response`),
 
 The playground's `/data#job-status` runs this flow over a fake scan.
 
+### Folder picker (v0.21)
+
+`gth_folder_picker` is a folder path field with a "Browse…" modal: breadcrumbs, drive roots, a hidden-folders
+switch and "Choose this folder". It's meant for a local app's source, quarantine or library folders. The browser is
+server-rendered by greentechhub-fastapi's `FolderPickerViews` over greentechhub-core's `list_folders`, and
+navigates with htmx. Behaviour is in `static/js/folder-picker.js` (`folder_picker_js_url`).
+
+```jinja
+{% from "folder_picker.html" import gth_folder_picker %}
+{{ gth_folder_picker("library", "Library folder", browse_url="/folders", value=form.library,
+    errors=errors.library, help_text="Where your music lives", placeholder="D:/Music", id=None, title=None) }}
+```
+
+- The path is an ordinary text input, so it can be typed, pasted or browsed to. Browse opens at the typed path, or
+  at the roots ("This computer": the drive letters on Windows) when it's empty. It requests
+  `browse_url?path=<the input's value>&target=<its id>`.
+- **"Choose this folder"** fills the input, fires `input` and `change`, closes the modal and returns focus to the
+  input. It's disabled at the roots and on a folder with an error.
+- The modal is moved to `<body>` on first open, so the browser's controls never sit inside your form (or a modal
+  it's in). The modal is titled `title`, by default "Choose <label>".
+- Label, help and errors are wired like `gth_form_field`'s (`aria-describedby`, `aria-invalid`).
+- **Keyboard:** ↑/↓ and Home/End move between folders, and Enter opens one. Backspace or Alt+↑ goes up. After each
+  move focus lands on the first folder, or on the switch when that's what changed. Esc closes the modal.
+- The chosen path arrives as plain text, so validate it on submit (`list_folders(path, roots=...)` and its `error`).
+- It browses the **server's** folders. Those are the user's own only while the app runs on their machine (a local
+  app). A hosted app that works on the user's files needs the browser-side approach in TODO.md (File System Access
+  handles, Chromium only), or a local agent.
+
+`gth_folder_browser(listing, browse_url, target=None, show_hidden=False, roots_label="This computer")` is the modal
+body: `folder_browser.html` renders it with `FolderPickerViews`' context. `listing` is fastapi's `listing_dict`:
+
+| `listing` key | |
+|---|---|
+| `path`, `at_roots` | the folder shown; `at_roots` (path None) lists the roots |
+| `parent` | where Up goes; None at a root, where Up goes back to the roots |
+| `breadcrumbs` | `[{label, path}]` from the root down, after a "This computer" crumb |
+| `entries` | `[{name, path, hidden}]`; each is a button that opens it (`hx-get`, keeping `target` and the switch) |
+| `hidden_count` | "2 hidden folders not shown." while the switch is off |
+| `truncated` | "Showing the first N folders." |
+| `error`, `error_message` | a warning alert with the message; no list, and Choose disabled |
+
+The playground's `/forms#folder-picker` runs this over a made-up tree, with a locked folder and a drive that isn't
+ready.
+
 ### Error pages (v0.17)
 
 `403.html`, `404.html` and `500.html` extend `error_page.html`, which extends `page.html`: the service's own shell

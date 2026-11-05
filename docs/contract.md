@@ -83,6 +83,7 @@ static host, see [docs/theming.md](theming.md)) a globals change, not a template
 | `modal_host_js_url` | none (no script rendered) — needed for the `#gth-modal-host` flow (v0.7) |
 | `combobox_js_url` | none (no script rendered) — needed by `gth-combobox` and `gth-multiselect` (v0.7) |
 | `record_picker_js_url` | none (no script rendered) — needed by `gth-record-picker` (v0.7) |
+| `folder_picker_js_url` | none (no script rendered) — needed by `gth_folder_picker` (v0.21) |
 | `date_range_js_url` | none (no script rendered) — shows and drives `gth-date-range`'s preset chips (v0.11) |
 | `file_drop_js_url` | none (no script rendered) — drag-and-drop, client checks and upload progress for `gth-file-drop` (v0.11) |
 | `table_select_js_url` | none (no script rendered) — row selection and the bulk bar of `gth-data-table(bulk_actions=...)` (v0.11) |
@@ -150,6 +151,11 @@ it as a timeline; see [docs/components.md](components.md#activity-page-v021).
 `pause_url`, `resume_url`, `cancel_url` and `poll_every`; answer a finished job's poll with status 286. And
 `jobs_page.html`'s: `jobs` (each also with `status_url`) and `jobs_url`. Shapes are in
 [docs/components.md](components.md#job-status-v021).
+
+**Folder browser (v0.21)** — the context `folder_browser.html` takes (greentechhub-fastapi's `FolderPickerViews`
+supplies it): `listing` (`path`, `parent`, `at_roots`, `breadcrumbs`, `entries`, `hidden_count`, `truncated`,
+`error`, `error_message`), `browse_url`, `target`, `show_hidden` and `roots_label`. Shapes are in
+[docs/components.md](components.md#folder-picker-v021).
 
 **Settings page (v0.12)** — the context `settings_page.html` and `settings_section.html` take, from any framework
 (greentechhub-fastapi's `SettingsViews` supplies it): `settings_sections` (a list of sections), optional

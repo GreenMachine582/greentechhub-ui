@@ -1,0 +1,7 @@
+{#- folder_browser.html — gth_folder_picker's modal body (v0.21): what
+    greentechhub-fastapi's FolderPickerViews renders for GET {url}.
+    Context: listing (its listing_dict), browse_url, target, show_hidden,
+    roots_label. -#}
+{% from "folder_picker.html" import gth_folder_browser %}
+{{ gth_folder_browser(listing, browse_url, target=target|default(none), show_hidden=show_hidden|default(false),
+    roots_label=roots_label|default("This computer")) }}

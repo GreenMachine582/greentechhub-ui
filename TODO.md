@@ -50,8 +50,6 @@ component work.
 
 ### Local single-user apps
 For a local tool with one user and no sign-in that scans folders and runs long jobs.
-- [ ] `gth_folder_picker` — a path input with a browse modal (breadcrumbs, drive roots, hidden folders toggle,
-  "Choose this folder"), for greentechhub-fastapi's `FolderPickerViews`
 
 ### Ideas — not scheduled
 - Settings nav: highlight the section in view — a scrollspy that re-observes sections after an htmx swap (Bootstrap's
