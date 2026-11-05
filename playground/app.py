@@ -45,7 +45,7 @@ from greentechhub_fastapi.downloads import csv_download, csv_value
 from greentechhub_fastapi.email import email_looks_valid
 from greentechhub_fastapi.htmx import hx_response
 from greentechhub_fastapi.templating import mount_static_dirs, ui_context
-from markupsafe import Markup
+from markupsafe import Markup, escape
 from starlette.datastructures import UploadFile
 
 import greentechhub_ui
@@ -338,6 +338,7 @@ PLAYGROUND_NAV = [
         {"label": "Date range", "url": "/forms#date-range"},
         {"label": "File drop", "url": "/forms#file-drop"},
         {"label": "Multiselect + tags", "url": "/forms#multiselect"},
+        {"label": "Folder picker", "url": "/forms#folder-picker"},
         {"label": "Record picker", "url": "/forms#record-picker"},
         {"label": "Busy button", "url": "/forms#busy-button"},
     ]},
@@ -954,6 +955,70 @@ async def progress_start(request: Request):
     """Restart the fake sync: the returned bar carries poll_url, so it polls."""
     PROGRESS_DEMO["value"] = 0
     return _progress_live(request)
+
+
+# gth_folder_picker demo: folder_browser.html with FolderPickerViews' context
+# (fastapi's listing_dict over core's list_folders), over a made-up tree so it
+# looks the same on every machine. "Locked" can't be opened; E: isn't ready.
+FOLDER_TREE: dict = {
+    "C:/": {"Music": {"Albums": {"2023": {}, "2024": {}, ".covers": {}}, "Singles": {},
+                      "Quarantine": {}, ".sync": {}},
+            "Users": {"sam": {"Downloads": {}, "Documents": {}}}, "Locked": None,
+            "Windows": {}, "$Recycle.Bin": {}},
+    "D:/": {"Library": {"Artists": {}, "Playlists": {}}, "Backups": {}},
+    "E:/": None,
+}
+FOLDER_ERRORS = {"permission_denied": "You don't have permission to open this folder.",
+                 "not_found": "This folder doesn't exist.",
+                 "unavailable": "This drive or folder isn't available right now."}
+
+
+def _folder_listing(path: str, show_hidden: bool) -> dict:
+    if not path:
+        return {"path": None, "parent": None, "at_roots": True, "breadcrumbs": [],
+                "entries": [{"name": d, "path": d, "hidden": False} for d in FOLDER_TREE],
+                "hidden_count": 0, "truncated": False, "error": None, "error_message": None}
+    path = path.replace("\\", "/")
+    drive, _, rest = path.partition("/")
+    parts = [p for p in rest.split("/") if p]
+    root = drive + "/"
+    crumbs, node, error = [{"label": root, "path": root}], FOLDER_TREE.get(root, {}), None
+    if root not in FOLDER_TREE:
+        error, node = "not_found", {}
+    elif node is None:
+        error, node = "unavailable", {}
+    for i, part in enumerate(parts):
+        crumbs.append({"label": part, "path": root + "/".join(parts[:i + 1])})
+        if error is None:
+            child = node.get(part, {}) if isinstance(node, dict) else {}
+            if part not in node:
+                error = "not_found"
+            elif child is None:
+                error = "permission_denied"
+            node = child or {}
+    here = crumbs[-1]["path"]
+    names = sorted((node if error is None else {}), key=str.casefold)
+    hidden = [n for n in names if n.startswith((".", "$"))]
+    shown = [n for n in names if show_hidden or n not in hidden]
+    return {"path": here, "parent": crumbs[-2]["path"] if len(crumbs) > 1 else None,
+            "at_roots": False, "breadcrumbs": crumbs,
+            "entries": [{"name": n, "path": here.rstrip("/") + "/" + n, "hidden": n in hidden}
+                        for n in shown],
+            "hidden_count": 0 if show_hidden else len(hidden), "truncated": False,
+            "error": error, "error_message": FOLDER_ERRORS.get(error) if error else None}
+
+
+@app.get("/demo/folders", response_class=HTMLResponse)
+async def demo_folders(request: Request, path: str = "", hidden: str = "", target: str = ""):
+    return templates.TemplateResponse(request, "folder_browser.html", {
+        "listing": _folder_listing(path.strip(), hidden == "1"), "browse_url": "/demo/folders",
+        "target": target if re.fullmatch(r"[A-Za-z][A-Za-z0-9_.:-]{0,127}", target) else None,
+        "show_hidden": hidden == "1", "roots_label": "This computer"})
+
+
+@app.post("/demo/folder-pick", response_class=HTMLResponse)
+async def demo_folder_pick(library: str = Form("")):
+    return HTMLResponse(str(escape(library)) or "nothing")
 
 
 # /demo/report: realised gains per financial year, for the data page's report

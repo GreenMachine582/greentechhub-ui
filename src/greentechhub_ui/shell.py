@@ -74,6 +74,7 @@ def shell_globals(
         "modal_host_js_url": f"{assets_prefix}/js/modal-host.js",
         "combobox_js_url": f"{assets_prefix}/js/combobox.js",
         "record_picker_js_url": f"{assets_prefix}/js/record-picker.js",
+        "folder_picker_js_url": f"{assets_prefix}/js/folder-picker.js",
         "date_range_js_url": f"{assets_prefix}/js/date-range.js",
         "file_drop_js_url": f"{assets_prefix}/js/file-drop.js",
         "table_select_js_url": f"{assets_prefix}/js/table-select.js",
