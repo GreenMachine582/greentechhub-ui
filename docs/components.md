@@ -1592,6 +1592,9 @@ navigates with htmx. Behaviour is in `static/js/folder-picker.js` (`folder_picke
 - **Keyboard:** ↑/↓ and Home/End move between folders, and Enter opens one. Backspace or Alt+↑ goes up. After each
   move focus lands on the first folder, or on the switch when that's what changed. Esc closes the modal.
 - The chosen path arrives as plain text, so validate it on submit (`list_folders(path, roots=...)` and its `error`).
+- It browses the **server's** folders. Those are the user's own only while the app runs on their machine (a local
+  app). A hosted app that works on the user's files needs the browser-side approach in TODO.md (File System Access
+  handles, Chromium only), or a local agent.
 
 `gth_folder_browser(listing, browse_url, target=None, show_hidden=False, roots_label="This computer")` is the modal
 body: `folder_browser.html` renders it with `FolderPickerViews`' context. `listing` is fastapi's `listing_dict`:
